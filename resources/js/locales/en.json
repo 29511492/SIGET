@@ -1,0 +1,35 @@
+{
+    "auth": {
+        "login": {
+        "brand_title": "SIGET",
+        "brand_subtitle": "Territorial Management System",
+        "brand_description": "Comprehensive platform for the administration, monitoring and participation of Communal Councils.",
+        "form_title": "Sign in to the system",
+        "form_subtitle": "Enter your credentials to continue",
+        "email_label": "Email address",
+        "email_placeholder": "user@siget.gob.ve",
+        "password_label": "Password",
+        "password_placeholder": "••••••••",
+        "submit": "Sign in",
+        "submitting": "Verifying...",
+        "footer": "© 2026 SIGET · All rights reserved"
+        },
+        "errors": {
+        "email_required": "Email address is required.",
+        "email_invalid": "Please enter a valid email address.",
+        "password_required": "Password is required.",
+        "password_min": "Password must be at least 8 characters.",
+        "generic": "An unexpected error occurred. Please try again.",
+        "network": "Could not connect to the server. Check your connection."
+        },
+        "success": {
+        "login": "Welcome back!"
+        }
+    },
+    "validation": {
+        "attributes": {
+        "email": "email address",
+        "password": "password"
+        }
+    }
+}

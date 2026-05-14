@@ -1,0 +1,122 @@
+/**
+ * ═══════════════════════════════════════════════════════════════
+ *  resources/js/services/axios.js — Cliente HTTP centralizado
+ * ───────────────────────────────────────────────────────────────
+ *  DECISIÓN ARQUITECTÓNICA — ¿Por qué una instancia centralizada?
+ *
+ *  Si cada componente importa axios directamente y define su propia
+ *  baseURL, un cambio de URL requiere modificar N archivos.
+ *  Con una instancia central, se modifica UN solo lugar.
+ *
+ *  INTERCEPTORES:
+ *  Son middlewares del cliente HTTP. Se ejecutan automáticamente
+ *  antes de cada request (request interceptor) o después de cada
+ *  respuesta (response interceptor), sin que el componente lo sepa.
+ *
+ *  Request interceptor: inyecta el token Bearer y el locale activo
+ *  en TODOS los requests automáticamente. El componente no necesita
+ *  saber que existe un token — solo llama al servicio.
+ *
+ *  Response interceptor: captura errores 401 globalmente. Si el
+ *  token expiró en cualquier parte de la app, redirige al login
+ *  sin necesidad de manejar ese caso en cada componente.
+ *
+ *  NOTA PARA LA TESIS — ¿Cómo sabe React a qué URL enviar los datos?
+ *  ──────────────────────────────────────────────────────────────────
+ *  React (Vite) corre en http://localhost:5173 durante desarrollo.
+ *  Laravel corre en http://localhost:8000.
+ *  Son dos servidores distintos → CORS entraría en juego.
+ *
+ *  La solución en producción con Laravel + Vite integrado:
+ *  Vite compila los assets a public/build/ y Laravel los sirve.
+ *  Ambos corren en el MISMO origen (ej: http://siget.gob.ve).
+ *  La baseURL '/api' funciona porque es una ruta relativa al mismo
+ *  servidor que sirve el HTML.
+ *
+ *  Durante desarrollo (dos puertos distintos): se configura el
+ *  proxy de Vite en vite.config.js para redirigir /api → :8000.
+ *  Ver comentario al final de este archivo.
+ * ═══════════════════════════════════════════════════════════════
+ */
+
+import axios from 'axios';
+
+// ── Instancia base ────────────────────────────────────────────────
+const apiClient = axios.create({
+    baseURL: '/api', // Ruta relativa — funciona en producción y con proxy Vite
+    timeout: 15000,  // 15 segundos máximo por request
+    headers: {
+        'Content-Type': 'application/json',
+        'Accept':        'application/json', // Fuerza respuestas JSON de Laravel
+        'X-Requested-With': 'XMLHttpRequest', // Laravel detecta requests AJAX
+    },
+});
+
+// ── Request Interceptor ───────────────────────────────────────────
+// Se ejecuta ANTES de cada request. Inyecta token y locale.
+apiClient.interceptors.request.use(
+    (config) => {
+        // Inyectar token Bearer si existe en localStorage
+        const token = localStorage.getItem('siget_token');
+        if (token) {
+            config.headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        // Inyectar locale activo para que Laravel responda en el idioma correcto
+        const locale = localStorage.getItem('siget_locale') ?? 'es';
+        config.headers['Accept-Language'] = locale;
+
+        return config;
+    },
+    (error) => Promise.reject(error)
+);
+
+// ── Response Interceptor ──────────────────────────────────────────
+// Se ejecuta DESPUÉS de cada respuesta. Manejo global de errores.
+apiClient.interceptors.response.use(
+    (response) => response, // Éxito: pasar la respuesta sin modificar
+
+    (error) => {
+        // 401: Token expirado o inválido → limpiar sesión y redirigir
+        if (error.response?.status === 401) {
+            const currentPath = window.location.pathname;
+            if (currentPath !== '/login') {
+                localStorage.removeItem('siget_token');
+                localStorage.removeItem('siget_user');
+                window.location.href = '/login';
+            }
+        }
+
+        // 503: Servidor en mantenimiento
+        if (error.response?.status === 503) {
+            console.error('SIGET: Servidor en mantenimiento.');
+        }
+
+        return Promise.reject(error);
+    }
+);
+
+export default apiClient;
+
+/*
+ * ─────────────────────────────────────────────────────────────────
+ *  CONFIGURACIÓN DE PROXY EN vite.config.js (desarrollo local)
+ *  Agrega esto a tu vite.config.js para evitar problemas de CORS:
+ * ─────────────────────────────────────────────────────────────────
+ *
+ *  import { defineConfig } from 'vite';
+ *  import react from '@vitejs/plugin-react';
+ *
+ *  export default defineConfig({
+ *      plugins: [react()],
+ *      server: {
+ *          proxy: {
+ *              '/api': {
+ *                  target: 'http://localhost:8000',  // Puerto de Laravel
+ *                  changeOrigin: true,
+ *                  secure: false,
+ *              },
+ *          },
+ *      },
+ *  });
+ */

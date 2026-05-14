@@ -1,0 +1,188 @@
+/**
+ * ProyectoForm.css
+ * Copia íntegra de HabitanteForm.css.
+ * Mismas variables, mismos fieldsets, mismo botón dorado.
+ * Prefijo .proyecto-* solo donde hay clases nuevas de Proyectos.
+ */
+
+:root {
+    --c-navy:       #0d1f35;
+    --c-navy-hover: #1e3a56;
+    --c-gold:       #c9a84c;
+    --c-offwhite:   #f8f6f1;
+    --c-white:      #ffffff;
+    --c-text-dark:  #1a1a2e;
+    --c-text-mid:   #4a5568;
+    --c-text-light: #718096;
+    --c-border:     #e8e3db;
+    --c-error:      #c0392b;
+    --c-error-bg:   #fdf2f2;
+    --c-success:    #166534;
+    --c-success-bg: #f0fdf4;
+    --c-success-border: #bbf7d0;
+    --ff-display: 'DM Serif Display', Georgia, serif;
+    --ff-body:    'DM Sans', 'Segoe UI', sans-serif;
+    --radius:     8px;
+    --transition: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Layout ──────────────────────────────────────────────────────────────── */
+.proyecto-page {
+    min-height: 100vh;
+    background: var(--c-offwhite);
+    font-family: var(--ff-body);
+}
+
+/* ── Topbar ──────────────────────────────────────────────────────────────── */
+.proyecto-topbar {
+    height: 56px; background: var(--c-white);
+    border-bottom: 1px solid var(--c-border);
+    display: flex; align-items: center; gap: 1rem;
+    padding: 0 2rem; position: sticky; top: 0; z-index: 10;
+}
+.proyecto-topbar__back {
+    background: none; border: none;
+    font-family: var(--ff-body); font-size: 0.875rem;
+    color: var(--c-text-mid); cursor: pointer;
+    padding: 0.35rem 0.75rem; border-radius: var(--radius);
+    transition: background var(--transition), color var(--transition);
+}
+.proyecto-topbar__back:hover { background: var(--c-offwhite); color: var(--c-navy); }
+.proyecto-topbar__breadcrumb {
+    margin-left: auto; display: flex; align-items: center;
+    gap: 0.4rem; font-size: 0.8rem; color: var(--c-text-light);
+}
+.proyecto-topbar__breadcrumb span:first-child { font-weight: 600; color: var(--c-navy); }
+
+/* ── Contenedor ──────────────────────────────────────────────────────────── */
+.proyecto-container { max-width: 780px; margin: 2.5rem auto; padding: 0 1.5rem 4rem; }
+
+.proyecto-heading { margin-bottom: 2rem; }
+.proyecto-heading__title {
+    font-family: var(--ff-display); font-size: 1.9rem;
+    font-weight: 400; color: var(--c-text-dark); margin-bottom: 0.4rem;
+}
+.proyecto-heading__subtitle { font-size: 0.9rem; color: var(--c-text-light); line-height: 1.6; }
+
+/* ── Alertas ─────────────────────────────────────────────────────────────── */
+.proyecto-alert {
+    display: flex; align-items: flex-start; gap: 0.6rem;
+    padding: 0.875rem 1rem; border-radius: var(--radius);
+    font-size: 0.875rem; margin-bottom: 1.5rem; line-height: 1.5;
+}
+.proyecto-alert--error   { background: var(--c-error-bg); border: 1px solid rgba(192,57,43,0.25); color: var(--c-error); }
+.proyecto-alert--success { background: var(--c-success-bg); border: 1px solid var(--c-success-border); color: var(--c-success); font-weight: 500; }
+
+/* ── Formulario ──────────────────────────────────────────────────────────── */
+.proyecto-form { display: flex; flex-direction: column; gap: 1.5rem; }
+
+.proyecto-fieldset {
+    background: var(--c-white); border: 1px solid var(--c-border);
+    border-radius: 12px; padding: 1.5rem;
+    display: flex; flex-direction: column; gap: 1.25rem;
+}
+.proyecto-fieldset__legend {
+    font-size: 0.82rem; font-weight: 600; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--c-navy);
+    display: flex; align-items: center; gap: 0.4rem;
+    padding-bottom: 0.5rem; border-bottom: 1px solid var(--c-border);
+    width: 100%; margin-bottom: 0.25rem;
+}
+
+.proyecto-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.proyecto-form-row--three { grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+
+/* ── Campo — clases idénticas a HabitanteForm ────────────────────────────── */
+.proyecto-field { display: flex; flex-direction: column; gap: 0.4rem; }
+.proyecto-field__label { font-size: 0.82rem; font-weight: 500; color: var(--c-text-dark); }
+.proyecto-field__optional { font-size: 0.75rem; font-weight: 400; color: var(--c-text-light); margin-left: 4px; }
+.required { color: var(--c-error); margin-left: 2px; }
+
+.proyecto-field__input,
+.proyecto-field__select,
+.proyecto-field__textarea {
+    width: 100%; padding: 0.72rem 0.875rem;
+    font-family: var(--ff-body); font-size: 0.9rem; color: var(--c-text-dark);
+    background: var(--c-white); border: 1.5px solid var(--c-border);
+    border-radius: var(--radius); outline: none;
+    transition: border-color var(--transition), box-shadow var(--transition);
+    appearance: none;
+}
+.proyecto-field__select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23718096' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 0.875rem center;
+    padding-right: 2.5rem; cursor: pointer;
+}
+.proyecto-field__textarea {
+    resize: vertical; min-height: 90px; line-height: 1.55;
+}
+.proyecto-field__input:focus,
+.proyecto-field__select:focus,
+.proyecto-field__textarea:focus {
+    border-color: var(--c-navy-hover);
+    box-shadow: 0 0 0 3px rgba(30,58,86,0.1);
+}
+.proyecto-field__input::placeholder,
+.proyecto-field__textarea::placeholder { color: #b5b0a8; }
+.proyecto-field__error { font-size: 0.77rem; color: var(--c-error); }
+.proyecto-field__error::before { content: '⚠ '; }
+.proyecto-field__hint { font-size: 0.77rem; color: var(--c-text-light); font-style: italic; }
+
+.proyecto-field--error .proyecto-field__input,
+.proyecto-field--error .proyecto-field__select,
+.proyecto-field--error .proyecto-field__textarea { border-color: var(--c-error); }
+
+/* ── Sección condicional (fechas) — igual que habitante-field--conditional ── */
+.proyecto-field--conditional {
+    animation: slideDown 0.2s ease;
+    background: #fffbf0;
+    padding: 1rem;
+    border-radius: var(--radius);
+    border: 1px solid rgba(201, 168, 76, 0.3);
+}
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Botones — idénticos a HabitanteForm ─────────────────────────────────── */
+.proyecto-form-actions { display: flex; justify-content: flex-end; gap: 0.75rem; padding-top: 0.5rem; }
+.proyecto-btn {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    padding: 0.75rem 1.5rem; border-radius: var(--radius);
+    font-family: var(--ff-body); font-size: 0.9rem; font-weight: 500;
+    cursor: pointer; border: none;
+    transition: filter var(--transition), transform var(--transition), box-shadow var(--transition);
+}
+.proyecto-btn:hover:not(:disabled) { transform: translateY(-1px); }
+.proyecto-btn:disabled { opacity: 0.65; cursor: not-allowed; transform: none; }
+.proyecto-btn--primary {
+    background: linear-gradient(135deg, var(--c-gold) 0%, #e0c06e 100%);
+    color: var(--c-navy); box-shadow: 0 4px 14px rgba(201,168,76,0.3);
+    min-width: 180px; justify-content: center;
+}
+.proyecto-btn--primary:hover:not(:disabled) { box-shadow: 0 6px 18px rgba(201,168,76,0.45); }
+.proyecto-btn--secondary {
+    background: var(--c-white); color: var(--c-text-mid);
+    border: 1.5px solid var(--c-border);
+}
+.proyecto-btn--secondary:hover:not(:disabled) { border-color: var(--c-navy); color: var(--c-navy); }
+.proyecto-btn__spinner {
+    width: 15px; height: 15px;
+    border: 2px solid rgba(13,31,53,0.25);
+    border-top-color: var(--c-navy); border-radius: 50%;
+    animation: spin 0.7s linear infinite; flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+    .proyecto-container { margin: 1.25rem auto; padding: 0 1rem 3rem; }
+    .proyecto-form-row,
+    .proyecto-form-row--three { grid-template-columns: 1fr; }
+    .proyecto-topbar { padding: 0 1rem; }
+    .proyecto-topbar__breadcrumb { display: none; }
+    .proyecto-form-actions { flex-direction: column-reverse; }
+    .proyecto-btn { width: 100%; justify-content: center; }
+}

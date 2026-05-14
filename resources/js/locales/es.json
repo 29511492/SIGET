@@ -1,0 +1,35 @@
+{
+    "auth": {
+        "login": {
+            "brand_title": "SIGET",
+            "brand_subtitle": "Sistema de Gestión Territorial",
+            "brand_description": "Plataforma integral para la administración, seguimiento y participación de los Consejos Comunales.",
+            "form_title": "Acceder al sistema",
+            "form_subtitle": "Ingresa tus credenciales para continuar",
+            "email_label": "Correo electrónico",
+            "email_placeholder": "usuario@siget.gob.ve",
+            "password_label": "Contraseña",
+            "password_placeholder": "••••••••",
+            "submit": "Iniciar sesión",
+            "submitting": "Verificando...",
+            "footer": "© 2026 SIGET · Todos los derechos reservados"
+        },
+        "errors": {
+            "email_required": "El correo electrónico es obligatorio.",
+            "email_invalid": "Ingresa un correo electrónico válido.",
+            "password_required": "La contraseña es obligatoria.",
+            "password_min": "La contraseña debe tener al menos 8 caracteres.",
+            "generic": "Ocurrió un error inesperado. Por favor intenta de nuevo.",
+            "network": "No se pudo conectar con el servidor. Verifica tu conexión."
+        },
+        "success": {
+            "login": "¡Bienvenido de nuevo!"
+        }
+        },
+        "validation": {
+            "attributes": {
+            "email": "correo electrónico",
+            "password": "contraseña"
+            }
+        }
+    }

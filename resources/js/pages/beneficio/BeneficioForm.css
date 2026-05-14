@@ -1,0 +1,225 @@
+/**
+ * BeneficioForm.css
+ * Copia íntegra de HabitanteForm.css con prefijo .beneficio-*
+ * Mismas variables, fieldsets, buscador de familia, botón dorado.
+ */
+
+:root {
+    --c-navy:       #0d1f35;
+    --c-navy-hover: #1e3a56;
+    --c-gold:       #c9a84c;
+    --c-offwhite:   #f8f6f1;
+    --c-white:      #ffffff;
+    --c-text-dark:  #1a1a2e;
+    --c-text-mid:   #4a5568;
+    --c-text-light: #718096;
+    --c-border:     #e8e3db;
+    --c-error:      #c0392b;
+    --c-error-bg:   #fdf2f2;
+    --c-success:    #166534;
+    --c-success-bg: #f0fdf4;
+    --c-success-border: #bbf7d0;
+    --ff-display: 'DM Serif Display', Georgia, serif;
+    --ff-body:    'DM Sans', 'Segoe UI', sans-serif;
+    --radius:     8px;
+    --transition: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Layout ──────────────────────────────────────────────────────────────── */
+.beneficio-page { min-height: 100vh; background: var(--c-offwhite); font-family: var(--ff-body); }
+
+/* ── Topbar ──────────────────────────────────────────────────────────────── */
+.beneficio-topbar {
+    height: 56px; background: var(--c-white);
+    border-bottom: 1px solid var(--c-border);
+    display: flex; align-items: center; gap: 1rem;
+    padding: 0 2rem; position: sticky; top: 0; z-index: 10;
+}
+.beneficio-topbar__back {
+    background: none; border: none;
+    font-family: var(--ff-body); font-size: 0.875rem;
+    color: var(--c-text-mid); cursor: pointer;
+    padding: 0.35rem 0.75rem; border-radius: var(--radius);
+    transition: background var(--transition), color var(--transition);
+}
+.beneficio-topbar__back:hover { background: var(--c-offwhite); color: var(--c-navy); }
+.beneficio-topbar__breadcrumb {
+    margin-left: auto; display: flex; align-items: center;
+    gap: 0.4rem; font-size: 0.8rem; color: var(--c-text-light);
+}
+.beneficio-topbar__breadcrumb span:first-child { font-weight: 600; color: var(--c-navy); }
+
+/* ── Contenedor ──────────────────────────────────────────────────────────── */
+.beneficio-container { max-width: 780px; margin: 2.5rem auto; padding: 0 1.5rem 4rem; }
+
+.beneficio-heading { margin-bottom: 2rem; }
+.beneficio-heading__title {
+    font-family: var(--ff-display); font-size: 1.9rem;
+    font-weight: 400; color: var(--c-text-dark); margin-bottom: 0.4rem;
+}
+.beneficio-heading__subtitle { font-size: 0.9rem; color: var(--c-text-light); line-height: 1.6; }
+
+/* ── Alertas ─────────────────────────────────────────────────────────────── */
+.beneficio-alert {
+    display: flex; align-items: flex-start; gap: 0.6rem;
+    padding: 0.875rem 1rem; border-radius: var(--radius);
+    font-size: 0.875rem; margin-bottom: 1.5rem; line-height: 1.5;
+}
+.beneficio-alert--error   { background: var(--c-error-bg); border: 1px solid rgba(192,57,43,0.25); color: var(--c-error); }
+.beneficio-alert--success { background: var(--c-success-bg); border: 1px solid var(--c-success-border); color: var(--c-success); font-weight: 500; }
+
+/* ── Formulario ──────────────────────────────────────────────────────────── */
+.beneficio-form { display: flex; flex-direction: column; gap: 1.5rem; }
+
+.beneficio-fieldset {
+    background: var(--c-white); border: 1px solid var(--c-border);
+    border-radius: 12px; padding: 1.5rem;
+    display: flex; flex-direction: column; gap: 1.25rem;
+}
+.beneficio-fieldset__legend {
+    font-size: 0.82rem; font-weight: 600; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--c-navy);
+    display: flex; align-items: center; gap: 0.4rem;
+    padding-bottom: 0.5rem; border-bottom: 1px solid var(--c-border);
+    width: 100%; margin-bottom: 0.25rem;
+}
+
+.beneficio-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+/* ── Campo — igual que .habitante-field ─────────────────────────────────── */
+.beneficio-field { display: flex; flex-direction: column; gap: 0.4rem; }
+.beneficio-field__label { font-size: 0.82rem; font-weight: 500; color: var(--c-text-dark); }
+.required { color: var(--c-error); margin-left: 2px; }
+.beneficio-field__optional { font-size: 0.75rem; font-weight: 400; color: var(--c-text-light); margin-left: 4px; }
+
+.beneficio-field__input,
+.beneficio-field__select,
+.beneficio-field__textarea {
+    width: 100%; padding: 0.72rem 0.875rem;
+    font-family: var(--ff-body); font-size: 0.9rem; color: var(--c-text-dark);
+    background: var(--c-white); border: 1.5px solid var(--c-border);
+    border-radius: var(--radius); outline: none;
+    transition: border-color var(--transition), box-shadow var(--transition);
+    appearance: none;
+}
+.beneficio-field__textarea { resize: vertical; min-height: 80px; line-height: 1.55; }
+.beneficio-field__input:focus,
+.beneficio-field__select:focus,
+.beneficio-field__textarea:focus {
+    border-color: var(--c-navy-hover);
+    box-shadow: 0 0 0 3px rgba(30,58,86,0.1);
+}
+.beneficio-field__input::placeholder,
+.beneficio-field__textarea::placeholder { color: #b5b0a8; }
+.beneficio-field__error { font-size: 0.77rem; color: var(--c-error); }
+.beneficio-field__error::before { content: '⚠ '; }
+.beneficio-field__hint { font-size: 0.77rem; color: var(--c-text-light); font-style: italic; }
+.beneficio-field--error .beneficio-field__input,
+.beneficio-field--error .beneficio-field__select,
+.beneficio-field--error .beneficio-field__textarea { border-color: var(--c-error); }
+
+/* ── Buscador de familia — copia exacta de HabitanteForm.css ────────────── */
+.familia-search { position: relative; }
+.familia-search__input-wrap { position: relative; display: flex; align-items: center; }
+.familia-search__icon { position: absolute; left: 0.875rem; font-size: 0.9rem; pointer-events: none; }
+.familia-search__input {
+    width: 100%; padding: 0.72rem 0.875rem 0.72rem 2.5rem;
+    font-family: var(--ff-body); font-size: 0.9rem; color: var(--c-text-dark);
+    background: var(--c-white); border: 1.5px solid var(--c-border);
+    border-radius: var(--radius); outline: none;
+    transition: border-color var(--transition), box-shadow var(--transition);
+}
+.familia-search__input:focus {
+    border-color: var(--c-navy-hover);
+    box-shadow: 0 0 0 3px rgba(30,58,86,0.1);
+}
+.familia-search__input--selected { border-color: #86efac; background: #f0fdf4; padding-right: 2.5rem; }
+.familia-search__clear {
+    position: absolute; right: 0.75rem;
+    background: none; border: none; font-size: 0.85rem;
+    color: var(--c-text-light); cursor: pointer;
+    width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; transition: background var(--transition);
+}
+.familia-search__clear:hover { background: #fee2e2; color: var(--c-error); }
+.familia-search__spinner {
+    position: absolute; right: 0.875rem;
+    width: 16px; height: 16px;
+    border: 2px solid var(--c-border); border-top-color: var(--c-navy);
+    border-radius: 50%; animation: spin 0.7s linear infinite;
+}
+.familia-search__dropdown {
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+    background: var(--c-white); border: 1px solid var(--c-border);
+    border-radius: var(--radius); box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+    list-style: none; z-index: 50;
+    max-height: 220px; overflow-y: auto;
+}
+.familia-search__option {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 0.75rem 1rem; cursor: pointer;
+    transition: background var(--transition);
+    border-bottom: 1px solid #f5f2ed;
+}
+.familia-search__option:last-child { border-bottom: none; }
+.familia-search__option:hover { background: var(--c-offwhite); }
+.familia-search__option-code { font-weight: 600; font-size: 0.82rem; color: var(--c-navy); min-width: 80px; }
+.familia-search__option-name { flex: 1; font-size: 0.875rem; color: var(--c-text-mid); }
+.familia-search__option-cond { font-size: 0.72rem; padding: 0.15rem 0.5rem; border-radius: 999px; font-weight: 500; }
+.cond--optima  { background: #dcfce7; color: #166534; }
+.cond--regular { background: #fef9c3; color: #854d0e; }
+.cond--critica { background: #fee2e2; color: var(--c-error); }
+.familia-search__empty {
+    padding: 0.875rem 1rem; font-size: 0.875rem;
+    color: var(--c-text-light); font-style: italic;
+    background: var(--c-white); border: 1px solid var(--c-border);
+    border-radius: var(--radius); margin-top: 4px;
+}
+.familia-selected-chip {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    margin-top: 0.5rem; padding: 0.4rem 0.875rem;
+    background: #f0fdf4; border: 1px solid #86efac;
+    border-radius: 999px; font-size: 0.82rem; color: var(--c-success);
+}
+.familia-selected-chip strong { font-weight: 600; }
+
+/* ── Botones — idénticos a HabitanteForm ─────────────────────────────────── */
+.beneficio-form-actions { display: flex; justify-content: flex-end; gap: 0.75rem; padding-top: 0.5rem; }
+.beneficio-btn {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    padding: 0.75rem 1.5rem; border-radius: var(--radius);
+    font-family: var(--ff-body); font-size: 0.9rem; font-weight: 500;
+    cursor: pointer; border: none;
+    transition: filter var(--transition), transform var(--transition), box-shadow var(--transition);
+}
+.beneficio-btn:hover:not(:disabled) { transform: translateY(-1px); }
+.beneficio-btn:disabled { opacity: 0.65; cursor: not-allowed; transform: none; }
+.beneficio-btn--primary {
+    background: linear-gradient(135deg, var(--c-gold) 0%, #e0c06e 100%);
+    color: var(--c-navy); box-shadow: 0 4px 14px rgba(201,168,76,0.3);
+    min-width: 190px; justify-content: center;
+}
+.beneficio-btn--primary:hover:not(:disabled) { box-shadow: 0 6px 18px rgba(201,168,76,0.45); }
+.beneficio-btn--secondary {
+    background: var(--c-white); color: var(--c-text-mid);
+    border: 1.5px solid var(--c-border);
+}
+.beneficio-btn--secondary:hover:not(:disabled) { border-color: var(--c-navy); color: var(--c-navy); }
+.beneficio-btn__spinner {
+    width: 15px; height: 15px;
+    border: 2px solid rgba(13,31,53,0.25);
+    border-top-color: var(--c-navy); border-radius: 50%;
+    animation: spin 0.7s linear infinite; flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+    .beneficio-container { margin: 1.25rem auto; padding: 0 1rem 3rem; }
+    .beneficio-form-row { grid-template-columns: 1fr; }
+    .beneficio-topbar { padding: 0 1rem; }
+    .beneficio-topbar__breadcrumb { display: none; }
+    .beneficio-form-actions { flex-direction: column-reverse; }
+    .beneficio-btn { width: 100%; justify-content: center; }
+}

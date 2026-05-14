@@ -1,0 +1,454 @@
+/**
+ * OrganizacionForm.css — SIGET
+ * Ruta física: resources/js/pages/organizacion/OrganizacionForm.css
+ *
+ * Variables exactas del sistema (de DashboardPage.css):
+ *   --c-navy:       #0d1f35   Azul Petróleo
+ *   --c-gold:       #c9a84c   Dorado
+ *   --c-offwhite:   #f8f6f1   Fondo
+ *   --ff-display:   DM Serif Display (títulos)
+ *   --ff-body:      DM Sans (cuerpo)
+ */
+
+/* ── Variables (autónomas para que el archivo no dependa de otro) */
+:root {
+    --c-navy:       #0d1f35;
+    --c-navy-mid:   #14293f;
+    --c-navy-hover: #1e3a56;
+    --c-gold:       #c9a84c;
+    --c-gold-light: #e0c06e;
+    --c-gold-dim:   rgba(201, 168, 76, 0.12);
+    --c-offwhite:   #f8f6f1;
+    --c-white:      #ffffff;
+    --c-text-dark:  #1a1a2e;
+    --c-text-mid:   #4a5568;
+    --c-text-light: #718096;
+    --c-border:     #e8e3db;
+    --c-error:      #c0392b;
+    --c-error-bg:   #fdf2f2;
+    --c-success:    #166534;
+    --c-success-bg: #dcfce7;
+    --ff-display:   'DM Serif Display', Georgia, serif;
+    --ff-body:      'DM Sans', 'Segoe UI', sans-serif;
+    --radius:       8px;
+    --radius-lg:    12px;
+    --transition:   200ms cubic-bezier(0.4, 0, 0.2, 1);
+    --shadow-card:  0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.04);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Página base ─────────────────────────────────────────────── */
+.oform-page {
+    min-height: 100vh;
+    background: var(--c-offwhite);
+    font-family: var(--ff-body);
+}
+
+/* ── Topbar ──────────────────────────────────────────────────── */
+.oform-topbar {
+    height: 56px;
+    background: var(--c-white);
+    border-bottom: 1px solid var(--c-border);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0 2rem;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+}
+
+.oform-topbar__back {
+    background: none;
+    border: none;
+    font-family: var(--ff-body);
+    font-size: 0.875rem;
+    color: var(--c-text-mid);
+    cursor: pointer;
+    padding: 0.35rem 0.75rem;
+    border-radius: var(--radius);
+    transition: background var(--transition), color var(--transition);
+}
+.oform-topbar__back:hover {
+    background: var(--c-offwhite);
+    color: var(--c-navy);
+}
+
+.oform-topbar__breadcrumb {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    color: var(--c-text-light);
+}
+.oform-topbar__breadcrumb span:first-child {
+    font-weight: 600;
+    color: var(--c-navy);
+}
+
+/* ── Contenedor centrado ─────────────────────────────────────── */
+.oform-container {
+    max-width: 680px;
+    margin: 2.5rem auto;
+    padding: 0 1.5rem 4rem;
+}
+
+/* ── Card principal ──────────────────────────────────────────── */
+.oform-card {
+    background: var(--c-white);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+    /* Borde dorado sutil — marca visual del sistema */
+    border: 1px solid var(--c-border);
+    border-top: 3px solid var(--c-gold);
+    overflow: hidden;
+}
+
+/* ── Encabezado de la card — Azul Petróleo ───────────────────── */
+.oform-card__header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.75rem 2rem;
+    background: var(--c-navy);
+    border-bottom: 1px solid rgba(201, 168, 76, 0.3);
+}
+
+.oform-card__header-icon {
+    font-size: 1.75rem;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.oform-card__title {
+    font-family: var(--ff-display);
+    font-size: 1.5rem;
+    font-weight: 400;
+    color: var(--c-white);
+    line-height: 1.2;
+}
+
+.oform-card__subtitle {
+    font-size: 0.82rem;
+    color: rgba(255,255,255,0.65);
+    margin-top: 0.25rem;
+    line-height: 1.4;
+}
+
+/* ── Cuerpo del formulario ───────────────────────────────────── */
+.oform-body {
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* ── Campo individual ────────────────────────────────────────── */
+.oform-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.oform-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--c-text-dark);
+    letter-spacing: 0.01em;
+}
+
+.oform-label__hint {
+    font-weight: 400;
+    color: var(--c-text-light);
+    font-size: 0.8rem;
+}
+
+.oform-required {
+    color: var(--c-error);
+    margin-left: 0.15rem;
+}
+
+/* ── Input / Select / Textarea ───────────────────────────────── */
+.oform-input,
+.oform-select,
+.oform-textarea {
+    font-family: var(--ff-body);
+    font-size: 0.9rem;
+    color: var(--c-text-dark);
+    background: var(--c-white);
+    border: 1.5px solid var(--c-border);
+    border-radius: var(--radius);
+    padding: 0.7rem 0.875rem;
+    outline: none;
+    width: 100%;
+    transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.oform-input:focus,
+.oform-select:focus,
+.oform-textarea:focus {
+    border-color: var(--c-gold);
+    box-shadow: 0 0 0 3px var(--c-gold-dim);
+}
+
+/* Focus con dorado — consistente con la identidad del sistema */
+.oform-input:hover:not(:focus),
+.oform-select:hover:not(:focus),
+.oform-textarea:hover:not(:focus) {
+    border-color: var(--c-navy-hover);
+}
+
+.oform-input--error {
+    border-color: var(--c-error) !important;
+    box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.08) !important;
+}
+
+.oform-textarea {
+    resize: vertical;
+    min-height: 110px;
+    line-height: 1.55;
+}
+
+.oform-select {
+    appearance: none;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23718096' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.875rem center;
+    padding-right: 2.5rem;
+}
+
+/* ── Mensajes de error y hint ────────────────────────────────── */
+.oform-field__error {
+    font-size: 0.78rem;
+    color: var(--c-error);
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+.oform-field__error::before { content: '⚠ '; }
+
+.oform-field__hint {
+    font-size: 0.75rem;
+    color: var(--c-text-light);
+    line-height: 1.4;
+}
+
+.oform-field__count {
+    font-size: 0.72rem;
+    color: var(--c-text-light);
+    text-align: right;
+    margin-top: -0.2rem;
+}
+
+/* ── Campo switch (estatus) ──────────────────────────────────── */
+.oform-field--switch {
+    flex-direction: row;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    background: var(--c-offwhite);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius);
+}
+
+.oform-switch {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    flex: 1;
+}
+
+.oform-switch__input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+/* Track del switch */
+.oform-switch__track {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    background: var(--c-border);
+    border-radius: 999px;
+    flex-shrink: 0;
+    transition: background var(--transition);
+}
+/* Thumb del switch */
+.oform-switch__track::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    background: var(--c-white);
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    transition: transform var(--transition);
+}
+/* Estado checked */
+.oform-switch__input:checked ~ .oform-switch__track {
+    background: var(--c-navy);
+}
+.oform-switch__input:checked ~ .oform-switch__track::after {
+    transform: translateX(20px);
+}
+/* Focus visible */
+.oform-switch__input:focus-visible ~ .oform-switch__track {
+    outline: 2px solid var(--c-gold);
+    outline-offset: 2px;
+}
+
+.oform-switch__label { font-size: 0.875rem; }
+
+.oform-status--active   { color: var(--c-success); font-weight: 500; }
+.oform-status--inactive { color: var(--c-text-light); }
+
+/* ── Acciones ────────────────────────────────────────────────── */
+.oform-actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--c-border);
+    margin-top: 0.5rem;
+}
+
+/* ── Botones ─────────────────────────────────────────────────── */
+.oform-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.7rem 1.5rem;
+    border-radius: var(--radius);
+    font-family: var(--ff-body);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: filter var(--transition), transform var(--transition), box-shadow var(--transition);
+    white-space: nowrap;
+}
+
+.oform-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+/* Primario — Azul Petróleo */
+.oform-btn--primary {
+    background: var(--c-navy);
+    color: var(--c-white);
+}
+.oform-btn--primary:hover:not(:disabled) {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(13, 31, 53, 0.25);
+}
+
+/* Secundario — borde dorado */
+.oform-btn--secondary {
+    background: transparent;
+    color: var(--c-text-mid);
+    border: 1.5px solid var(--c-border);
+}
+.oform-btn--secondary:hover:not(:disabled) {
+    border-color: var(--c-navy);
+    color: var(--c-navy);
+    background: var(--c-offwhite);
+}
+
+/* Spinner dentro del botón */
+.oform-btn__spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,0.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: oform-spin 0.7s linear infinite;
+}
+
+/* ── Toast de notificación ───────────────────────────────────── */
+.oform-toast {
+    position: fixed;
+    top: 1.25rem;
+    right: 1.25rem;
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.875rem 1.25rem;
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    font-family: var(--ff-body);
+    font-weight: 500;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    animation: oform-slidein 220ms cubic-bezier(0.4, 0, 0.2, 1);
+    max-width: 380px;
+}
+
+.oform-toast--success {
+    background: var(--c-success-bg);
+    color: var(--c-success);
+    border: 1px solid #86efac;
+}
+
+.oform-toast--error {
+    background: var(--c-error-bg);
+    color: var(--c-error);
+    border: 1px solid rgba(192, 57, 43, 0.3);
+}
+
+/* ── Estados de carga / error inicial ────────────────────────── */
+.oform-loading,
+.oform-loaderr {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    min-height: 60vh;
+    color: var(--c-text-light);
+    font-size: 0.9rem;
+}
+
+.oform-loading__spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--c-border);
+    border-top-color: var(--c-navy);
+    border-radius: 50%;
+    animation: oform-spin 0.8s linear infinite;
+}
+
+.oform-loaderr span { font-size: 2rem; }
+.oform-loaderr p    { color: var(--c-error); text-align: center; max-width: 400px; }
+
+/* ── Animaciones ─────────────────────────────────────────────── */
+@keyframes oform-spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes oform-slidein {
+    from { opacity: 0; transform: translateX(20px); }
+    to   { opacity: 1; transform: translateX(0);    }
+}
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 720px) {
+    .oform-container       { padding: 0 1rem 3rem; margin: 1.25rem auto; }
+    .oform-card__header    { padding: 1.25rem 1.25rem; }
+    .oform-body            { padding: 1.25rem; gap: 1.25rem; }
+    .oform-actions         { flex-direction: column-reverse; }
+    .oform-btn             { width: 100%; justify-content: center; }
+    .oform-toast           { top: auto; bottom: 1rem; right: 1rem; left: 1rem; max-width: none; }
+    .oform-field--switch   { flex-direction: column; align-items: flex-start; }
+}

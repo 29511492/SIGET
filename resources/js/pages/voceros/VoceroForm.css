@@ -1,0 +1,101 @@
+/* ══════════════════════════════════════════════════════════════
+   ESTILOS DEL FORMULARIO DE VOCEROS (VoceroForm.jsx)
+   ══════════════════════════════════════════════════════════════ */
+
+.vocero-form { display: flex; flex-direction: column; gap: 1.5rem; }
+
+.vocero-fieldset {
+    background: var(--c-white); border: 1px solid var(--c-border);
+    border-radius: 12px; padding: 1.5rem;
+    display: flex; flex-direction: column; gap: 1rem;
+}
+
+.vocero-legend {
+    font-size: 0.8rem; font-weight: 600; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--c-navy);
+    display: flex; align-items: center; gap: 0.4rem;
+    padding-bottom: 0.5rem; border-bottom: 1px solid var(--c-border);
+    width: 100%; margin-bottom: 0.25rem;
+}
+
+.vocero-field { display: flex; flex-direction: column; gap: 0.4rem; }
+.vocero-row   { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+.vocero-label { font-size: 0.82rem; font-weight: 500; color: var(--c-text-dark); }
+.req          { color: var(--c-error); margin-left: 2px; }
+.vocero-optional { font-size: 0.75rem; font-weight: 400; color: var(--c-text-light); margin-left: 4px; }
+
+.vocero-input,
+.vocero-select {
+    width: 100%; padding: 0.72rem 0.875rem;
+    font-family: var(--ff-body); font-size: 0.875rem; color: var(--c-text-dark);
+    background: var(--c-white); border: 1.5px solid var(--c-border);
+    border-radius: var(--radius); outline: none;
+    transition: border-color var(--transition), box-shadow var(--transition);
+    appearance: none;
+}
+.vocero-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23718096' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 0.875rem center;
+    padding-right: 2.5rem; cursor: pointer;
+}
+.vocero-input:focus,
+.vocero-select:focus {
+    border-color: var(--c-navy-hover);
+    box-shadow: 0 0 0 3px rgba(30,58,86,0.1);
+}
+.vocero-input:disabled,
+.vocero-select:disabled { background: #f5f2ed; color: var(--c-text-light); cursor: not-allowed; }
+.vocero-input::placeholder { color: #b5b0a8; }
+
+.vocero-field--error .vocero-input,
+.vocero-field--error .vocero-select { border-color: var(--c-error); }
+
+.vocero-error { font-size: 0.77rem; color: var(--c-error); }
+.vocero-error::before { content: '⚠ '; }
+.vocero-hint  { font-size: 0.77rem; color: var(--c-text-light); font-style: italic; }
+
+/* Toggle */
+.vocero-toggle { display: flex; align-items: center; gap: 0.75rem; cursor: pointer; user-select: none; }
+.vocero-toggle__input { position: absolute; opacity: 0; width: 0; height: 0; }
+.vocero-toggle__track {
+    position: relative; width: 44px; height: 24px;
+    border-radius: 999px; background: #cbd5e0; transition: background var(--transition);
+    flex-shrink: 0;
+}
+.vocero-toggle__track::after {
+    content: ''; position: absolute; top: 3px; left: 3px;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: white; transition: transform var(--transition);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+.vocero-toggle__input:checked ~ .vocero-toggle__track { background: var(--c-navy); }
+.vocero-toggle__input:checked ~ .vocero-toggle__track::after { transform: translateX(20px); }
+.vocero-toggle__label { font-size: 0.875rem; color: var(--c-text-mid); }
+
+/* Botón cancelar en formularios */
+.vocero-btn-cancel {
+    background: var(--c-white); color: var(--c-text-mid);
+    border: 1.5px solid var(--c-border) !important;
+}
+.vocero-btn-cancel:hover { border-color: var(--c-navy) !important; color: var(--c-navy); }
+
+/* Acciones del formulario */
+.vocero-actions {
+    display: flex; justify-content: flex-end; gap: 0.75rem; padding-top: 0.25rem;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .list-container { padding: 0 1rem 3rem; margin: 1rem auto; }
+    .list-heading   { flex-direction: column; gap: 1rem; }
+    .list-table-wrap { overflow-x: auto; }
+    .list-table { min-width: 640px; }
+    .page-info  { display: none; }
+    .vocero-row { grid-template-columns: 1fr; }
+    .edit-modal { max-height: 95vh; border-radius: 12px 12px 0 0; }
+    .vocero-actions { flex-direction: column-reverse; }
+    .list-btn   { width: 100%; justify-content: center; }
+}
