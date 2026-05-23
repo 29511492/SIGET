@@ -30,9 +30,6 @@ import './PagoQr.css';
 const QR_COMUNIDAD_URL = '/storage/qr/comunidad.png';
 
 const FORM_INICIAL = {
-    habitante_id:        '',
-    familia_id:          '',
-    organizacion_id:     '',
     referencia_bancaria: '',
     monto:               '',
     concepto_pago:       '',
@@ -43,13 +40,19 @@ export default function PagoForm() {
     const navigate     = useNavigate();
     const { user }     = useAuth();
 
+    // habitante_id viene del usuario autenticado (relación User→Habitante).
+    // Si user.habitante_id es null el usuario no está vinculado a un habitante
+    // y se mostrará un aviso en lugar del formulario.
+    const habitanteId = user?.habitante_id ?? null;
+
     const [form,        setForm]        = useState(FORM_INICIAL);
     const [errors,      setErrors]      = useState({});
     const [saving,      setSaving]      = useState(false);
-    const [comprobante, setComprobante] = useState(null);    // File object
-    const [preview,     setPreview]     = useState(null);    // URL.createObjectURL
+    const [comprobante, setComprobante] = useState(null);
+    const [preview,     setPreview]     = useState(null);
     const [toast,       setToast]       = useState(null);
-    const [qrError,     setQrError]     = useState(false);   // true si la imagen QR no carga
+    const [qrError,     setQrError]     = useState(false);
+    const [organizacionId, setOrganizacionId] = useState(''); // opcional
     const fileInputRef  = useRef(null);
 
     const showToast = (msg, type = 'success') => {
@@ -99,10 +102,11 @@ export default function PagoForm() {
 
         // Validación mínima en cliente
         const clientErrors = {};
-        if (!form.referencia_bancaria.trim()) clientErrors.referencia_bancaria = ['La referencia bancaria es obligatoria.'];
-        if (!form.monto || Number(form.monto) <= 0)  clientErrors.monto = ['El monto debe ser mayor a cero.'];
-        if (!form.concepto_pago.trim())  clientErrors.concepto_pago = ['El concepto es obligatorio.'];
-        if (!form.fecha_pago)            clientErrors.fecha_pago = ['La fecha del pago es obligatoria.'];
+        if (!habitanteId)                          clientErrors.habitante_id = ['Tu usuario no está vinculado a un habitante. Contacta al administrador.'];
+        if (!form.referencia_bancaria.trim())      clientErrors.referencia_bancaria = ['La referencia bancaria es obligatoria.'];
+        if (!form.monto || Number(form.monto) <= 0) clientErrors.monto = ['El monto debe ser mayor a cero.'];
+        if (!form.concepto_pago.trim())            clientErrors.concepto_pago = ['El concepto es obligatorio.'];
+        if (!form.fecha_pago)                      clientErrors.fecha_pago = ['La fecha del pago es obligatoria.'];
 
         if (Object.keys(clientErrors).length) {
             setErrors(clientErrors);
@@ -113,33 +117,92 @@ export default function PagoForm() {
         setErrors({});
 
         try {
-            // FormData para enviar la imagen junto con los datos
+            // ── Construir FormData ──────────────────────────────
+            // REGLA CRÍTICA: nunca pongas Content-Type: multipart/form-data
+            // manualmente. El browser/axios genera el boundary automáticamente.
+            // Si lo fuerzas manualmente, el boundary queda vacío y el servidor
+            // no puede parsear el body → error 422 aunque los datos sean correctos.
             const formData = new FormData();
-            Object.entries(form).forEach(([k, v]) => {
-                if (v !== '' && v !== null && v !== undefined) formData.append(k, v);
-            });
+
+            // Campo obligatorio — viene del usuario autenticado, no del form
+            formData.append('habitante_id', habitanteId);
+
+            // Campos del formulario — solo si tienen valor real
+            formData.append('referencia_bancaria', form.referencia_bancaria.trim());
+            formData.append('monto',               form.monto);
+            formData.append('concepto_pago',       form.concepto_pago.trim());
+            formData.append('fecha_pago',          form.fecha_pago);
+
+            // Campos opcionales — enviar solo si tienen valor (no string vacío)
+            // Enviar '' haría fallar la regla 'integer' en Laravel
+            if (user?.familia_id)  formData.append('familia_id',      user.familia_id);
+            if (organizacionId)    formData.append('organizacion_id', organizacionId);
+
+            // Archivo del comprobante
             if (comprobante) formData.append('comprobante', comprobante);
 
-            await apiClient.post('/v1/pagos', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-            });
+            // Depuración — ver exactamente qué se envía antes del POST
+            console.log('[PagoForm] FormData a enviar:');
+            for (const [key, value] of formData.entries()) {
+                console.log(`  ${key}:`, value instanceof File ? `[File: ${value.name}, ${value.size}b]` : value);
+            }
+
+            // SIN headers Content-Type — axios + browser gestionan el boundary
+            await apiClient.post('/v1/pagos', formData);
 
             showToast('Pago registrado correctamente. Queda pendiente de verificación por el operador.');
             setTimeout(() => navigate('/dashboard'), 2000);
 
         } catch (err) {
             if (err.response?.status === 422) {
-                setErrors(err.response.data?.errors ?? {});
+                // Mostrar errores de validación de Laravel campo por campo
+                const serverErrors = err.response.data?.errors ?? {};
+                console.error('[PagoForm] Errores 422 del servidor:', serverErrors);
+                setErrors(serverErrors);
+                // Si hay un error general (message) sin campos específicos
+                if (!Object.keys(serverErrors).length && err.response.data?.message) {
+                    showToast(err.response.data.message, 'error');
+                }
             } else {
                 showToast(err.response?.data?.message ?? 'Error al registrar el pago.', 'error');
+                console.error('[PagoForm] Error inesperado:', err);
             }
         } finally {
             setSaving(false);
         }
     };
 
+    // ── Guard: usuario no vinculado a habitante ────────────────
+    // Si el usuario autenticado no tiene habitante_id, no puede
+    // registrar un pago. El admin debe vincularlos en Usuarios.
+    if (!habitanteId) {
+        return (
+            <div className="list-page">
+                <header className="list-topbar">
+                    <button className="list-topbar__back" onClick={() => navigate('/dashboard')} type="button">
+                        ← Dashboard
+                    </button>
+                </header>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: '1rem', padding: '2rem', fontFamily: 'DM Sans, sans-serif' }}>
+                    <span style={{ fontSize: '3rem' }}>⚠️</span>
+                    <p style={{ fontSize: '1rem', color: '#4a5568', textAlign: 'center', maxWidth: 420 }}>
+                        Tu usuario no está vinculado a un habitante del censo.<br />
+                        Contacta al administrador para que realice la vinculación.
+                    </p>
+                    <button
+                        className="pago-btn pago-btn--secondary"
+                        onClick={() => navigate('/dashboard')}
+                        type="button"
+                    >
+                        Volver al Dashboard
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     // ─────────────────────────────────────────────────────────
-    //  RENDER
+    //  RENDER PRINCIPAL
     // ─────────────────────────────────────────────────────────
     return (
         <div className="list-page">
@@ -207,7 +270,14 @@ export default function PagoForm() {
                         <p className="pago-form-card__sub">El operador verificará tu pago en las próximas horas.</p>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="pago-form-body" noValidate encType="multipart/form-data">
+                    <form onSubmit={handleSubmit} className="pago-form-body" noValidate>
+
+                        {/* Error de habitante_id — se muestra si el backend lo rechaza */}
+                        {fieldErr('habitante_id') && (
+                            <div className="pago-field">
+                                <span className="pago-campo__error">⚠ {fieldErr('habitante_id')}</span>
+                            </div>
+                        )}
 
                         {/* Referencia bancaria */}
                         <div className="pago-field">
