@@ -55,6 +55,10 @@ import OrganizacionForm from './pages/organizacion/OrganizacionForm';
 import OrganizacionList from './pages/organizacion/OrganizacionList';
 import PagoForm         from './pages/pagos/PagoForm';
 import PagoList         from './pages/pagos/PagoList';
+import ComunicadoForm   from './pages/comunicados/ComunicadoForm';
+import ComunicadoList   from './pages/comunicados/ComunicadoList';
+import ComunicadoDetail from './pages/comunicados/ComunicadoDetail';
+import ComunicadoEdit   from './pages/comunicados/ComunicadoEdit';
 
 // ─────────────────────────────────────────────────────────────
 //  ErrorBoundary — captura crashes de render y muestra un mensaje
@@ -199,11 +203,12 @@ const App = () => (
                         </ProtectedRoute>
                     } />
 
-                    <Route path="/pagos/nuevo" element={
+                    <Route path="/pagos" element={
                         <ProtectedRoute>
-                            <PagoForm />
+                            <PagoList />
                         </ProtectedRoute>
                     } />
+
 
                     {/* ══ PRIVADAS — ADMIN + OPERADOR ═════════════ */}
 
@@ -261,9 +266,34 @@ const App = () => (
                         </ProtectedRoute>
                     } />
 
-                    <Route path="/pagos" element={
+                    <Route path="/pagos/nuevo" element={
+                        <ProtectedRoute>
+                            <PagoForm />
+                        </ProtectedRoute>
+                    } />
+
+                    <Route path="/comunicados/nuevo" element={
                         <ProtectedRoute allowedRoles={['admin', 'operador']}>
-                            <PagoList />
+                            <ComunicadoForm />
+                        </ProtectedRoute>
+                    } />
+
+                    <Route path="/comunicados" element={
+                        <ProtectedRoute allowedRoles={['admin', 'operador']}>
+                            <ComunicadoList />
+                        </ProtectedRoute>
+                    } />
+
+                    {/* /editar ANTES que /:id para que React Router no confunda 'editar' con un ID */}
+                    <Route path="/comunicados/:id/editar" element={
+                        <ProtectedRoute allowedRoles={['admin', 'operador']}>
+                            <ComunicadoEdit />
+                        </ProtectedRoute>
+                    } />
+
+                    <Route path="/comunicados/:id" element={
+                        <ProtectedRoute allowedRoles={['admin', 'operador']}>
+                            <ComunicadoDetail />
                         </ProtectedRoute>
                     } />
 

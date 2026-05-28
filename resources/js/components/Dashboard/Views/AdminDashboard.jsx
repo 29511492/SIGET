@@ -18,8 +18,9 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import StatCard  from '../StatCard';
-import apiClient from '../../../services/axios';
+import StatCard    from '../StatCard';
+import apiClient   from '../../../services/axios';
+import ExportModal from '../../../pages/reportes/ExportModal';
 
 const STAT_CARDS_CONFIG = [
     { key: 'total_familias',     label: 'Familias Registradas', icon: '🏠', color: 'navy'   },
@@ -35,6 +36,7 @@ export default function AdminDashboard({ user }) {
     const [stats,   setStats]   = useState(null); // Iniciamos en null para el control de carga
     const [loading, setLoading] = useState(true);
     const [error,   setError]   = useState(null);
+    const [exportModalAbierto, setExportModalAbierto] = useState(false);
 
     const fetchStats = useCallback(async () => {
         setLoading(true);
@@ -78,14 +80,23 @@ export default function AdminDashboard({ user }) {
                         Resumen estadístico del censo comunal
                     </p>
                 </div>
-                <button
-                    className="dashboard-view__refresh-btn"
-                    onClick={fetchStats}
-                    disabled={loading}
-                    aria-label="Actualizar estadísticas"
-                >
-                    <span className={loading ? 'spin' : ''}>↻</span>
-                </button>
+                <div className="dashboard-view__header-actions">
+                    <button
+                        className="dashboard-view__export-btn"
+                        onClick={() => setExportModalAbierto(true)}
+                        aria-label="Exportar reporte"
+                    >
+                        📄 Exportar Reporte
+                    </button>
+                    <button
+                        className="dashboard-view__refresh-btn"
+                        onClick={fetchStats}
+                        disabled={loading}
+                        aria-label="Actualizar estadísticas"
+                    >
+                        <span className={loading ? 'spin' : ''}>↻</span>
+                    </button>
+                </div>
             </header>
 
             {error && (
@@ -131,6 +142,11 @@ export default function AdminDashboard({ user }) {
                     ))}
                 </div>
             </section>
+
+            <ExportModal
+                isOpen={exportModalAbierto}
+                onClose={() => setExportModalAbierto(false)}
+            />
         </section>
     );
 }

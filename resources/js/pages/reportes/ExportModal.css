@@ -1,0 +1,142 @@
+/* ================================================================
+   ExportModal.css — pages/reportes/
+   Modal de opciones de exportación — Módulo Reportes SIGET
+   Paleta: #0d1f35 (petróleo) · #c9a84c (dorado)
+   ================================================================ */
+
+.export-modal__overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(13, 31, 53, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(2px);
+}
+
+.export-modal__panel {
+    background: #ffffff;
+    border-radius: 10px;
+    width: 100%;
+    max-width: 560px;
+    box-shadow: 0 20px 60px rgba(13, 31, 53, 0.25);
+    overflow: hidden;
+    animation: export-modal-slide-in 0.22s ease-out;
+}
+
+@keyframes export-modal-slide-in {
+    from { opacity: 0; transform: translateY(-16px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0)     scale(1);    }
+}
+
+/* ── Header ──────────────────────────────────────────────────── */
+.export-modal__header {
+    background-color: #0d1f35;
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.export-modal__titulo {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #c9a84c;
+    margin: 0;
+    letter-spacing: 0.5px;
+}
+
+.export-modal__cerrar {
+    background: none;
+    border: none;
+    color: #a0b4c8;
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: color 0.15s, background-color 0.15s;
+}
+
+.export-modal__cerrar:hover {
+    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* ── Body ────────────────────────────────────────────────────── */
+.export-modal__body {
+    padding: 20px 24px;
+}
+
+.export-modal__divider {
+    border: none;
+    border-top: 1px solid #eef0f3;
+    margin: 12px 0;
+}
+
+/* ── Opciones individuales ───────────────────────────────────── */
+.export-modal__opcion {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 0;
+}
+
+.export-modal__opcion-icono {
+    font-size: 1.6rem;
+    min-width: 40px;
+    text-align: center;
+}
+
+.export-modal__opcion-info {
+    flex: 1;
+}
+
+.export-modal__opcion-info h3 {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #0d1f35;
+    margin: 0 0 3px 0;
+}
+
+.export-modal__opcion-info p {
+    font-size: 0.8rem;
+    color: #6b7a8d;
+    margin: 0;
+    line-height: 1.4;
+}
+
+/* ── Botones de acción ───────────────────────────────────────── */
+.export-modal__btn {
+    background-color: #0d1f35;
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    text-decoration: none;
+    display: inline-block;
+    transition: background-color 0.18s, transform 0.1s;
+}
+
+.export-modal__btn:hover:not(:disabled) {
+    background-color: #162d4a;
+    transform: translateY(-1px);
+}
+
+.export-modal__btn:disabled {
+    background-color: #8898aa;
+    cursor: not-allowed;
+}
+
+.export-modal__btn--dorado {
+    background-color: #c9a84c;
+    color: #0d1f35;
+}
+
+.export-modal__btn--dorado:hover {
+    background-color: #b8942e;
+}

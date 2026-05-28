@@ -17,6 +17,8 @@ use App\Http\Controllers\Api\V1\BeneficioController;
 use App\Http\Controllers\Api\V1\AuditoriaController;
 use App\Http\Controllers\Api\V1\OrganizacionController;
 use App\Http\Controllers\Api\V1\PagoQrController;
+use App\Http\Controllers\Api\V1\ReporteController;
+use App\Http\Controllers\Api\V1\ComunicadoController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -119,6 +121,16 @@ Route::prefix('v1')->group(function () {
 
             Route::patch('pagos/{pago}/validar', [PagoQrController::class, 'validar'])
                 ->name('api.v1.pagos.validar');
+
+            // Constancia de residencia de un habitante específico
+            Route::get('reportes/constancia-residencia/{habitante}',
+                [ReporteController::class, 'constanciaResidencia']
+            );
+
+            // Reporte de estadísticas del dashboard
+            Route::get('reportes/estadisticas-dashboard',
+                [ReporteController::class, 'estadisticasDashboard']
+            );
         });
 
 
@@ -172,6 +184,22 @@ Route::prefix('v1')->group(function () {
             // Pagos QR - crear
             Route::post('pagos', [PagoQrController::class, 'store'])
                 ->name('api.v1.pagos.store');
+
+            //Comunicados - crear y editar
+            Route::get('comunicados', [ComunicadoController::class, 'index'])
+                ->name('api.v1.comunicados.index');
+
+            Route::post('comunicados', [ComunicadoController::class, 'store'])
+                ->name('api.v1.comunicados.store');
+
+            Route::get('comunicados/{comunicado}', [ComunicadoController::class, 'show'])
+                ->name('api.v1.comunicados.show');
+
+            Route::put('comunicados/{comunicado}', [ComunicadoController::class, 'update'])
+                ->name('api.v1.comunicados.update');
+
+            Route::get('comunicados/{comunicado}/pdf', [ComunicadoController::class, 'descargarPdf'])
+                ->name('api.v1.comunicados.descargar-pdf');
         });
 
 
@@ -204,6 +232,9 @@ Route::prefix('v1')->group(function () {
 
             Route::delete('pagos/{pago}', [PagoQrController::class, 'destroy'])
                 ->name('api.v1.pagos.destroy');
+
+            Route::delete('comunicados/{comunicado}', [ComunicadoController::class, 'destroy'])
+                ->name('api.v1.comunicados.destroy');
         });
 
     }); // fin auth:sanctum

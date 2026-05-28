@@ -1,0 +1,231 @@
+/* ================================================================
+   ComunicadoForm.css — pages/comunicados/
+   Pantalla de redacción de comunicados — Módulo Reportes SIGET
+   Paleta: #0d1f35 (petróleo) · #c9a84c (dorado)
+   ================================================================ */
+
+.com-form__page {
+    padding: 28px 32px;
+    max-width: 860px;
+    margin: 0 auto;
+}
+
+/* ── Header ──────────────────────────────────────────────────── */
+.com-form__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 24px;
+}
+
+.com-form__titulo {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0d1f35;
+    margin: 0 0 4px 0;
+}
+
+.com-form__subtitulo {
+    font-size: 0.875rem;
+    color: #6b7a8d;
+    margin: 0;
+}
+
+.com-form__btn-back {
+    font-size: 0.85rem;
+    color: #0d1f35;
+    text-decoration: none;
+    border: 1px solid #d0d7e2;
+    padding: 7px 14px;
+    border-radius: 6px;
+    transition: background-color 0.15s;
+    white-space: nowrap;
+}
+
+.com-form__btn-back:hover {
+    background-color: #f0f4f8;
+}
+
+/* ── Alertas ─────────────────────────────────────────────────── */
+.com-form__alerta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 7px;
+    margin-bottom: 20px;
+    font-size: 0.875rem;
+}
+
+.com-form__alerta--exito {
+    background-color: #edfaf1;
+    border: 1px solid #27ae60;
+    color: #1a7a42;
+}
+
+.com-form__alerta--error {
+    background-color: #fdf3f3;
+    border: 1px solid #e74c3c;
+    color: #922b21;
+}
+
+.com-form__btn-pdf {
+    background-color: #c9a84c;
+    color: #0d1f35;
+    border: none;
+    border-radius: 5px;
+    padding: 6px 14px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.15s;
+}
+
+.com-form__btn-pdf:hover:not(:disabled) {
+    background-color: #b8942e;
+}
+
+.com-form__btn-pdf:disabled {
+    background-color: #d4b96a;
+    cursor: not-allowed;
+}
+
+/* ── Tarjeta del formulario ──────────────────────────────────── */
+.com-form__card {
+    background: #ffffff;
+    border: 1px solid #e4e9f0;
+    border-radius: 10px;
+    padding: 28px;
+    box-shadow: 0 2px 8px rgba(13, 31, 53, 0.06);
+}
+
+/* ── Grupos de campos ────────────────────────────────────────── */
+.com-form__fila-doble {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 18px;
+}
+
+.com-form__fila-doble .com-form__grupo {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+.com-form__grupo {
+    margin-bottom: 18px;
+}
+
+.com-form__label {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #0d1f35;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.com-form__req {
+    color: #e74c3c;
+}
+
+.com-form__hint {
+    font-size: 0.78rem;
+    color: #8898aa;
+    margin-bottom: 6px;
+}
+
+/* ── Inputs / Textarea ───────────────────────────────────────── */
+.com-form__input,
+.com-form__textarea {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid #d0d7e2;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    color: #1a1a2e;
+    background-color: #fdfdff;
+    transition: border-color 0.18s, box-shadow 0.18s;
+    font-family: inherit;
+    box-sizing: border-box;
+}
+
+.com-form__input:focus,
+.com-form__textarea:focus {
+    outline: none;
+    border-color: #0d1f35;
+    box-shadow: 0 0 0 3px rgba(13, 31, 53, 0.08);
+}
+
+.com-form__input--error {
+    border-color: #e74c3c !important;
+    box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.1) !important;
+}
+
+.com-form__textarea {
+    resize: vertical;
+    min-height: 220px;
+    line-height: 1.7;
+}
+
+.com-form__error {
+    display: block;
+    font-size: 0.78rem;
+    color: #e74c3c;
+    margin-top: 4px;
+}
+
+.com-form__contador {
+    display: block;
+    font-size: 0.75rem;
+    color: #9aabb8;
+    margin-top: 4px;
+    text-align: right;
+}
+
+/* ── Acciones ────────────────────────────────────────────────── */
+.com-form__acciones {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 8px;
+    padding-top: 20px;
+    border-top: 1px solid #eef0f3;
+}
+
+.com-form__btn {
+    padding: 10px 22px;
+    border-radius: 7px;
+    font-size: 0.875rem;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    transition: background-color 0.18s, transform 0.1s;
+}
+
+.com-form__btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
+.com-form__btn--secundario {
+    background-color: #f0f4f8;
+    color: #0d1f35;
+    border: 1px solid #d0d7e2;
+}
+
+.com-form__btn--secundario:hover:not(:disabled) {
+    background-color: #e2e8f0;
+}
+
+.com-form__btn--primario {
+    background-color: #0d1f35;
+    color: #ffffff;
+}
+
+.com-form__btn--primario:hover:not(:disabled) {
+    background-color: #162d4a;
+    transform: translateY(-1px);
+}
