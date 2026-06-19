@@ -1,0 +1,187 @@
+/**
+ * resources/js/pages/sugerencias/SugerenciaPanel.css
+ *
+ * Estilos exclusivos del panel de gestión de sugerencias.
+ * El sistema base (.list-*, .action-btn-*, .page-btn-*)
+ * viene de FamiliaList.css.
+ * Los badges de categoría y prioridad (.sw-cat-badge, .sw-prio-badge,
+ * .sw-estado) se reutilizan de SugerenciaWidget.css.
+ *
+ * Nomenclatura BEM estricta: bloque .sp-* (SugerenciaPanel)
+ */
+
+/* ── Toolbar de filtros ──────────────────────────────────────── */
+.sp-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.sp-filtro {
+    padding: 0.65rem 2.25rem 0.65rem 0.875rem;
+    font-family: var(--ff-body);
+    font-size: 0.875rem;
+    color: var(--c-text-dark);
+    background: var(--c-white);
+    border: 1.5px solid var(--c-border);
+    border-radius: var(--radius);
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23718096' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    transition: border-color var(--transition);
+}
+.sp-filtro:focus {
+    border-color: var(--c-navy-hover);
+}
+
+/* ── Lista de sugerencias ────────────────────────────────────── */
+.sp-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+/* ── Ítem de sugerencia ──────────────────────────────────────── */
+.sp-item {
+    background: var(--c-white);
+    border: 1px solid var(--c-border);
+    border-radius: 12px;
+    padding: 1.25rem;
+    transition: border-color var(--transition);
+}
+.sp-item:hover {
+    border-color: #d1cdc6;
+}
+.sp-item--revisada {
+    opacity: 0.75;
+    background: #fdfcfa;
+}
+
+/* ── Cabecera del ítem ───────────────────────────────────────── */
+.sp-item__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.sp-item__badges {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+
+.sp-item__meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.15rem;
+}
+
+.sp-item__autor {
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--c-text-dark);
+}
+
+.sp-item__fecha {
+    font-size: 0.75rem;
+    color: var(--c-text-light);
+    font-style: italic;
+}
+
+/* ── Mensaje ─────────────────────────────────────────────────── */
+.sp-item__mensaje {
+    font-size: 0.875rem;
+    color: var(--c-text-dark);
+    line-height: 1.6;
+    margin-bottom: 0.75rem;
+    white-space: pre-wrap;
+}
+
+/* ── Respuesta existente ─────────────────────────────────────── */
+.sp-item__respuesta {
+    background: #f8f6f1;
+    border-left: 3px solid var(--c-gold);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 0.65rem 0.875rem;
+    margin-bottom: 0.75rem;
+}
+.sp-item__respuesta-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--c-navy);
+    margin-bottom: 0.25rem;
+}
+.sp-item__respuesta-texto {
+    font-size: 0.82rem;
+    color: var(--c-text-dark);
+    line-height: 1.5;
+}
+
+/* ── Panel de revisión inline ────────────────────────────────── */
+.sp-revision-panel {
+    background: #f8f6f1;
+    border: 1.5px solid var(--c-border);
+    border-radius: var(--radius);
+    padding: 0.875rem;
+    margin-bottom: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+
+.sp-revision-panel__textarea {
+    width: 100%;
+    padding: 0.65rem 0.75rem;
+    font-family: var(--ff-body);
+    font-size: 0.875rem;
+    color: var(--c-text-dark);
+    background: var(--c-white);
+    border: 1.5px solid var(--c-border);
+    border-radius: var(--radius);
+    outline: none;
+    resize: vertical;
+    min-height: 80px;
+    transition: border-color var(--transition);
+    line-height: 1.5;
+}
+.sp-revision-panel__textarea:focus {
+    border-color: var(--c-navy-hover);
+    box-shadow: 0 0 0 3px rgba(30, 58, 86, 0.08);
+}
+.sp-revision-panel__textarea::placeholder { color: #b5b0a8; }
+
+.sp-revision-panel__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+/* ── Acciones del ítem ───────────────────────────────────────── */
+.sp-item__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    justify-content: flex-end;
+}
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .sp-toolbar {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .sp-filtro { width: 100%; }
+    .sp-item__header { flex-direction: column; }
+    .sp-item__meta { align-items: flex-start; }
+    .sp-revision-panel__actions { flex-direction: column-reverse; }
+}

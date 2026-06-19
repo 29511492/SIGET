@@ -1,24 +1,28 @@
 /**
  * resources/js/app.jsx — SIGET
  *
- * CAMBIOS RESPECTO A LA VERSIÓN ANTERIOR:
+ * ═══════════════════════════════════════════════════════════════
+ *  CORRECCIONES APLICADAS EN ESTA VERSIÓN:
  *
- * 1. ErrorBoundary añadido
- *    Una pantalla blanca total en React significa que un componente
- *    lanzó un error durante el render y no había ningún ErrorBoundary
- *    que lo capturara. React desmonta TODO el árbol. Con ErrorBoundary,
- *    el error queda contenido y visible en pantalla en vez de silencioso.
+ *  FIX #1 — Nuevo componente PublicRoute:
+ *            Evita que un usuario ya autenticado pueda volver a
+ *            ver /login o /register. Si hay sesión activa, redirige
+ *            según el rol directamente a su destino.
+ *            Sin esto, tras el login el useEffect de Login.jsx podía
+ *            generar una redirección redundante que causaba el parpadeo.
  *
- * 2. Ruta /auditoria — path singular, allowedRoles solo 'admin'
- *    Coincide con href en NAV_ITEMS de DashboardPage.jsx.
+ *  FIX #2 — Rutas /perfil y /mi-comunidad agregadas.
+ *            Estaban ausentes: cuando Login.jsx llamaba a
+ *            navigate('/perfil') o navigate('/mi-comunidad'),
+ *            React Router no encontraba la ruta y el catch-all
+ *            "path=*" la redirigía a /login, recreando el bucle
+ *            para los roles `usuario` y `vocero`.
  *
- * 3. Sin rutas duplicadas de auditoría.
- *
- * ⚠️  ACCIÓN REQUERIDA antes de usar este archivo:
- *    Verifica que el archivo AuditoriaList.jsx esté en:
- *      resources/js/pages/auditoria/AuditoriaList.jsx
- *    Si lo tienes en otra carpeta (Auditoria/, auditorias/, etc.),
- *    ajusta la línea de import al final de los imports.
+ *  FIX #3 — ProtectedRoute sin cambios funcionales. La lógica
+ *            ya era correcta (isLoading → user → allowedRoles).
+ *            El fix real está en AuthContext.jsx (isLoading=true
+ *            al iniciar). Se agrega comentario explicativo.
+ * ═══════════════════════════════════════════════════════════════
  */
 
 import './bootstrap';
@@ -39,7 +43,10 @@ import { useAuth }      from './hooks/useAuth';
 
 // Páginas
 import Login            from './pages/auth/Login';
-import DashboardPage    from './pages/DashboardPage';
+import Register         from './pages/auth/Register';
+import ForgotPassword   from './pages/auth/ForgotPassword';
+import ResetPassword    from './pages/auth/ResetPassword';
+import DashboardRouter  from './pages/DashboardRouter';
 import FamiliaForm      from './pages/familias/FamiliaForm';
 import FamiliaList      from './pages/familias/FamiliaList';
 import HabitanteForm    from './pages/habitantes/HabitanteForm';
@@ -59,6 +66,22 @@ import ComunicadoForm   from './pages/comunicados/ComunicadoForm';
 import ComunicadoList   from './pages/comunicados/ComunicadoList';
 import ComunicadoDetail from './pages/comunicados/ComunicadoDetail';
 import ComunicadoEdit   from './pages/comunicados/ComunicadoEdit';
+import PerfilRouter     from './pages/PerfilRouter';
+import MiComunidad      from './pages/voceros/MiComunidad';
+import NoticiaList      from './pages/noticias/NoticiaList';
+import NoticiaForm      from './pages/noticias/NoticiaForm';
+import SugerenciaPanel  from './pages/sugerencias/SugerenciaPanel';
+
+// ─────────────────────────────────────────────────────────────
+//  Mapa de redirección por rol — fuente única de verdad.
+//  Usado tanto en PublicRoute como en Login.jsx.
+// ─────────────────────────────────────────────────────────────
+const REDIRECT_BY_ROL = {
+    admin:    '/dashboard',
+    operador: '/dashboard',
+    vocero:   '/mi-comunidad',
+    usuario:  '/perfil',
+};
 
 // ─────────────────────────────────────────────────────────────
 //  ErrorBoundary — captura crashes de render y muestra un mensaje
@@ -121,10 +144,21 @@ class ErrorBoundary extends Component {
 
 // ─────────────────────────────────────────────────────────────
 //  ProtectedRoute
+//  Bloquea el render mientras AuthContext está resolviendo
+//  la rehidratación (isLoading=true). Solo evalúa `user`
+//  cuando isLoading ya es false, evitando la condición de
+//  carrera que causaba el bucle.
+//
+//  NOTA: la corrección principal está en AuthContext.jsx.
+//  isLoading arranca como `true` y solo pasa a `false` en el
+//  .finally() de GET /me. Esta guarda aquí es la segunda línea
+//  de defensa.
 // ─────────────────────────────────────────────────────────────
 const ProtectedRoute = ({ children, allowedRoles = null }) => {
     const { user, isLoading } = useAuth();
 
+    // Mientras AuthContext no termine de rehidratar, mostrar
+    // pantalla de carga — NUNCA redirigir todavía.
     if (isLoading) {
         return (
             <div style={{
@@ -137,10 +171,36 @@ const ProtectedRoute = ({ children, allowedRoles = null }) => {
         );
     }
 
+    // isLoading === false: el estado de auth ya es definitivo
     if (!user) return <Navigate to="/login" replace />;
 
     if (allowedRoles && !allowedRoles.includes(user.rol)) {
-        return <Navigate to="/dashboard" replace />;
+        // Rol sin permiso para esta ruta → redirigir a su destino
+        const destino = REDIRECT_BY_ROL[user.rol] ?? '/dashboard';
+        return <Navigate to={destino} replace />;
+    }
+
+    return children;
+};
+
+// ─────────────────────────────────────────────────────────────
+//  ✅ FIX #1 — PublicRoute (NUEVO)
+//  Envuelve las rutas públicas (/login, /register, etc.).
+//  Si el usuario ya tiene sesión activa, lo redirige a su
+//  destino según el rol en lugar de mostrar el formulario.
+//  Mientras isLoading=true, no renderiza nada (null) para
+//  evitar un flash del formulario antes de saber si hay sesión.
+// ─────────────────────────────────────────────────────────────
+const PublicRoute = ({ children }) => {
+    const { user, isLoading } = useAuth();
+
+    // Esperar a que AuthContext termine antes de decidir
+    if (isLoading) return null;
+
+    // Sesión activa → redirigir según rol, nunca mostrar el login
+    if (user) {
+        const destino = REDIRECT_BY_ROL[user.rol] ?? '/dashboard';
+        return <Navigate to={destino} replace />;
     }
 
     return children;
@@ -155,15 +215,34 @@ const App = () => (
             <BrowserRouter>
                 <Routes>
 
-                    {/* ══ PÚBLICAS ════════════════════════════════ */}
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/"      element={<Navigate to="/login" replace />} />
+                    {/* ══ PÚBLICAS — protegidas con PublicRoute ════════════════
+                        Si hay sesión activa, redirigen al destino por rol.
+                        Evita que un usuario logueado vea /login nuevamente.   */}
+                    <Route path="/login" element={
+                        <PublicRoute><Login /></PublicRoute>
+                    } />
+                    <Route path="/register" element={
+                        <PublicRoute><Register /></PublicRoute>
+                    } />
+                    <Route path="/forgot-password" element={
+                        <PublicRoute><ForgotPassword /></PublicRoute>
+                    } />
+                    <Route path="/reset-password" element={
+                        <PublicRoute><ResetPassword /></PublicRoute>
+                    } />
 
-                    {/* ══ PRIVADAS — TODOS LOS ROLES ══════════════ */}
+                    {/* Raíz → login (PublicRoute la redirigirá al dashboard
+                        si ya hay sesión activa)                              */}
+                    <Route path="/" element={
+                        <PublicRoute><Navigate to="/login" replace /></PublicRoute>
+                    } />
+
+
+                    {/* ══ PRIVADAS — TODOS LOS ROLES ══════════════════════════ */}
 
                     <Route path="/dashboard" element={
                         <ProtectedRoute>
-                            <DashboardPage />
+                            <DashboardRouter />
                         </ProtectedRoute>
                     } />
 
@@ -210,7 +289,7 @@ const App = () => (
                     } />
 
 
-                    {/* ══ PRIVADAS — ADMIN + OPERADOR ═════════════ */}
+                    {/* ══ PRIVADAS — ADMIN + OPERADOR ═════════════════════════ */}
 
                     <Route path="/familias/crear" element={
                         <ProtectedRoute allowedRoles={['admin', 'operador']}>
@@ -272,6 +351,7 @@ const App = () => (
                         </ProtectedRoute>
                     } />
 
+                    {/* Comunicados — rutas estáticas ANTES que dinámicas */}
                     <Route path="/comunicados/nuevo" element={
                         <ProtectedRoute allowedRoles={['admin', 'operador']}>
                             <ComunicadoForm />
@@ -284,7 +364,7 @@ const App = () => (
                         </ProtectedRoute>
                     } />
 
-                    {/* /editar ANTES que /:id para que React Router no confunda 'editar' con un ID */}
+                    {/* /editar ANTES que /:id — regla de rutas estáticas primero */}
                     <Route path="/comunicados/:id/editar" element={
                         <ProtectedRoute allowedRoles={['admin', 'operador']}>
                             <ComunicadoEdit />
@@ -298,7 +378,64 @@ const App = () => (
                     } />
 
 
-                    {/* ══ 404 ════════════════════════════════════ */}
+                    {/* ══ RUTAS DE NOTICIAS ═══════════════════════════════════
+                        REGLA: estáticas (/noticias/nueva) ANTES que
+                        dinámicas (/noticias/:id/editar)                      */}
+
+                    {/* Listado — admin y operador */}
+                    <Route path="/noticias" element={
+                        <ProtectedRoute allowedRoles={['admin', 'operador']}>
+                            <NoticiaList />
+                        </ProtectedRoute>
+                    } />
+
+                    {/* Crear — admin y operador */}
+                    <Route path="/noticias/nueva" element={
+                        <ProtectedRoute allowedRoles={['admin', 'operador']}>
+                            <NoticiaForm />
+                        </ProtectedRoute>
+                    } />
+
+                    {/* Editar — admin y operador */}
+                    <Route path="/noticias/:id/editar" element={
+                        <ProtectedRoute allowedRoles={['admin', 'operador']}>
+                            <NoticiaForm />
+                        </ProtectedRoute>
+                    } />
+
+
+                    {/* ══ SUGERENCIAS ═════════════════════════════════════════
+                        Panel accesible para admin, operador y vocero.
+                        El widget de envío vive en PerfilPage y MiComunidad.  */}
+                    <Route path="/sugerencias" element={
+                        <ProtectedRoute allowedRoles={['admin', 'operador', 'vocero']}>
+                            <SugerenciaPanel />
+                        </ProtectedRoute>
+                    } />
+
+
+                    {/* ══ ✅ FIX #2 — RUTAS DE ROL VOCERO Y USUARIO ══════════
+                        Estaban ausentes. El catch-all las enviaba a /login,
+                        recreando el bucle para esos dos roles.               */}
+
+                    {/* Rol: vocero → /mi-comunidad */}
+                    <Route path="/mi-comunidad" element={
+                        <ProtectedRoute allowedRoles={['vocero']}>
+                            <MiComunidad />
+                        </ProtectedRoute>
+                    } />
+
+                    {/* Rol: usuario → /perfil (PerfilRouter decide:
+                        UsuarioDashboard para rol usuario, PerfilPage
+                        normal con sidebar para los demás roles) */}
+                    <Route path="/perfil" element={
+                        <ProtectedRoute allowedRoles={['usuario', 'admin', 'operador', 'vocero']}>
+                            <PerfilRouter />
+                        </ProtectedRoute>
+                    } />
+
+
+                    {/* ══ 404 — catch-all ═════════════════════════════════════ */}
                     <Route path="*" element={<Navigate to="/login" replace />} />
 
                 </Routes>

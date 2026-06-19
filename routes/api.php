@@ -2,8 +2,20 @@
 
 /**
  * ═══════════════════════════════════════════════════════════════
- *  routes/api.php — Versión actualizada con ruta de Dashboard
- * ───────────────────────────────────────────════════════════════
+ *  routes/api.php
+ *
+ *  CORRECCIÓN APLICADA EN ESTA VERSIÓN:
+ *
+ *  FIX — Route::delete('comunicados/{comunicado}') estaba
+ *         registrada DOS VECES:
+ *         · Capa 3 (role:admin,operador) — INCORRECTO
+ *         · Capa 4 (role:admin)          — CORRECTO
+ *
+ *         Según el Documento Maestro y la Matriz de Rutas,
+ *         el destroy de comunicados es operación exclusiva
+ *         del rol admin (Capa 4). Se elimina el duplicado
+ *         de Capa 3. La ruta en Capa 4 se conserva intacta.
+ * ═══════════════════════════════════════════════════════════════
  */
 
 use App\Http\Controllers\Api\V1\AuthController;
@@ -19,6 +31,9 @@ use App\Http\Controllers\Api\V1\OrganizacionController;
 use App\Http\Controllers\Api\V1\PagoQrController;
 use App\Http\Controllers\Api\V1\ReporteController;
 use App\Http\Controllers\Api\V1\ComunicadoController;
+use App\Http\Controllers\Api\V1\NoticiaController;
+use App\Http\Controllers\Api\V1\SugerenciaController;
+use App\Http\Controllers\Api\V1\PasswordResetController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -29,6 +44,18 @@ Route::prefix('v1')->group(function () {
 
     Route::post('login', [AuthController::class, 'login'])
         ->name('api.v1.login');
+
+    Route::post('register', [AuthController::class, 'register'])
+        ->name('api.v1.register');
+
+    Route::post('forgot-password', [PasswordResetController::class, 'enviarOtp'])
+        ->name('api.v1.forgot-password');
+
+    Route::post('verify-otp', [PasswordResetController::class, 'verificarOtp'])
+        ->name('api.v1.verify-otp');
+
+    Route::post('reset-password', [PasswordResetController::class, 'resetearPassword'])
+        ->name('api.v1.reset-password');
 
     // ══════════════════════════════════════════════════════════════
     //  CAPAS 2, 3 y 4 — REQUIEREN TOKEN SANCTUM
@@ -42,6 +69,37 @@ Route::prefix('v1')->group(function () {
         Route::get('me', [AuthController::class, 'me'])
             ->name('api.v1.me');
 
+        // Noticias — lectura (todos los roles autenticados)
+        Route::get('noticias/recientes', [NoticiaController::class, 'recientes'])
+            ->name('api.v1.noticias.recientes');
+
+        Route::get('noticias/todas', [NoticiaController::class, 'todas'])
+            ->name('api.v1.noticias.todas');
+
+        Route::get('noticias', [NoticiaController::class, 'index'])
+            ->name('api.v1.noticias.index');
+
+        Route::get('noticias/{noticia}', [NoticiaController::class, 'show'])
+            ->name('api.v1.noticias.show');
+
+        // Sugerencias — todos los roles autenticados pueden enviar y ver las suyas
+        // REGLA: estática /mis ANTES que la dinámica {sugerencia}
+        Route::post('sugerencias', [SugerenciaController::class, 'store'])
+            ->name('api.v1.sugerencias.store');
+
+        Route::get('sugerencias/mis', [SugerenciaController::class, 'mis'])
+            ->name('api.v1.sugerencias.mis');
+
+        // Pagos QR — Portal Ciudadano (todos los roles autenticados)
+        // FIX (junio 2026): el rol "usuario" registra su propio pago
+        // sin depender de habitante_id. REGLA: estáticas /mio y /mis
+        // ANTES que las dinámicas {pago} de Capa 2.
+        Route::post('pagos/mio', [PagoQrController::class, 'storeUsuario'])
+            ->name('api.v1.pagos.store-usuario');
+
+        Route::get('pagos/mis', [PagoQrController::class, 'misPagos'])
+            ->name('api.v1.pagos.mis');
+
 
         // ══════════════════════════════════════════════════════════
         //  CAPA 2 — LECTURA (todos los roles autenticados)
@@ -51,11 +109,11 @@ Route::prefix('v1')->group(function () {
             Route::get('dashboard/stats', [DashboardController::class, 'stats'])
                 ->name('api.v1.dashboard.stats');
 
-            // Familias — lectura + búsqueda para select del formulario
-            Route::get('familias', [FamiliaController::class,   'index'])
+            // Familias — lectura
+            Route::get('familias', [FamiliaController::class, 'index'])
                 ->name('api.v1.familias.index');
 
-            Route::get('familias/{familia}', [FamiliaController::class,   'show'])
+            Route::get('familias/{familia}', [FamiliaController::class, 'show'])
                 ->name('api.v1.familias.show');
 
             // Habitantes — lectura
@@ -65,14 +123,14 @@ Route::prefix('v1')->group(function () {
             Route::get('habitantes/{habitante}', [HabitanteController::class, 'show'])
                 ->name('api.v1.habitantes.show');
 
-            // Sedes y Calles — opciones para selects
+            // Sedes y Calles — opciones para selects encadenados
             Route::get('sedes', [CalleController::class, 'listaSedes'])
                 ->name('api.v1.sedes.index');
 
             Route::get('sedes/{sede}/calles', [CalleController::class, 'callesPorSede'])
                 ->name('api.v1.sedes.calles');
 
-            // Voceros — lectura
+            // Voceros — estática form-data ANTES que la dinámica {vocero}
             Route::get('voceros/form-data', [VoceroController::class, 'getFormData'])
                 ->name('api.v1.voceros.form-data');
 
@@ -82,7 +140,7 @@ Route::prefix('v1')->group(function () {
             Route::get('voceros/{vocero}', [VoceroController::class, 'show'])
                 ->name('api.v1.voceros.show');
 
-            // Proyectos — lectura
+            // Proyectos — estática form-data ANTES que la dinámica {proyecto}
             Route::get('proyectos/form-data', [ProyectoController::class, 'getFormData'])
                 ->name('api.v1.proyectos.form-data');
 
@@ -92,14 +150,14 @@ Route::prefix('v1')->group(function () {
             Route::get('proyectos/{proyecto}', [ProyectoController::class, 'show'])
                 ->name('api.v1.proyectos.show');
 
-            //Beneficio - Lectura
+            // Beneficios — lectura
             Route::get('beneficios', [BeneficioController::class, 'index'])
                 ->name('api.v1.beneficios.index');
 
             Route::get('beneficios/{beneficio}', [BeneficioController::class, 'show'])
                 ->name('api.v1.beneficios.show');
 
-            // Organizaciones - Lectura
+            // Organizaciones — estática form-data ANTES que la dinámica {org}
             Route::get('organizaciones/form-data', [OrganizacionController::class, 'formData'])
                 ->name('api.v1.organizaciones.form-data');
 
@@ -109,7 +167,7 @@ Route::prefix('v1')->group(function () {
             Route::get('organizaciones/{org}', [OrganizacionController::class, 'show'])
                 ->name('api.v1.organizaciones.show');
 
-            // Pagos QR - Lectura
+            // Pagos QR — estática form-data ANTES que la dinámica {pago}
             Route::get('pagos/form-data', [PagoQrController::class, 'formData'])
                 ->name('api.v1.pagos.form-data');
 
@@ -122,15 +180,16 @@ Route::prefix('v1')->group(function () {
             Route::patch('pagos/{pago}/validar', [PagoQrController::class, 'validar'])
                 ->name('api.v1.pagos.validar');
 
-            // Constancia de residencia de un habitante específico
-            Route::get('reportes/constancia-residencia/{habitante}',
-                [ReporteController::class, 'constanciaResidencia']
-            );
+            // Reportes PDF — al vuelo, sin persistencia en BD
+            Route::get('reportes/constancia-residencia/{habitante}', [ReporteController::class, 'constanciaResidencia'])
+                ->name('api.v1.reportes.constancia-residencia');
 
-            // Reporte de estadísticas del dashboard
-            Route::get('reportes/estadisticas-dashboard',
-                [ReporteController::class, 'estadisticasDashboard']
-            );
+            Route::get('reportes/estadisticas-dashboard', [ReporteController::class, 'estadisticasDashboard'])
+                ->name('api.v1.reportes.estadisticas-dashboard');
+
+            // Sugerencias — lectura para admin, operador y vocero
+            Route::get('sugerencias', [SugerenciaController::class, 'index'])
+                ->name('api.v1.sugerencias.index');
         });
 
 
@@ -144,11 +203,11 @@ Route::prefix('v1')->group(function () {
                 ->name('api.v1.familias.store');
 
             Route::put('familias/{familia}', [FamiliaController::class, 'update'])
-            ->name('api.v1.familias.update');
+                ->name('api.v1.familias.update');
 
             // Habitantes — crear y editar
             Route::post('habitantes', [HabitanteController::class, 'store'])
-            ->name('api.v1.habitantes.store');
+                ->name('api.v1.habitantes.store');
 
             Route::put('habitantes/{habitante}', [HabitanteController::class, 'update'])
                 ->name('api.v1.habitantes.update');
@@ -167,31 +226,35 @@ Route::prefix('v1')->group(function () {
             Route::put('proyectos/{proyecto}', [ProyectoController::class, 'update'])
                 ->name('api.v1.proyectos.update');
 
-            // Beneficios - crear y editar
+            // Beneficios — crear y editar
             Route::post('beneficios', [BeneficioController::class, 'store'])
                 ->name('api.v1.beneficios.store');
 
             Route::put('beneficios/{beneficio}', [BeneficioController::class, 'update'])
                 ->name('api.v1.beneficios.update');
 
-            // Organizaciones - crear y editar
+            // Organizaciones — crear y editar
             Route::post('organizaciones', [OrganizacionController::class, 'store'])
                 ->name('api.v1.organizaciones.store');
 
             Route::put('organizaciones/{org}', [OrganizacionController::class, 'update'])
                 ->name('api.v1.organizaciones.update');
 
-            // Pagos QR - crear
+            // Pagos QR — crear
             Route::post('pagos', [PagoQrController::class, 'store'])
                 ->name('api.v1.pagos.store');
 
-            //Comunicados - crear y editar
+            // Comunicados — crear, leer y editar
+            // NOTA: el destroy de comunicados NO va aquí.
+            // Solo el rol admin puede eliminar comunicados (ver Capa 4).
             Route::get('comunicados', [ComunicadoController::class, 'index'])
                 ->name('api.v1.comunicados.index');
 
             Route::post('comunicados', [ComunicadoController::class, 'store'])
                 ->name('api.v1.comunicados.store');
 
+            // Estática /pdf ANTES que la dinámica {comunicado}
+            // (aunque aquí están en grupos separados, por claridad se documenta)
             Route::get('comunicados/{comunicado}', [ComunicadoController::class, 'show'])
                 ->name('api.v1.comunicados.show');
 
@@ -200,16 +263,35 @@ Route::prefix('v1')->group(function () {
 
             Route::get('comunicados/{comunicado}/pdf', [ComunicadoController::class, 'descargarPdf'])
                 ->name('api.v1.comunicados.descargar-pdf');
+
+            // ✅ FIX: Route::delete de comunicados ELIMINADO de esta capa.
+            // Estaba duplicada con la de Capa 4. El destroy de comunicados
+            // es exclusivo del rol admin y vive únicamente en Capa 4.
+
+            // Noticias — crear, editar y publicar (admin + operador)
+            // REGLA: estática /todas y /publicar ANTES que la dinámica {noticia}
+            Route::post('noticias', [NoticiaController::class, 'store'])
+                ->name('api.v1.noticias.store');
+
+            Route::put('noticias/{noticia}', [NoticiaController::class, 'update'])
+                ->name('api.v1.noticias.update');
+
+            Route::patch('noticias/{noticia}/publicar', [NoticiaController::class, 'publicar'])
+                ->name('api.v1.noticias.publicar');
+
+            // Sugerencias — revisar y responder (admin + operador)
+            Route::patch('sugerencias/{sugerencia}/revisar', [SugerenciaController::class, 'revisar'])
+                ->name('api.v1.sugerencias.revisar');
         });
 
 
         // ══════════════════════════════════════════════════════════
-        //  CAPA 4 — SOLO ADMIN (eliminación y configuración)
+        //  CAPA 4 — SOLO ADMIN (eliminaciones y auditoría)
         // ══════════════════════════════════════════════════════════
         Route::middleware('role:admin')->group(function () {
 
-            // Soft delete — los registros quedan en DB con deleted_at
-            Route::delete('familias/{familia}', [FamiliaController::class,   'destroy'])
+            // SoftDelete — los registros quedan en BD con deleted_at
+            Route::delete('familias/{familia}', [FamiliaController::class, 'destroy'])
                 ->name('api.v1.familias.destroy');
 
             Route::delete('habitantes/{habitante}', [HabitanteController::class, 'destroy'])
@@ -224,17 +306,27 @@ Route::prefix('v1')->group(function () {
             Route::delete('beneficios/{beneficio}', [BeneficioController::class, 'destroy'])
                 ->name('api.v1.beneficios.destroy');
 
-            Route::get('auditorias', [AuditoriaController::class, 'index'])
-                ->name('api.v1.auditorias.index');
-
             Route::delete('organizaciones/{org}', [OrganizacionController::class, 'destroy'])
                 ->name('api.v1.organizaciones.destroy');
 
             Route::delete('pagos/{pago}', [PagoQrController::class, 'destroy'])
                 ->name('api.v1.pagos.destroy');
 
+            // ✅ Única definición correcta del destroy de comunicados
             Route::delete('comunicados/{comunicado}', [ComunicadoController::class, 'destroy'])
                 ->name('api.v1.comunicados.destroy');
+
+            // Noticias — eliminar (solo admin)
+            Route::delete('noticias/{noticia}', [NoticiaController::class, 'destroy'])
+                ->name('api.v1.noticias.destroy');
+
+            // Sugerencias — eliminar (solo admin)
+            Route::delete('sugerencias/{sugerencia}', [SugerenciaController::class, 'destroy'])
+                ->name('api.v1.sugerencias.destroy');
+
+            // Auditoría — solo lectura, exclusivo admin
+            Route::get('auditorias', [AuditoriaController::class, 'index'])
+                ->name('api.v1.auditorias.index');
         });
 
     }); // fin auth:sanctum

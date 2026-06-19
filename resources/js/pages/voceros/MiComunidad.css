@@ -1,0 +1,283 @@
+/**
+ * resources/js/pages/voceros/MiComunidad.css
+ *
+ * Estilos exclusivos de la vista Mi Comunidad (rol vocero).
+ * El layout base (sidebar, topbar, dashboard-root, dashboard-main,
+ * dashboard-content, vocero-stat-item, task-list-section__title)
+ * viene de DashboardPage.css que se importa en el JSX.
+ * Aquí solo se definen las clases propias de esta vista.
+ *
+ * Nomenclatura BEM estricta: bloque .comunidad-*
+ */
+
+/* ── Encabezado de sección ───────────────────────────────────── */
+.comunidad-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+}
+
+.comunidad-header__title {
+    font-family: var(--ff-display);
+    font-size: 1.9rem;
+    font-weight: 400;
+    color: var(--c-text-dark);
+    line-height: 1.1;
+}
+
+.comunidad-header__subtitle {
+    font-size: 0.875rem;
+    color: var(--c-text-light);
+    margin-top: 0.3rem;
+}
+
+/* ── Grid de estadísticas ─────────────────────────────────────
+   Extiende .vocero-stats de DashboardPage.css con 3 columnas.
+   Se declara aquí para no sobreescribir la clase global.       */
+.comunidad-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+/* ── Sección de módulos ──────────────────────────────────────── */
+.comunidad-modulos {
+    margin-top: 2.5rem;
+}
+
+.comunidad-modulos__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 0.75rem;
+}
+
+/* ── Tarjeta de módulo ───────────────────────────────────────── */
+.comunidad-modulo-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    background: var(--c-white);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius);
+    text-decoration: none;
+    color: var(--c-text-dark);
+    transition: border-color var(--transition),
+                box-shadow var(--transition),
+                transform var(--transition);
+}
+
+.comunidad-modulo-card:hover {
+    border-color: var(--c-navy);
+    box-shadow: 0 4px 12px rgba(13, 31, 53, 0.08);
+    transform: translateY(-1px);
+}
+
+.comunidad-modulo-card__icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    background: var(--c-offwhite);
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.comunidad-modulo-card__body {
+    flex: 1;
+    min-width: 0;
+}
+
+.comunidad-modulo-card__label {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--c-text-dark);
+    line-height: 1.2;
+}
+
+.comunidad-modulo-card__desc {
+    font-size: 0.78rem;
+    color: var(--c-text-light);
+    margin-top: 0.2rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.comunidad-modulo-card__arrow {
+    color: var(--c-text-light);
+    font-size: 0.9rem;
+    flex-shrink: 0;
+    transition: transform var(--transition), color var(--transition);
+}
+
+.comunidad-modulo-card:hover .comunidad-modulo-card__arrow {
+    transform: translateX(3px);
+    color: var(--c-navy);
+}
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .comunidad-stats {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .comunidad-modulos__grid {
+        grid-template-columns: 1fr;
+    }
+
+    .comunidad-header__title {
+        font-size: 1.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .comunidad-stats {
+        grid-template-columns: 1fr;
+    }
+}/**
+ * resources/js/pages/voceros/MiComunidad.css
+ *
+ * Estilos exclusivos de la vista Mi Comunidad (rol vocero).
+ * El layout base (sidebar, topbar, dashboard-root, dashboard-main,
+ * dashboard-content, vocero-stat-item, task-list-section__title)
+ * viene de DashboardPage.css que se importa en el JSX.
+ * Aquí solo se definen las clases propias de esta vista.
+ *
+ * Nomenclatura BEM estricta: bloque .comunidad-*
+ */
+
+/* ── Encabezado de sección ───────────────────────────────────── */
+.comunidad-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+}
+
+.comunidad-header__title {
+    font-family: var(--ff-display);
+    font-size: 1.9rem;
+    font-weight: 400;
+    color: var(--c-text-dark);
+    line-height: 1.1;
+}
+
+.comunidad-header__subtitle {
+    font-size: 0.875rem;
+    color: var(--c-text-light);
+    margin-top: 0.3rem;
+}
+
+/* ── Grid de estadísticas ─────────────────────────────────────
+   Extiende .vocero-stats de DashboardPage.css con 3 columnas.
+   Se declara aquí para no sobreescribir la clase global.       */
+.comunidad-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+/* ── Sección de módulos ──────────────────────────────────────── */
+.comunidad-modulos {
+    margin-top: 2.5rem;
+}
+
+.comunidad-modulos__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 0.75rem;
+}
+
+/* ── Tarjeta de módulo ───────────────────────────────────────── */
+.comunidad-modulo-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    background: var(--c-white);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius);
+    text-decoration: none;
+    color: var(--c-text-dark);
+    transition: border-color var(--transition),
+                box-shadow var(--transition),
+                transform var(--transition);
+}
+
+.comunidad-modulo-card:hover {
+    border-color: var(--c-navy);
+    box-shadow: 0 4px 12px rgba(13, 31, 53, 0.08);
+    transform: translateY(-1px);
+}
+
+.comunidad-modulo-card__icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    background: var(--c-offwhite);
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.comunidad-modulo-card__body {
+    flex: 1;
+    min-width: 0;
+}
+
+.comunidad-modulo-card__label {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--c-text-dark);
+    line-height: 1.2;
+}
+
+.comunidad-modulo-card__desc {
+    font-size: 0.78rem;
+    color: var(--c-text-light);
+    margin-top: 0.2rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.comunidad-modulo-card__arrow {
+    color: var(--c-text-light);
+    font-size: 0.9rem;
+    flex-shrink: 0;
+    transition: transform var(--transition), color var(--transition);
+}
+
+.comunidad-modulo-card:hover .comunidad-modulo-card__arrow {
+    transform: translateX(3px);
+    color: var(--c-navy);
+}
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .comunidad-stats {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .comunidad-modulos__grid {
+        grid-template-columns: 1fr;
+    }
+
+    .comunidad-header__title {
+        font-size: 1.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .comunidad-stats {
+        grid-template-columns: 1fr;
+    }
+}

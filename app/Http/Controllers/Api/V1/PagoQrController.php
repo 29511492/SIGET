@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\PagoQr\StorePagoQrRequest;
+use App\Http\Requests\PagoQr\StorePagoUsuarioRequest;
 use App\Http\Requests\PagoQr\ValidarPagoQrRequest;
 use App\Http\Resources\PagoQrResource;
 use App\Models\PagoQr;
@@ -17,7 +18,7 @@ class PagoQrController extends Controller
     // ─── GET /v1/pagos ───────────────────────────────────────────
     public function index(Request $request): AnonymousResourceCollection
     {
-        $query = PagoQr::with(['habitante', 'familia', 'organizacion', 'verificador'])
+        $query = PagoQr::with(['habitante', 'familia', 'organizacion', 'verificador', 'user'])
             ->orderByDesc('fecha_pago');
 
         // Filtro por estado (el panel de validación usa ?estado=pendiente)
@@ -51,7 +52,7 @@ class PagoQrController extends Controller
     // ─── GET /v1/pagos/{pago} ────────────────────────────────────
     public function show(PagoQr $pago): JsonResponse
     {
-        $pago->load(['habitante', 'familia', 'organizacion', 'verificador']);
+        $pago->load(['habitante', 'familia', 'organizacion', 'verificador', 'user']);
 
         return response()->json([
             'message' => 'OK',
@@ -60,6 +61,7 @@ class PagoQrController extends Controller
     }
 
     // ─── POST /v1/pagos ──────────────────────────────────────────
+    // Flujo admin/operador: registra un pago vinculado a un habitante.
     public function store(StorePagoQrRequest $request): JsonResponse
     {
         $validated = $request->validated();
@@ -88,6 +90,58 @@ class PagoQrController extends Controller
         ], 201);
     }
 
+    // ─── POST /v1/pagos/mio ────────────────────────────────────────
+    // FIX (junio 2026): Flujo Portal Ciudadano (rol "usuario").
+    // El pago se vincula directamente al usuario autenticado vía
+    // user_id, sin requerir habitante_id. El comprobante es obligatorio
+    // (lo exige StorePagoUsuarioRequest).
+    public function storeUsuario(StorePagoUsuarioRequest $request): JsonResponse
+    {
+        $validated = $request->validated();
+
+        // El comprobante siempre viene en este flujo (es 'required')
+        $path = $request->file('comprobante')->store(
+            'comprobantes/' . now()->format('Y/m'),
+            'public'
+        );
+
+        $pago = PagoQr::create([
+            'user_id'             => $request->user()->id,
+            'referencia_bancaria' => $validated['referencia_bancaria'],
+            'monto'               => $validated['monto'],
+            'concepto_pago'       => $validated['concepto_pago'],
+            'fecha_pago'          => $validated['fecha_pago'],
+            'comprobante_path'    => $path,
+            'estado'              => 'pendiente',
+        ]);
+
+        return response()->json([
+            'message' => 'Pago registrado correctamente. El Consejo Comunal verificará tu comprobante pronto.',
+            'data'    => new PagoQrResource($pago),
+        ], 201);
+    }
+
+    // ─── GET /v1/pagos/mis ───────────────────────────────────────
+    // FIX (junio 2026): el usuario consulta el estado de sus propios
+    // pagos, igual patrón que SugerenciaController::mis().
+    public function misPagos(Request $request): JsonResponse
+    {
+        $pagos = PagoQr::deUsuario($request->user()->id)
+            ->with('verificador')
+            ->latest('fecha_pago')
+            ->paginate(10);
+
+        return response()->json([
+            'message' => 'Pagos obtenidos correctamente.',
+            'data'    => PagoQrResource::collection($pagos->items()),
+            'meta'    => [
+                'current_page' => $pagos->currentPage(),
+                'last_page'    => $pagos->lastPage(),
+                'total'        => $pagos->total(),
+            ],
+        ]);
+    }
+
     // ─── PATCH /v1/pagos/{pago}/validar ─────────────────────────
     /**
      * Transición de estado: pendiente → verificado | rechazado
@@ -110,7 +164,7 @@ class PagoQrController extends Controller
             'fecha_verificacion'   => now(),
         ]);
 
-        $pago->load(['habitante', 'familia', 'organizacion', 'verificador']);
+        $pago->load(['habitante', 'familia', 'organizacion', 'verificador', 'user']);
 
         $msg = $request->input('estado') === 'verificado'
             ? 'Pago verificado correctamente.'

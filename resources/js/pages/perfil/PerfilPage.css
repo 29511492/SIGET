@@ -1,0 +1,210 @@
+/**
+ * resources/js/pages/perfil/PerfilPage.css
+ *
+ * Estilos exclusivos de la vista de perfil.
+ * El layout base (sidebar, topbar, dashboard-root, dashboard-main,
+ * dashboard-content) viene de DashboardPage.css que se importa
+ * en el JSX. Aquí solo se definen las clases propias del perfil.
+ *
+ * Nomenclatura BEM estricta: bloque .perfil-*
+ */
+
+/* ── Encabezado de perfil ────────────────────────────────────── */
+.perfil-heading {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+}
+
+.perfil-heading__avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: var(--c-navy);
+    border: 3px solid var(--c-gold);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--ff-display);
+    font-size: 2rem;
+    font-weight: 400;
+    color: var(--c-gold);
+    flex-shrink: 0;
+}
+
+.perfil-heading__info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.perfil-heading__name {
+    font-family: var(--ff-display);
+    font-size: 1.9rem;
+    font-weight: 400;
+    color: var(--c-text-dark);
+    line-height: 1.1;
+}
+
+/* Aumenta ligeramente el tamaño del badge en el encabezado */
+.perfil-heading__badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.75rem;
+}
+
+/* ── Grid de tarjetas ────────────────────────────────────────── */
+.perfil-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+}
+
+/* ── Tarjeta base ────────────────────────────────────────────── */
+.perfil-card {
+    background: var(--c-white);
+    border: 1px solid var(--c-border);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.perfil-card__header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 1.1rem 1.5rem;
+    border-bottom: 1px solid var(--c-border);
+    background: var(--c-offwhite);
+}
+
+.perfil-card__header-icon {
+    font-size: 1rem;
+}
+
+.perfil-card__title {
+    font-family: var(--ff-body);
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--c-text-dark);
+    letter-spacing: 0.01em;
+}
+
+/* ── Lista de datos (dl/dt/dd) ───────────────────────────────── */
+.perfil-data-list {
+    padding: 0.5rem 0;
+}
+
+.perfil-data-list__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.875rem 1.5rem;
+    border-bottom: 1px solid #f5f2ed;
+}
+
+.perfil-data-list__row:last-child {
+    border-bottom: none;
+}
+
+.perfil-data-list__label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--c-text-light);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    flex-shrink: 0;
+}
+
+.perfil-data-list__value {
+    font-size: 0.875rem;
+    color: var(--c-text-dark);
+    font-weight: 400;
+    text-align: right;
+}
+
+/* ── Lista de permisos ───────────────────────────────────────── */
+.perfil-permisos-list {
+    list-style: none;
+    padding: 0.5rem 0;
+}
+
+.perfil-permiso-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem 1.5rem;
+    border-bottom: 1px solid #f5f2ed;
+    transition: background var(--transition);
+}
+
+.perfil-permiso-item:last-child {
+    border-bottom: none;
+}
+
+.perfil-permiso-item--activo  { background: transparent; }
+.perfil-permiso-item--inactivo { opacity: 0.5; }
+
+.perfil-permiso-item__icon {
+    font-size: 1rem;
+    width: 24px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.perfil-permiso-item__label {
+    flex: 1;
+    font-size: 0.875rem;
+    color: var(--c-text-dark);
+}
+
+.perfil-permiso-item__estado {
+    font-size: 0.78rem;
+    font-weight: 700;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.perfil-permiso-item__estado--si {
+    background: #dcfce7;
+    color: #166534;
+    border: 1px solid #86efac;
+}
+
+.perfil-permiso-item__estado--no {
+    background: #f1f5f9;
+    color: #94a3b8;
+    border: 1px solid #e2e8f0;
+}
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .perfil-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .perfil-heading__avatar {
+        width: 56px;
+        height: 56px;
+        font-size: 1.5rem;
+    }
+
+    .perfil-heading__name {
+        font-size: 1.5rem;
+    }
+
+    .perfil-data-list__row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.3rem;
+    }
+
+    .perfil-data-list__value {
+        text-align: left;
+    }
+}

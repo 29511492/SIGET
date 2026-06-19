@@ -1,0 +1,156 @@
+/**
+ * resources/js/components/noticias/NoticiaWidget.css
+ *
+ * Estilos del widget compacto de noticias.
+ * Diseñado para integrarse limpiamente dentro de MiComunidad
+ * y PerfilPage sin competir visualmente con el contenido principal.
+ *
+ * Principio de diseño: mínima huella visual, máxima legibilidad.
+ * No usa colores de fondo llamativos — solo bordes sutiles.
+ *
+ * Nomenclatura BEM estricta: bloque .nw-* (NoticiaWidget)
+ */
+
+/* ── Sección contenedora ─────────────────────────────────────── */
+.nw-section {
+    margin-top: 2.5rem;
+}
+
+/* ── Encabezado del widget ───────────────────────────────────── */
+.nw-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.nw-header__title {
+    font-family: var(--ff-body);
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--c-text-light);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.nw-header__icon {
+    font-size: 0.9rem;
+}
+
+/* ── Lista de noticias ───────────────────────────────────────── */
+.nw-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    background: var(--c-white);
+    border: 1px solid var(--c-border);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+/* ── Ítem de noticia ─────────────────────────────────────────── */
+.nw-item {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid #f5f2ed;
+    transition: background var(--transition);
+}
+.nw-item:last-child {
+    border-bottom: none;
+}
+.nw-item:hover {
+    background: #fdfcfa;
+}
+
+.nw-item__titulo {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--c-text-dark);
+    line-height: 1.3;
+    margin-bottom: 0.3rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.nw-item__extracto {
+    font-size: 0.82rem;
+    color: var(--c-text-mid);
+    line-height: 1.5;
+    margin-bottom: 0.5rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.nw-item__meta {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+    color: var(--c-text-light);
+}
+
+.nw-item__autor {
+    font-weight: 500;
+}
+
+.nw-item__sep {
+    opacity: 0.5;
+}
+
+.nw-item__fecha {
+    font-style: italic;
+}
+
+/* ── Error ───────────────────────────────────────────────────── */
+.nw-error {
+    font-size: 0.82rem;
+    color: var(--c-text-light);
+    padding: 1rem;
+    text-align: center;
+    background: var(--c-white);
+    border: 1px solid var(--c-border);
+    border-radius: 12px;
+}
+
+/* ── Skeleton de carga ───────────────────────────────────────── */
+.nw-item--skeleton {
+    pointer-events: none;
+}
+
+.nw-item__skeleton-title,
+.nw-item__skeleton-text,
+.nw-item__skeleton-meta {
+    background: linear-gradient(90deg, #f0ede8 25%, #e8e4de 50%, #f0ede8 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+    border-radius: 4px;
+    height: 12px;
+    margin-bottom: 0.4rem;
+}
+.nw-item__skeleton-title {
+    width: 75%;
+    height: 14px;
+}
+.nw-item__skeleton-text {
+    width: 95%;
+}
+.nw-item__skeleton-meta {
+    width: 40%;
+    height: 10px;
+    margin-bottom: 0;
+}
+
+@keyframes shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }

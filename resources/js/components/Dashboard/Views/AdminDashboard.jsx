@@ -15,9 +15,27 @@
  *   Ruta relativa: '../components/StatCard'   (1 nivel arriba)
  *
  * Los endpoints usan '/v1/...' porque baseURL de axios ya es '/api'
+ *
+ * ─────────────────────────────────────────────────────────────────
+ * FIX (junio 2026) — Eliminación de "Acciones Rápidas" duplicada
+ * ─────────────────────────────────────────────────────────────────
+ * Este componente tenía su propia sección <section className="quick-actions">
+ * hardcodeada con <a href>, que se renderizaba apilada sobre la sección
+ * de Acciones Rápidas real de DashboardPage.jsx (que sí usa <Link>).
+ *
+ * Se eliminó por completo esa sección duplicada. En su lugar se agregó
+ * una fila de "Alertas" — dinámica, clicable, y que solo aparece cuando
+ * hay algo que realmente requiere atención (sugerencias sin responder o
+ * viviendas en estado crítico). Si todo está en orden, la fila no se
+ * renderiza — así no se satura la vista innecesariamente.
+ *
+ * La única sección "Acciones Rápidas" que sobrevive en todo el Dashboard
+ * es la de DashboardPage.jsx, ya con <Link> (sin recargar la SPA) y ahora
+ * con badge de pendientes en el ítem de Sugerencias.
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { Link }     from 'react-router-dom';
 import StatCard    from '../StatCard';
 import apiClient   from '../../../services/axios';
 import ExportModal from '../../../pages/reportes/ExportModal';
@@ -38,6 +56,10 @@ export default function AdminDashboard({ user }) {
     const [error,   setError]   = useState(null);
     const [exportModalAbierto, setExportModalAbierto] = useState(false);
 
+    // ── Estado de alertas (sugerencias pendientes) ──────────────
+    // Solo necesitamos el conteo, así que pedimos 1 página mínima.
+    const [sugerenciasPendientes, setSugerenciasPendientes] = useState(0);
+
     const fetchStats = useCallback(async () => {
         setLoading(true);
         setError(null);
@@ -55,9 +77,22 @@ export default function AdminDashboard({ user }) {
         }
     }, []);
 
+    // Trae el conteo de sugerencias pendientes para la fila de alertas.
+    // Endpoint ya existente (Capa 2 — admin/operador/vocero), no requiere
+    // cambios de backend. Si falla, simplemente no se muestra la alerta.
+    const fetchSugerenciasPendientes = useCallback(async () => {
+        try {
+            const { data } = await apiClient.get('/v1/sugerencias?revisada=false');
+            setSugerenciasPendientes(data.meta?.pendientes ?? 0);
+        } catch {
+            setSugerenciasPendientes(0);
+        }
+    }, []);
+
     useEffect(() => {
         fetchStats();
-    }, [fetchStats]);
+        fetchSugerenciasPendientes();
+    }, [fetchStats, fetchSugerenciasPendientes]);
 
     // 1. SOLUCIÓN TÉCNICA: Guard de carga para evitar el error 'Cannot read properties of undefined'
     if (loading && !stats) {
@@ -70,6 +105,26 @@ export default function AdminDashboard({ user }) {
             </div>
         );
     }
+
+    const viviendasCriticas = stats?.viviendas_criticas ?? 0;
+
+    // Construcción de alertas — solo entran las que tienen valor > 0
+    const alertas = [
+        sugerenciasPendientes > 0 && {
+            key: 'sugerencias',
+            href: '/sugerencias',
+            icon: '💬',
+            texto: `${sugerenciasPendientes} sugerencia${sugerenciasPendientes !== 1 ? 's' : ''} sin responder`,
+            tono: 'amber',
+        },
+        viviendasCriticas > 0 && {
+            key: 'viviendas',
+            href: '/familias',
+            icon: '⚠️',
+            texto: `${viviendasCriticas} vivienda${viviendasCriticas !== 1 ? 's' : ''} en estado crítico`,
+            tono: 'red',
+        },
+    ].filter(Boolean);
 
     return (
         <section className="dashboard-view">
@@ -109,6 +164,27 @@ export default function AdminDashboard({ user }) {
                 </div>
             )}
 
+            {/* ── Fila de Alertas ──────────────────────────────────
+             *  Solo se renderiza si hay algo que requiera atención.
+             *  Cada alerta es clicable y navega directo al módulo
+             *  correspondiente usando <Link> (sin recargar la SPA).
+             * ──────────────────────────────────────────────────── */}
+            {alertas.length > 0 && (
+                <div className="alert-banner-row" role="region" aria-label="Alertas que requieren atención">
+                    {alertas.map(alerta => (
+                        <Link
+                            key={alerta.key}
+                            to={alerta.href}
+                            className={`alert-banner alert-banner--${alerta.tono}`}
+                        >
+                            <span className="alert-banner__icon" aria-hidden="true">{alerta.icon}</span>
+                            <span className="alert-banner__texto">{alerta.texto}</span>
+                            <span className="alert-banner__arrow" aria-hidden="true">→</span>
+                        </Link>
+                    ))}
+                </div>
+            )}
+
             <div className="stats-grid">
                 {STAT_CARDS_CONFIG.map((config) => (
                     <StatCard
@@ -122,26 +198,6 @@ export default function AdminDashboard({ user }) {
                     />
                 ))}
             </div>
-
-            <section className="quick-actions">
-                <h3 className="quick-actions__title">Acciones Rápidas</h3>
-                <div className="quick-actions__grid">
-                    {[
-                        { label: 'Registrar Familia', icon: '🏠', href: '/familias/crear'   },
-                        { label: 'Agregar Habitante', icon: '👤', href: '/habitantes/crear' },
-                        { label: 'Nuevo Proyecto',    icon: '📋', href: '/proyectos/crear'  },
-                        { label: 'Gestionar Voceros', icon: '🎙', href: '/voceros'           },
-                        { label: 'Ver Auditoría',     icon: '🔍', href: '/auditoria'         },
-                        { label: 'Configuración',     icon: '⚙️', href: '/configuracion'     },
-                    ].map((action) => (
-                        <a key={action.href} href={action.href} className="quick-action-card">
-                            <span className="quick-action-card__icon">{action.icon}</span>
-                            <span className="quick-action-card__label">{action.label}</span>
-                            <span className="quick-action-card__arrow">→</span>
-                        </a>
-                    ))}
-                </div>
-            </section>
 
             <ExportModal
                 isOpen={exportModalAbierto}

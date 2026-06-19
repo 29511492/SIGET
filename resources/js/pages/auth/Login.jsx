@@ -14,11 +14,17 @@
  *     Usuario   → /perfil
  *
  *  3. Cero estilos inline — todos en Login.css (Regla de Oro).
+ *
+ *  4. FIX (junio 2026): Los enlaces "¿Olvidaste tu contraseña?" y
+ *     "¿No tienes cuenta? Regístrate aquí" ahora viven agrupados
+ *     dentro de <div className="login-form-footer-group">, que
+ *     aporta separación visual (divisor sutil) respecto al botón
+ *     de envío. Antes eran dos <p> sueltos sin estilo propio.
  * ═══════════════════════════════════════════════════════════════
  */
 
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../hooks/useAuth';
 import './Login.css';
@@ -35,15 +41,25 @@ export default function Login() {
     const { t, i18n }      = useTranslation();
     const { login, user }  = useAuth();
     const navigate         = useNavigate();
+    const location         = useLocation();
 
-    const [form,        setForm]        = useState({ email: '', password: '' });
-    const [errors,      setErrors]      = useState({});
-    const [serverError, setServerError] = useState('');
-    const [isLoading,   setIsLoading]   = useState(false);
-    const [showPw,      setShowPw]      = useState(false);
-    const [locale,      setLocale]      = useState(
+    const [form,           setForm]           = useState({ email: '', password: '' });
+    const [errors,         setErrors]         = useState({});
+    const [serverError,    setServerError]    = useState('');
+    const [successMessage, setSuccessMessage] = useState('');
+    const [isLoading,      setIsLoading]      = useState(false);
+    const [showPw,         setShowPw]         = useState(false);
+    const [locale,         setLocale]         = useState(
         localStorage.getItem('siget_locale') ?? 'es'
     );
+
+    // Mostrar mensaje de registro exitoso si viene de /register
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        if (params.get('registered') === '1') {
+            setSuccessMessage('Cuenta creada exitosamente. Ya puedes iniciar sesión.');
+        }
+    }, [location.search]);
 
     // Si ya está autenticado, redirigir directamente
     useEffect(() => {
@@ -110,8 +126,12 @@ export default function Login() {
                     email:    data.errors?.email?.[0]    ?? '',
                     password: data.errors?.password?.[0] ?? '',
                 });
+            } else if (status === 423) {
+                // Cuenta bloqueada — redirigir a forgot-password con email prellenado
+                navigate('/forgot-password', {
+                    state: { email: form.email, locked: true },
+                });
             } else {
-                // 401 credenciales inválidas, 429 rate limit — ambos muestran message del servidor
                 setServerError(data.message ?? t('auth.errors.generic'));
             }
         } finally {
@@ -172,6 +192,13 @@ export default function Login() {
                             {t('auth.login.form_subtitle')}
                         </p>
                     </header>
+
+                    {successMessage && (
+                        <div className="login-alert login-alert--success" role="alert">
+                            <span className="login-alert__icon">✅</span>
+                            <span>{successMessage}</span>
+                        </div>
+                    )}
 
                     {serverError && (
                         <div className="login-alert login-alert--error" role="alert">
@@ -256,7 +283,26 @@ export default function Login() {
                                 </>
                             ) : t('auth.login.submit')}
                         </button>
+
                     </form>
+
+                    {/* FIX (junio 2026): enlaces agrupados con separación
+                     * visual del botón mediante .login-form-footer-group
+                     * (divisor sutil + espaciado), en vez de dos <p> sueltos
+                     * sin estilo propio pegados directamente al formulario. */}
+                    <div className="login-form-footer-group">
+                        <p className="login-form-footer">
+                            <Link to="/forgot-password" className="login-form-footer__link">
+                                ¿Olvidaste tu contraseña?
+                            </Link>
+                        </p>
+                        <p className="login-form-footer">
+                            ¿No tienes cuenta?{' '}
+                            <Link to="/register" className="login-form-footer__link">
+                                Regístrate aquí
+                            </Link>
+                        </p>
+                    </div>
                 </div>
             </main>
         </div>

@@ -8,6 +8,10 @@ use Illuminate\Http\Resources\Json\JsonResource;
 /**
  * Todos los valores son primitivos — nunca objetos anidados,
  * para evitar "Objects are not valid as a React child".
+ *
+ * FIX (junio 2026): se agrega 'usuario_nombre' (whenLoaded 'user')
+ * para identificar pagos registrados directamente desde el Portal
+ * Ciudadano (rol usuario), donde no hay habitante_id vinculado.
  */
 class PagoQrResource extends JsonResource
 {
@@ -39,6 +43,13 @@ class PagoQrResource extends JsonResource
             'habitante_id'         => $this->habitante_id,
             'habitante_nombre'     => $this->whenLoaded('habitante', fn () =>
                 trim(($this->habitante->nombres ?? '') . ' ' . ($this->habitante->apellidos ?? ''))
+            ),
+
+            // Pago registrado directamente por un usuario del Portal
+            // Ciudadano (sin habitante_id vinculado).
+            'user_id'              => $this->user_id,
+            'usuario_nombre'       => $this->whenLoaded('user', fn () =>
+                $this->user?->name
             ),
 
             'familia_id'           => $this->familia_id,

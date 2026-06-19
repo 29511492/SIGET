@@ -12,6 +12,11 @@ use Illuminate\Support\Facades\Cache;
  * Máquina de estados: pendiente → verificado | rechazado
  * El cambio de estado solo lo puede hacer un operador o admin
  * a través de PagoQrController::validar().
+ *
+ * FIX (junio 2026): se agrega 'user_id' nullable y su relación user().
+ * Permite que un pago se registre directamente desde el rol "usuario"
+ * sin depender de que tenga un habitante_id vinculado en la tabla
+ * users. habitante_id sigue existiendo para el flujo de admin/operador.
  */
 class PagoQr extends Model
 {
@@ -23,6 +28,7 @@ class PagoQr extends Model
 
     protected $fillable = [
         'habitante_id',
+        'user_id',
         'familia_id',
         'organizacion_id',
         'verificado_por',
@@ -41,6 +47,7 @@ class PagoQr extends Model
         'fecha_pago'          => 'datetime',
         'fecha_verificacion'  => 'datetime',
         'habitante_id'        => 'integer',
+        'user_id'             => 'integer',
         'familia_id'          => 'integer',
         'organizacion_id'     => 'integer',
         'verificado_por'      => 'integer',
@@ -55,10 +62,16 @@ class PagoQr extends Model
 
     // ── Relaciones ────────────────────────────────────────────
 
-    /** Habitante que realizó el pago. */
+    /** Habitante que realizó el pago (flujo admin/operador). */
     public function habitante(): BelongsTo
     {
         return $this->belongsTo(Habitante::class);
+    }
+
+    /** Usuario que registró el pago directamente (flujo Portal Ciudadano). */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 
     /** Familia del habitante (para agrupar pagos por núcleo). */
@@ -77,6 +90,18 @@ class PagoQr extends Model
     public function verificador(): BelongsTo
     {
         return $this->belongsTo(User::class, 'verificado_por');
+    }
+
+    // ── Scopes ────────────────────────────────────────────────
+
+    public function scopePendientes($query)
+    {
+        return $query->where('estado', 'pendiente');
+    }
+
+    public function scopeDeUsuario($query, int $userId)
+    {
+        return $query->where('user_id', $userId);
     }
 
     // ── Helpers ───────────────────────────────────────────────

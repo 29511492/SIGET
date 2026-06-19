@@ -1,7 +1,8 @@
-import { useState }                        from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useLocation }  from 'react-router-dom';
 import { useAuth }                         from '../hooks/useAuth';
 import { getDashboardComponent }           from '../components/Dashboard/Factories/DashboardFactory';
+import apiClient                           from '../services/axios';
 import './DashboardPage.css';
 
 export default function DashboardPage() {
@@ -15,6 +16,24 @@ export default function DashboardPage() {
     const adminBool = Boolean(isAdmin  ?? (user?.rol === 'admin'));
     const writeBool = Boolean(canWrite ?? (user?.rol === 'admin' || user?.rol === 'operador'));
 
+    // ── Conteo de sugerencias pendientes para el badge ─────────
+    // Mismo endpoint que ya consume AdminDashboard — Capa 2, accesible
+    // para admin/operador/vocero. Si falla, simplemente no se muestra
+    // el badge (no rompe el resto de Acciones Rápidas).
+    const [sugerenciasPendientes, setSugerenciasPendientes] = useState(0);
+
+    const fetchPendientes = useCallback(() => {
+        apiClient.get('/v1/sugerencias?revisada=false')
+            .then(({ data }) => setSugerenciasPendientes(data.meta?.pendientes ?? 0))
+            .catch(() => setSugerenciasPendientes(0));
+    }, []);
+
+    useEffect(() => {
+        if (writeBool || adminBool) {
+            fetchPendientes();
+        }
+    }, [writeBool, adminBool, fetchPendientes]);
+
     // ── Navegación del sidebar ─────────────────────────────────
     const NAV_ITEMS = [
         { label: 'Dashboard',       icon: '⊞',  href: '/dashboard',     permiso: null              },
@@ -26,6 +45,7 @@ export default function DashboardPage() {
         { label: 'Organizaciones',  icon: '🏛️', href: '/organizaciones', permiso: null            },
         { label: 'Pagos QR',        icon: '💳', href: '/pagos',         permiso: 'puede_escribir'  },
         { label: 'Noticias',        icon: '📰', href: '/noticias',      permiso: 'puede_escribir'  },
+        { label: 'Sugerencias',     icon: '💬', href: '/sugerencias',   permiso: null              },
         { label: 'Auditoría',       icon: '🔍', href: '/auditoria',     permiso: 'es_admin'        },
         { label: 'Configuración',   icon: '⚙️', href: '/configuracion', permiso: 'es_admin'        },
     ];
@@ -34,12 +54,17 @@ export default function DashboardPage() {
     // Usa las clases .quick-action-card definidas en DashboardPage.css.
     // Visible solo para admin y operador (writeBool).
     // Ver Auditoría: solo admin (adminBool).
+    //
+    // FIX (junio 2026): se agregó 'badge' opcional — si tiene valor > 0,
+    // se renderiza un contador visual sobre la tarjeta (ej. sugerencias
+    // pendientes). No afecta a las tarjetas que no lo usan.
     const ACCIONES_RAPIDAS = [
-        { label: 'Registrar Familia',  icon: '🏠', href: '/familias/crear',   mostrar: writeBool  },
-        { label: 'Agregar Habitante',  icon: '👤', href: '/habitantes/crear', mostrar: writeBool  },
-        { label: 'Nuevo Proyecto',     icon: '📋', href: '/proyectos/crear',  mostrar: writeBool  },
-        { label: 'Entregar Beneficio', icon: '🎁', href: '/beneficios/nuevo', mostrar: writeBool  },
-        { label: 'Ver Auditoría',      icon: '🔍', href: '/auditoria',        mostrar: adminBool  },
+        { label: 'Registrar Familia',  icon: '🏠', href: '/familias/crear',   mostrar: writeBool, badge: 0 },
+        { label: 'Agregar Habitante',  icon: '👤', href: '/habitantes/crear', mostrar: writeBool, badge: 0 },
+        { label: 'Nuevo Proyecto',     icon: '📋', href: '/proyectos/crear',  mostrar: writeBool, badge: 0 },
+        { label: 'Entregar Beneficio', icon: '🎁', href: '/beneficios/nuevo', mostrar: writeBool, badge: 0 },
+        { label: 'Ver Sugerencias',    icon: '💬', href: '/sugerencias',      mostrar: writeBool, badge: sugerenciasPendientes },
+        { label: 'Ver Auditoría',      icon: '🔍', href: '/auditoria',        mostrar: adminBool, badge: 0 },
     ];
 
     const accionesVisibles = ACCIONES_RAPIDAS.filter(a => a.mostrar);
@@ -193,18 +218,19 @@ export default function DashboardPage() {
                         </span>
                     </div>
 
-                    <div className="topbar-actions">
-                        {writeBool && (
-                            <Link to="/familias/crear" className="topbar-btn topbar-btn--primary">
-                                + Registrar Familia
-                            </Link>
-                        )}
-                        {adminBool && (
-                            <Link to="/reportes" className="topbar-btn topbar-btn--secondary">
-                                📊 Exportar Reporte
-                            </Link>
-                        )}
-                    </div>
+                    {/* FIX (junio 2026): se eliminó la fila topbar-actions.
+                     *
+                     * Contenía dos botones duplicados/rotos:
+                     *   - "+ Registrar Familia" → redundante, ya existe en
+                     *     Acciones Rápidas.
+                     *   - "📊 Exportar Reporte" → usaba <Link to="/reportes">,
+                     *     una ruta que no implementa la funcionalidad real.
+                     *
+                     * El único "Exportar Reporte" funcional vive ahora en
+                     * AdminDashboard.jsx (dashboard-view__export-btn), que
+                     * abre el ExportModal real con las opciones de
+                     * Reporte de Estadísticas, Comunicado e Historial.
+                     */}
                 </header>
 
                 <main className="dashboard-content" id="main-content">
@@ -222,15 +248,22 @@ export default function DashboardPage() {
                      *    .quick-action-card__icon  → icono 1.1rem
                      *    .quick-action-card__label → texto flex:1
                      *    .quick-action-card__arrow → flecha derecha
+                     *    .quick-action-card__badge → NUEVO: contador (ej. pendientes)
                      *
                      *  Se usa <Link> para mantener la navegación SPA
                      *  sin recargar la página.
+                     *
+                     *  NOTA: Esta es la ÚNICA sección "Acciones Rápidas"
+                     *  en todo el Dashboard. La que existía duplicada
+                     *  dentro de AdminDashboard.jsx fue eliminada — esa
+                     *  vista ahora muestra una fila de Alertas dinámicas
+                     *  en su lugar.
                      * ─────────────────────────────────────────── */}
                     {accionesVisibles.length > 0 && (
                         <section className="quick-actions" aria-label="Acciones rápidas">
                             <h2 className="quick-actions__title">Acciones Rápidas</h2>
                             <div className="quick-actions__grid">
-                                {accionesVisibles.map(({ label, icon, href }) => (
+                                {accionesVisibles.map(({ label, icon, href, badge }) => (
                                     <Link
                                         key={href}
                                         to={href}
@@ -242,6 +275,11 @@ export default function DashboardPage() {
                                         <span className="quick-action-card__label">
                                             {label}
                                         </span>
+                                        {badge > 0 && (
+                                            <span className="quick-action-card__badge">
+                                                {badge}
+                                            </span>
+                                        )}
                                         <span className="quick-action-card__arrow" aria-hidden="true">
                                             →
                                         </span>

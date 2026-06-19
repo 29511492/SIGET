@@ -24,6 +24,24 @@
  *  Al montar el AuthProvider, se llama a /api/v1/me para verificar
  *  que el token guardado aún es válido. Si el token expiró en el
  *  servidor, se limpia el estado local automáticamente.
+ *
+ *  CORRECCIONES APLICADAS (fix bucle de login):
+ *  ─────────────────────────────────────────────
+ *  FIX #1 — Se agregaron login() y logout() al contexto.
+ *            Login.jsx los necesita para delegar la persistencia
+ *            del token aquí y no manejarla directamente en el form.
+ *
+ *  FIX #2 — login() guarda token Y user en localStorage ANTES de
+ *            llamar a setUser/setToken, para que el interceptor de
+ *            axios.js encuentre el Bearer token si el Dashboard
+ *            dispara peticiones al montar (ej: GET /dashboard/stats).
+ *
+ *  FIX #3 — login() devuelve el objeto user completo para que
+ *            Login.jsx pueda redirigir por rol sin una segunda
+ *            petición a /me.
+ *
+ *  Todo lo demás (isLoading=true, .finally(), helpers de rol,
+ *  setUser/setToken/clearAuth) ya estaba correcto en tu versión.
  * ═══════════════════════════════════════════════════════════════
  */
 
@@ -100,10 +118,50 @@ export function AuthProvider({ children }) {
     // ── Helpers de rol (derivados del estado user) ─────────────────
     // Estos helpers centralizan la lógica de roles.
     // Ningún componente debería comparar strings de rol directamente.
-    const isAdmin     = user?.rol === 'admin';
-    const isOperador  = user?.rol === 'operador' || isAdmin;
-    const canWrite    = user?.permisos?.puede_escribir ?? false;
-    const canDelete   = user?.permisos?.puede_eliminar ?? false;
+    const isAdmin    = user?.rol === 'admin';
+    const isOperador = user?.rol === 'operador' || isAdmin;
+    const canWrite   = user?.permisos?.puede_escribir ?? false;
+    const canDelete  = user?.permisos?.puede_eliminar ?? false;
+
+    // ── ✅ FIX #1 — login() ────────────────────────────────────────
+    // Centraliza la persistencia del token y el user en un solo lugar.
+    // Login.jsx llama a este método y recibe el user para redirigir
+    // por rol, sin manipular localStorage directamente en el form.
+    const login = useCallback(async (credentials) => {
+        // AuthController@login devuelve:
+        // { message: '...', data: { token: '...', user: UserResource } }
+        const { data } = await apiClient.post('/v1/login', credentials);
+        const { token: newToken, user: loggedUser } = data.data;
+
+        // ✅ FIX #2 — persistir en localStorage ANTES de actualizar
+        // el estado de React. El interceptor de axios.js inyecta el
+        // Bearer token leyendo localStorage en cada request. Si setUser
+        // dispara un re-render que monta el Dashboard antes de que el
+        // token esté guardado, GET /dashboard/stats recibiría un 401.
+        localStorage.setItem('siget_token', newToken);
+        localStorage.setItem('siget_user',  JSON.stringify(loggedUser));
+
+        setTokenState(newToken);
+        setUserState(loggedUser);
+
+        // ✅ FIX #3 — devolver el user para que Login.jsx redirija
+        // según el rol sin necesitar una segunda petición a /me.
+        return loggedUser;
+    }, []);
+
+    // ── ✅ FIX #1 — logout() ───────────────────────────────────────
+    // Centraliza el cierre de sesión: revoca el token en el backend
+    // y limpia el estado local. Si el backend devuelve 401 (token ya
+    // expirado), el finally garantiza que el estado quede limpio igual.
+    const logout = useCallback(async () => {
+        try {
+            await apiClient.post('/v1/logout');
+        } catch {
+            // Silenciar: token ya expirado → limpiar igual en el finally
+        } finally {
+            clearAuth();
+        }
+    }, [clearAuth]);
 
     const value = {
         user,
@@ -113,6 +171,9 @@ export function AuthProvider({ children }) {
         isOperador,
         canWrite,
         canDelete,
+        // Métodos expuestos al resto de la app
+        login,
+        logout,
         setUser,
         setToken,
         clearAuth,

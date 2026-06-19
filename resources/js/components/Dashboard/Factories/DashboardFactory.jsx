@@ -22,8 +22,9 @@
  *  Se implementa una función pura que mapea un `rol` (string) a
  *  un componente React (función). Esta es la implementación idiomática
  *  del patrón Strategy en React: el "contexto" es DashboardPage,
- *  las "estrategias" son AdminDashboard y VoceroDashboard,
- *  y el "selector de estrategia" es getDashboardComponent().
+ *  las "estrategias" son AdminDashboard, VoceroDashboard y
+ *  UsuarioDashboard, y el "selector de estrategia" es
+ *  getDashboardComponent().
  *
  *  BENEFICIOS para la tesis:
  *  - Open/Closed Principle: agregar un nuevo rol (ej: 'operador')
@@ -34,12 +35,28 @@
  *    de los roles — solo recibe un componente y lo renderiza.
  *  - Testeable: getDashboardComponent('admin') es una función pura
  *    que retorna un valor predecible y verificable con Jest.
+ *
+ * ───────────────────────────────────────────────────────────────
+ *  FIX (junio 2026) — Separación de rol "usuario" y "vocero"
+ * ───────────────────────────────────────────────────────────────
+ *  El rol "usuario" estaba mapeado a VoceroDashboard, causando:
+ *    1. Sidebar con módulos que el usuario no puede ver
+ *       (Familias, Habitantes, etc. requieren Capa 2)
+ *    2. Peticiones a /v1/vocero/resumen y /v1/vocero/tareas,
+ *       endpoints inexistentes → vista en "Cargando..." indefinido
+ *
+ *  Solución: se crea UsuarioDashboard (Portal Ciudadano), un
+ *  componente propio para el rol usuario que:
+ *    - No tiene sidebar de módulos administrativos
+ *    - Solo consume endpoints de Capa 1 (auth:sanctum, todos los roles)
+ *    - Presenta un diseño visual tipo portal ciudadano
  * ═══════════════════════════════════════════════════════════════
  */
 
-import AdminDashboard  from '../Views/AdminDashboard';
+import AdminDashboard    from '../Views/AdminDashboard';
 import OperadorDashboard from '../Views/OperadorDashboard';
-import VoceroDashboard from '../Views/VoceroDashboard';
+import VoceroDashboard   from '../Views/VoceroDashboard';
+import UsuarioDashboard  from '../Views/UsuarioDashboard';
 import FallbackDashboard from '../Views/FallbackDashboard';
 
 /**
@@ -55,7 +72,7 @@ const DASHBOARD_REGISTRY = {
     admin:    AdminDashboard,
     operador: OperadorDashboard,
     vocero:   VoceroDashboard,
-    usuario:  VoceroDashboard, // El rol 'usuario' comparte vista con vocero
+    usuario:  UsuarioDashboard,  // FIX: ya no comparte vista con vocero
 };
 
 /**

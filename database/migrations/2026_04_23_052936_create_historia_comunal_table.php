@@ -5,6 +5,14 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
+ * ⚠️ MÓDULO FUERA DE ALCANCE — v2.0
+ * Esta migración crea la tabla para el módulo Historia Comunal.
+ * El módulo fue planificado pero excluido del alcance de esta
+ * versión por priorización. La tabla existe en BD pero no tiene
+ * CRUD implementado. Candidato para versión futura.
+ */
+
+/**
  * ═══════════════════════════════════════════════════════════════
  *  TABLA: historia_comunal
  * ───────────────────────────────────────────────────────────────

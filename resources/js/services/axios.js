@@ -1,16 +1,5 @@
 /**
  * resources/js/services/axios.js — Cliente HTTP centralizado
- *
- * CORRECCIÓN APLICADA:
- * baseURL era '/api/v1' → corregido a '/api'
- *
- * PROBLEMA con '/api/v1':
- * Los componentes llaman apiClient.get('/v1/dashboard/stats')
- * → axios concatena: '/api/v1' + '/v1/dashboard/stats'
- * → URL final: /api/v1/v1/dashboard/stats  ← 404 garantizado
- *
- * SOLUCIÓN: baseURL = '/api', los endpoints incluyen '/v1/...'
- * → '/api' + '/v1/dashboard/stats' = /api/v1/dashboard/stats ✓
  */
 
 import axios from 'axios';

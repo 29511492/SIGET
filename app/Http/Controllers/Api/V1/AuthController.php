@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -12,63 +13,45 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 
-/**
- * ═══════════════════════════════════════════════════════════════
- *  AuthController — Namespace: App\Http\Controllers\Api\V1
- * ───────────────────────────────────────────────────────────────
- *  ⚠️  NAMESPACE CRÍTICO: La 'V' de V1 es MAYÚSCULA.
- *  App\Http\Controllers\Api\V1  ← CORRECTO
- *  App\Http\Controllers\Api\v1  ← INCORRECTO (causa 404 silencioso)
- *
- *  PATRÓN DE RESPUESTA UNIFORME (todos los endpoints de SIGET):
- *  ┌────────────────────────────────────────────────────────────┐
- *  │  Éxito 200:  { "message": "...", "data": { ... } }        │
- *  │  Error 401:  { "message": "...", "errors": { ... } }      │
- *  │  Error 422:  { "message": "...", "errors": { ... } }      │
- *  │  Error 429:  { "message": "...", "errors": {} }           │
- *  └────────────────────────────────────────────────────────────┘
- *
- *  Este patrón permite que el frontend maneje todos los errores
- *  con una sola lógica: siempre leer response.data.message
- *  para el mensaje principal y response.data.errors para el detalle.
- * ═══════════════════════════════════════════════════════════════
- */
 class AuthController extends Controller
 {
-    private const MAX_ATTEMPTS  = 5;   // Intentos antes de bloquear
-    private const DECAY_SECONDS = 60;  // Segundos de bloqueo
+    private const MAX_ATTEMPTS  = 5;   // Rate limiter de IP (capa de red)
+    private const DECAY_SECONDS = 60;
+    private const MAX_PW_FAILS  = 3;   // Intentos antes de bloquear cuenta
 
     // ─────────────────────────────────────────────────────────────
-    //  POST /api/v1/login
+    //  POST /api/v1/register  — Público
     // ─────────────────────────────────────────────────────────────
-    /**
-     * Autentica un usuario y devuelve un Bearer Token de Sanctum.
-     *
-     * La request ya llega VALIDADA por LoginRequest (email y password
-     * cumplen las reglas). El controlador solo verifica credenciales,
-     * emite el token y construye la respuesta.
-     *
-     * @param LoginRequest $request — email: string, password: string
-     * @return JsonResponse
-     *
-     * Respuesta exitosa (200):
-     * {
-     *   "message": "Sesión iniciada correctamente.",
-     *   "data": {
-     *     "token": "1|abc123...",
-     *     "user": {
-     *       "id": 1,
-     *       "name": "Carlos Pérez",
-     *       "email": "carlos@siget.ve",
-     *       "rol": "admin",
-     *       "permisos": { "puede_escribir": true, "puede_eliminar": true, ... }
-     *     }
-     *   }
-     * }
-     */
+    public function register(RegisterRequest $request): JsonResponse
+    {
+        $user = User::create([
+            'name'     => $request->name,
+            'cedula'   => $request->cedula,
+            'email'    => $request->email,
+            'password' => $request->password, // el cast 'hashed' lo encripta automáticamente
+            'rol'      => 'usuario',           // rol base por defecto
+        ]);
+
+        $token = $user->createToken(
+            name:      'siget-spa-' . now()->timestamp,
+            abilities: ['admin:read'],
+        )->plainTextToken;
+
+        return response()->json([
+            'message' => 'Cuenta creada exitosamente.',
+            'data'    => [
+                'token' => $token,
+                'user'  => new UserResource($user),
+            ],
+        ], 201);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  POST /api/v1/login  — Público
+    // ─────────────────────────────────────────────────────────────
     public function login(LoginRequest $request): JsonResponse
     {
-        // ── 1. Rate limiting ───────────────────────────────────────
+        // ── 1. Rate limiter por IP (capa de red) ───────────────────
         $throttleKey = Str::lower($request->email) . '|' . $request->ip();
 
         if (RateLimiter::tooManyAttempts($throttleKey, self::MAX_ATTEMPTS)) {
@@ -79,48 +62,65 @@ class AuthController extends Controller
             ], 429);
         }
 
-        // ── 2. Buscar usuario en PostgreSQL ────────────────────────
+        // ── 2. Buscar usuario ──────────────────────────────────────
         /** @var User|null $user */
         $user = User::where('email', $request->email)->first();
 
-        // ── 3. Verificar contraseña con Hash::check() ──────────────
-        // Hash::check() compara el texto plano con el hash bcrypt
-        // de la base de datos de forma segura (timing-safe).
+        // ── 3. Verificar si la cuenta existe y contraseña es válida
         if (! $user || ! Hash::check($request->password, $user->password)) {
+
             RateLimiter::hit($throttleKey, self::DECAY_SECONDS);
+
+            // Si el usuario existe, registrar intento fallido
+            if ($user) {
+                $user->registrarIntentoFallido();
+
+                // Informar al frontend si la cuenta acaba de bloquearse
+                if ($user->is_locked) {
+                    return response()->json([
+                        'message' => 'Tu cuenta ha sido bloqueada por múltiples intentos fallidos. Revisa tu correo para desbloquearla.',
+                        'errors'  => ['email' => ['Cuenta bloqueada.']],
+                        'locked'  => true,
+                    ], 423); // 423 Locked — código HTTP semánticamente correcto
+                }
+
+                $restantes = self::MAX_PW_FAILS - $user->failed_attempts;
+                return response()->json([
+                    'message' => "Credenciales incorrectas. Te quedan {$restantes} intento(s) antes del bloqueo.",
+                    'errors'  => ['email' => ['Las credenciales no coinciden.']],
+                    'locked'  => false,
+                ], 401);
+            }
 
             return response()->json([
                 'message' => 'Las credenciales no coinciden con nuestros registros.',
-                'errors'  => [
-                    'email' => ['Las credenciales no coinciden con nuestros registros.'],
-                ],
+                'errors'  => ['email' => ['Las credenciales no coinciden.']],
             ], 401);
         }
 
-        // ── 4. Credenciales correctas: limpiar rate limit ──────────
-        RateLimiter::clear($throttleKey);
+        // ── 4. Verificar si la cuenta está bloqueada ───────────────
+        if ($user->is_locked) {
+            return response()->json([
+                'message' => 'Tu cuenta está bloqueada. Revisa tu correo para desbloquearla.',
+                'errors'  => ['email' => ['Cuenta bloqueada.']],
+                'locked'  => true,
+            ], 423);
+        }
 
-        // ── 5. Política de sesión única ────────────────────────────
-        // Se revocan todos los tokens anteriores del usuario.
-        // Si estaba logueado en otro dispositivo, esa sesión queda inválida.
+        // ── 5. Login exitoso — limpiar contadores ──────────────────
+        RateLimiter::clear($throttleKey);
+        $user->limpiarIntentos();
         $user->tokens()->delete();
 
-        // ── 6. Emitir nuevo token Sanctum ──────────────────────────
-        // El nombre del token incluye timestamp para identificarlo en auditorías.
-        // Las abilities restringen qué puede hacer este token específico
-        // según el rol del usuario — doble barrera de seguridad.
-        $tokenResult = $user->createToken(
+        $token = $user->createToken(
             name:      'siget-spa-' . now()->timestamp,
             abilities: $this->abilitiesPorRol($user->rol),
-        );
+        )->plainTextToken;
 
-        // ── 7. Devolver JSON estructurado ──────────────────────────
-        // UserResource transforma el modelo: expone rol y permisos,
-        // NUNCA expone password, remember_token ni tokens de Sanctum.
         return response()->json([
             'message' => 'Sesión iniciada correctamente.',
             'data'    => [
-                'token' => $tokenResult->plainTextToken,
+                'token' => $token,
                 'user'  => new UserResource($user),
             ],
         ], 200);
@@ -131,7 +131,6 @@ class AuthController extends Controller
     // ─────────────────────────────────────────────────────────────
     public function logout(Request $request): JsonResponse
     {
-        // Revoca solo el token actual (no todos los dispositivos)
         $request->user()->currentAccessToken()->delete();
 
         return response()->json([
@@ -142,11 +141,6 @@ class AuthController extends Controller
     // ─────────────────────────────────────────────────────────────
     //  GET /api/v1/me  [auth:sanctum]
     // ─────────────────────────────────────────────────────────────
-    /**
-     * Devuelve el usuario autenticado actualmente.
-     * React llama a este endpoint al recargar la página para
-     * rehidratar el estado de AuthContext con datos frescos.
-     */
     public function me(Request $request): JsonResponse
     {
         return response()->json([
@@ -154,14 +148,7 @@ class AuthController extends Controller
         ], 200);
     }
 
-    // ── Helper privado: abilities por rol ─────────────────────────
-    /**
-     * DECISIÓN DE SEGURIDAD — Doble barrera:
-     * Barrera 1: AdminMiddleware verifica $user->rol en cada request.
-     * Barrera 2: Las abilities del token limitan sus capacidades.
-     * Si alguien intercepta un token de 'vocero', ese token no tiene
-     * la ability 'admin:write' y Sanctum rechazará acciones de escritura.
-     */
+    // ── Helper privado ────────────────────────────────────────────
     private function abilitiesPorRol(string $rol): array
     {
         return match ($rol) {

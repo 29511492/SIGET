@@ -72,12 +72,20 @@ return Application::configure(basePath: dirname(__DIR__))
          * el token es inválido — lo cual React no puede procesar.
          */
         $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, Request $request) {
+            // ✅ FIX: return explícito en TODOS los casos de la API.
+            // Sin el return en el else, Laravel continúa hacia el handler
+            // por defecto que llama redirect()->route('login') — que no
+            // existe en una SPA stateless — causando el error 500.
             if ($request->is('api/*') || $request->expectsJson()) {
                 return response()->json([
                     'message' => 'No autenticado. Por favor, inicia sesión.',
                     'errors'  => [],
                 ], 401);
             }
+
+            // Rutas web (no API) — devolver null para que Laravel
+            // use su handler por defecto solo en rutas web reales.
+            return null;
         });
 
         /**

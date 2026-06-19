@@ -300,6 +300,46 @@
     margin-top: 0.25rem;
 }
 
+/* Contenedor de acciones del header (Exportar + Refrescar) */
+.dashboard-view__header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-shrink: 0;
+}
+
+/* Botón "Exportar Reporte" — antes sin estilo propio (texto plano).
+ * Ahora con jerarquía visual: fondo Azul Petróleo, ícono + texto,
+ * sombra sutil y elevación al hover, consistente con topbar-btn
+ * y quick-action-card del resto del sistema. */
+.dashboard-view__export-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 1.1rem;
+    background: var(--c-navy);
+    color: var(--c-white);
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--ff-body);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    box-shadow: 0 1px 3px rgba(13, 31, 53, 0.2);
+    transition: background var(--transition), box-shadow var(--transition), transform var(--transition);
+}
+
+.dashboard-view__export-btn:hover {
+    background: var(--c-navy-hover);
+    box-shadow: 0 4px 14px rgba(13, 31, 53, 0.25);
+    transform: translateY(-1px);
+}
+
+.dashboard-view__export-btn:active {
+    transform: translateY(0);
+}
+
 .dashboard-view__refresh-btn {
     background: none;
     border: 1px solid var(--c-border);
@@ -309,6 +349,7 @@
     font-size: 1.1rem;
     color: var(--c-text-light);
     cursor: pointer;
+    flex-shrink: 0;
     transition: color var(--transition), border-color var(--transition);
 }
 .dashboard-view__refresh-btn:hover { color: var(--c-navy); border-color: var(--c-navy); }
@@ -329,6 +370,54 @@
     margin-left: auto; background: none; border: 1px solid var(--c-error);
     color: var(--c-error); border-radius: 4px; padding: 0.25rem 0.75rem;
     font-size: 0.8rem; cursor: pointer;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   ALERT BANNER ROW (AdminDashboard)
+   ───────────────────────────────────────────────────────────────
+   Fila de alertas dinámicas y clicables. Solo se renderiza cuando
+   hay algo que requiere atención (sugerencias pendientes, viviendas
+   críticas). Reemplaza la antigua sección "Acciones Rápidas" que
+   estaba duplicada dentro de AdminDashboard.jsx.
+   ════════════════════════════════════════════════════════════════ */
+.alert-banner-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1.75rem;
+}
+
+.alert-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.8rem 1.1rem;
+    border-radius: var(--radius);
+    text-decoration: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: transform var(--transition), box-shadow var(--transition);
+    border: 1px solid transparent;
+}
+
+.alert-banner:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+}
+
+.alert-banner__icon  { font-size: 1.1rem; flex-shrink: 0; }
+.alert-banner__texto { flex: 1; }
+.alert-banner__arrow { font-size: 0.85rem; opacity: 0.7; }
+
+.alert-banner--amber {
+    background: #fffbeb;
+    border-color: #fde68a;
+    color: #92400e;
+}
+.alert-banner--red {
+    background: var(--c-error-bg);
+    border-color: rgba(192,57,43,0.25);
+    color: var(--c-error);
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -429,6 +518,23 @@
 .quick-action-card__icon  { font-size: 1.1rem; flex-shrink: 0; }
 .quick-action-card__label { flex: 1; }
 .quick-action-card__arrow { color: var(--c-text-light); font-size: 0.9rem; }
+
+/* Badge de contador (ej. sugerencias pendientes) sobre la tarjeta */
+.quick-action-card__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 0.35rem;
+    background: #fef9c3;
+    color: #854d0e;
+    border: 1px solid #fde68a;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
 
 /* ════════════════════════════════════════════════════════════════
    VOCERO DASHBOARD
@@ -542,6 +648,8 @@
     .stats-grid        { grid-template-columns: repeat(2, 1fr); }
     .vocero-stats      { grid-template-columns: repeat(2, 1fr); }
     .quick-actions__grid { grid-template-columns: repeat(2, 1fr); }
+    .alert-banner-row  { grid-template-columns: 1fr; }
+    .dashboard-view__header { flex-wrap: wrap; gap: 0.75rem; }
 }
 
 @media (max-width: 480px) {
