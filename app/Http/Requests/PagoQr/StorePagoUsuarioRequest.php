@@ -13,13 +13,16 @@ use Illuminate\Http\Exceptions\HttpResponseException;
  * Usado exclusivamente por PagoQrController::storeUsuario() —
  * el endpoint del Portal Ciudadano (POST /v1/pagos/mio).
  *
- * Diferencias respecto a StorePagoQrRequest (flujo admin/operador):
- *   - NO requiere habitante_id ni familia_id — el pago se vincula
- *     directamente al usuario autenticado vía user_id en el controlador.
- *   - El comprobante es OBLIGATORIO aquí (en el flujo admin es opcional,
- *     porque el operador puede registrar el pago primero y subir el
- *     comprobante después). El ciudadano siempre debe adjuntarlo,
- *     porque es su única prueba de pago.
+ * FIX (Fase 3 — junio 2026): 'cuenta_pago_id' ahora es OBLIGATORIO.
+ * El usuario debe elegir a qué cuenta de pago (servicio) corresponde
+ * su pago antes de poder enviar el comprobante. Esto reemplaza la
+ * dependencia exclusiva del texto libre en 'concepto_pago' para
+ * identificar el servicio, y vincula formalmente cada pago a una
+ * cuenta real gestionada por el admin/operador.
+ *
+ * 'exists:cuentas_pago,id,activa,1' valida que la cuenta exista Y
+ * esté activa — evita que alguien envíe un pago a una cuenta que el
+ * admin desactivó después de que el usuario cargó la página.
  */
 class StorePagoUsuarioRequest extends FormRequest
 {
@@ -31,6 +34,7 @@ class StorePagoUsuarioRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'cuenta_pago_id'      => ['required', 'integer', 'exists:cuentas_pago,id,activa,1'],
             'referencia_bancaria' => ['required', 'string', 'max:100', 'unique:pagos_qr,referencia_bancaria'],
             'monto'               => ['required', 'numeric', 'min:0.01', 'max:999999.99'],
             'concepto_pago'       => ['required', 'string', 'max:200'],
@@ -43,6 +47,8 @@ class StorePagoUsuarioRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'cuenta_pago_id.required' => 'Debes seleccionar a qué cuenta de pago corresponde tu pago.',
+            'cuenta_pago_id.exists'   => 'La cuenta de pago seleccionada no es válida o ya no está disponible.',
             'referencia_bancaria.required' => 'Debes indicar el número de referencia del pago.',
             'referencia_bancaria.unique'   => 'Esta referencia bancaria ya fue registrada.',
             'monto.required'               => 'Debes indicar el monto pagado.',

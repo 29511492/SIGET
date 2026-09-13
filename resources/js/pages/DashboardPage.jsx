@@ -44,6 +44,7 @@ export default function DashboardPage() {
         { label: 'Beneficios',      icon: '🎁', href: '/beneficios',    permiso: null              },
         { label: 'Organizaciones',  icon: '🏛️', href: '/organizaciones', permiso: null            },
         { label: 'Pagos QR',        icon: '💳', href: '/pagos',         permiso: 'puede_escribir'  },
+        { label: 'Cuentas de Pago', icon: '🏦', href: '/cuentas-pago',  permiso: 'puede_escribir'  },
         { label: 'Noticias',        icon: '📰', href: '/noticias',      permiso: 'puede_escribir'  },
         { label: 'Sugerencias',     icon: '💬', href: '/sugerencias',   permiso: null              },
         { label: 'Auditoría',       icon: '🔍', href: '/auditoria',     permiso: 'es_admin'        },
@@ -64,6 +65,7 @@ export default function DashboardPage() {
         { label: 'Nuevo Proyecto',     icon: '📋', href: '/proyectos/crear',  mostrar: writeBool, badge: 0 },
         { label: 'Entregar Beneficio', icon: '🎁', href: '/beneficios/nuevo', mostrar: writeBool, badge: 0 },
         { label: 'Ver Sugerencias',    icon: '💬', href: '/sugerencias',      mostrar: writeBool, badge: sugerenciasPendientes },
+        { label: 'Cuentas de Pago',    icon: '🏦', href: '/cuentas-pago',     mostrar: writeBool, badge: 0 },
         { label: 'Ver Auditoría',      icon: '🔍', href: '/auditoria',        mostrar: adminBool, badge: 0 },
     ];
 
@@ -218,19 +220,18 @@ export default function DashboardPage() {
                         </span>
                     </div>
 
-                    {/* FIX (junio 2026): se eliminó la fila topbar-actions.
-                     *
-                     * Contenía dos botones duplicados/rotos:
-                     *   - "+ Registrar Familia" → redundante, ya existe en
-                     *     Acciones Rápidas.
-                     *   - "📊 Exportar Reporte" → usaba <Link to="/reportes">,
-                     *     una ruta que no implementa la funcionalidad real.
-                     *
-                     * El único "Exportar Reporte" funcional vive ahora en
-                     * AdminDashboard.jsx (dashboard-view__export-btn), que
-                     * abre el ExportModal real con las opciones de
-                     * Reporte de Estadísticas, Comunicado e Historial.
-                     */}
+                    <div className="topbar-actions">
+                        {writeBool && (
+                            <Link to="/familias/crear" className="topbar-btn topbar-btn--primary">
+                                + Registrar Familia
+                            </Link>
+                        )}
+                        {adminBool && (
+                            <Link to="/reportes" className="topbar-btn topbar-btn--secondary">
+                                📊 Exportar Reporte
+                            </Link>
+                        )}
+                    </div>
                 </header>
 
                 <main className="dashboard-content" id="main-content">

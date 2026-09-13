@@ -1,0 +1,410 @@
+/**
+ * CuentaPagoForm.css — SIGET
+ * Ruta física: resources/js/pages/pagos/CuentaPagoForm.css
+ *
+ * Mismo sistema de variables y componentes que OrganizacionForm.css,
+ * con prefijo .cpform-* para no colisionar. Se agrega .cpform-row
+ * para el layout en fila (Teléfono + Cédula/RIF lado a lado).
+ */
+
+/* ── Variables (autónomas) ──────────────────────────────────── */
+:root {
+    --c-navy:       #0d1f35;
+    --c-navy-mid:   #14293f;
+    --c-navy-hover: #1e3a56;
+    --c-gold:       #c9a84c;
+    --c-gold-light: #e0c06e;
+    --c-gold-dim:   rgba(201, 168, 76, 0.12);
+    --c-offwhite:   #f8f6f1;
+    --c-white:      #ffffff;
+    --c-text-dark:  #1a1a2e;
+    --c-text-mid:   #4a5568;
+    --c-text-light: #718096;
+    --c-border:     #e8e3db;
+    --c-error:      #c0392b;
+    --c-error-bg:   #fdf2f2;
+    --c-success:    #166534;
+    --c-success-bg: #dcfce7;
+    --ff-display:   'DM Serif Display', Georgia, serif;
+    --ff-body:      'DM Sans', 'Segoe UI', sans-serif;
+    --radius:       8px;
+    --radius-lg:    12px;
+    --transition:   200ms cubic-bezier(0.4, 0, 0.2, 1);
+    --shadow-card:  0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.04);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Página base ─────────────────────────────────────────────── */
+.cpform-page {
+    min-height: 100vh;
+    background: var(--c-offwhite);
+    font-family: var(--ff-body);
+}
+
+/* ── Topbar ──────────────────────────────────────────────────── */
+.cpform-topbar {
+    height: 56px;
+    background: var(--c-white);
+    border-bottom: 1px solid var(--c-border);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0 2rem;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+}
+
+.cpform-topbar__back {
+    background: none;
+    border: none;
+    font-family: var(--ff-body);
+    font-size: 0.875rem;
+    color: var(--c-text-mid);
+    cursor: pointer;
+    padding: 0.35rem 0.75rem;
+    border-radius: var(--radius);
+    transition: background var(--transition), color var(--transition);
+}
+.cpform-topbar__back:hover {
+    background: var(--c-offwhite);
+    color: var(--c-navy);
+}
+
+.cpform-topbar__breadcrumb {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    color: var(--c-text-light);
+}
+.cpform-topbar__breadcrumb span:first-child {
+    font-weight: 600;
+    color: var(--c-navy);
+}
+
+/* ── Contenedor centrado ─────────────────────────────────────── */
+.cpform-container {
+    max-width: 680px;
+    margin: 2.5rem auto;
+    padding: 0 1.5rem 4rem;
+}
+
+/* ── Card principal ──────────────────────────────────────────── */
+.cpform-card {
+    background: var(--c-white);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+    border: 1px solid var(--c-border);
+    border-top: 3px solid var(--c-gold);
+    overflow: hidden;
+}
+
+/* ── Encabezado de la card ────────────────────────────────────── */
+.cpform-card__header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.75rem 2rem;
+    background: var(--c-navy);
+    border-bottom: 1px solid rgba(201, 168, 76, 0.3);
+}
+
+.cpform-card__header-icon {
+    font-size: 1.75rem;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.cpform-card__title {
+    font-family: var(--ff-display);
+    font-size: 1.5rem;
+    font-weight: 400;
+    color: var(--c-white);
+    line-height: 1.2;
+}
+
+.cpform-card__subtitle {
+    font-size: 0.82rem;
+    color: rgba(255,255,255,0.65);
+    margin-top: 0.25rem;
+    line-height: 1.4;
+}
+
+/* ── Cuerpo del formulario ───────────────────────────────────── */
+.cpform-body {
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* ── Fila de dos campos lado a lado (Teléfono + Cédula/RIF) ──── */
+.cpform-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+/* ── Campo individual ────────────────────────────────────────── */
+.cpform-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.cpform-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--c-text-dark);
+    letter-spacing: 0.01em;
+}
+
+.cpform-label__hint {
+    font-weight: 400;
+    color: var(--c-text-light);
+    font-size: 0.8rem;
+}
+
+.cpform-required {
+    color: var(--c-error);
+    margin-left: 0.15rem;
+}
+
+/* ── Input / Select / Textarea ───────────────────────────────── */
+.cpform-input,
+.cpform-select,
+.cpform-textarea {
+    font-family: var(--ff-body);
+    font-size: 0.9rem;
+    color: var(--c-text-dark);
+    background: var(--c-white);
+    border: 1.5px solid var(--c-border);
+    border-radius: var(--radius);
+    padding: 0.7rem 0.875rem;
+    outline: none;
+    width: 100%;
+    transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.cpform-input:focus,
+.cpform-select:focus,
+.cpform-textarea:focus {
+    border-color: var(--c-gold);
+    box-shadow: 0 0 0 3px var(--c-gold-dim);
+}
+
+.cpform-input:hover:not(:focus),
+.cpform-select:hover:not(:focus),
+.cpform-textarea:hover:not(:focus) {
+    border-color: var(--c-navy-hover);
+}
+
+.cpform-input--error {
+    border-color: var(--c-error) !important;
+    box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.08) !important;
+}
+
+.cpform-textarea {
+    resize: vertical;
+    min-height: 90px;
+    line-height: 1.55;
+}
+
+/* ── Mensajes de error y hint ────────────────────────────────── */
+.cpform-field__error {
+    font-size: 0.78rem;
+    color: var(--c-error);
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+.cpform-field__error::before { content: '⚠ '; }
+
+.cpform-field__count {
+    font-size: 0.72rem;
+    color: var(--c-text-light);
+    text-align: right;
+    margin-top: -0.2rem;
+}
+
+/* ── Campo switch (estatus) ──────────────────────────────────── */
+.cpform-field--switch {
+    flex-direction: row;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    background: var(--c-offwhite);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius);
+}
+
+.cpform-switch {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    flex: 1;
+}
+
+.cpform-switch__input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.cpform-switch__track {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    background: var(--c-border);
+    border-radius: 999px;
+    flex-shrink: 0;
+    transition: background var(--transition);
+}
+.cpform-switch__track::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    background: var(--c-white);
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    transition: transform var(--transition);
+}
+.cpform-switch__input:checked ~ .cpform-switch__track {
+    background: var(--c-navy);
+}
+.cpform-switch__input:checked ~ .cpform-switch__track::after {
+    transform: translateX(20px);
+}
+.cpform-switch__input:focus-visible ~ .cpform-switch__track {
+    outline: 2px solid var(--c-gold);
+    outline-offset: 2px;
+}
+
+.cpform-switch__label { font-size: 0.875rem; }
+
+.cpform-status--active   { color: var(--c-success); font-weight: 500; }
+.cpform-status--inactive { color: var(--c-text-light); }
+
+/* ── Acciones ────────────────────────────────────────────────── */
+.cpform-actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--c-border);
+    margin-top: 0.5rem;
+}
+
+/* ── Botones ─────────────────────────────────────────────────── */
+.cpform-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.7rem 1.5rem;
+    border-radius: var(--radius);
+    font-family: var(--ff-body);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: filter var(--transition), transform var(--transition), box-shadow var(--transition);
+    white-space: nowrap;
+}
+
+.cpform-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+.cpform-btn--primary {
+    background: var(--c-navy);
+    color: var(--c-white);
+}
+.cpform-btn--primary:hover:not(:disabled) {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(13, 31, 53, 0.25);
+}
+
+.cpform-btn--secondary {
+    background: transparent;
+    color: var(--c-text-mid);
+    border: 1.5px solid var(--c-border);
+}
+.cpform-btn--secondary:hover:not(:disabled) {
+    border-color: var(--c-navy);
+    color: var(--c-navy);
+    background: var(--c-offwhite);
+}
+
+.cpform-btn__spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,0.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: cpform-spin 0.7s linear infinite;
+}
+
+/* ── Toast de notificación ───────────────────────────────────── */
+.cpform-toast {
+    position: fixed;
+    top: 1.25rem;
+    right: 1.25rem;
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.875rem 1.25rem;
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    font-family: var(--ff-body);
+    font-weight: 500;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    animation: cpform-slidein 220ms cubic-bezier(0.4, 0, 0.2, 1);
+    max-width: 380px;
+}
+
+.cpform-toast--success {
+    background: var(--c-success-bg);
+    color: var(--c-success);
+    border: 1px solid #86efac;
+}
+
+.cpform-toast--error {
+    background: var(--c-error-bg);
+    color: var(--c-error);
+    border: 1px solid rgba(192, 57, 43, 0.3);
+}
+
+/* ── Animaciones ─────────────────────────────────────────────── */
+@keyframes cpform-spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes cpform-slidein {
+    from { opacity: 0; transform: translateX(20px); }
+    to   { opacity: 1; transform: translateX(0);    }
+}
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 720px) {
+    .cpform-container     { padding: 0 1rem 3rem; margin: 1.25rem auto; }
+    .cpform-card__header  { padding: 1.25rem 1.25rem; }
+    .cpform-body          { padding: 1.25rem; gap: 1.25rem; }
+    .cpform-row           { grid-template-columns: 1fr; }
+    .cpform-actions       { flex-direction: column-reverse; }
+    .cpform-btn           { width: 100%; justify-content: center; }
+    .cpform-toast         { top: auto; bottom: 1rem; right: 1rem; left: 1rem; max-width: none; }
+    .cpform-field--switch { flex-direction: column; align-items: flex-start; }
+}

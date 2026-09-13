@@ -551,6 +551,182 @@
 }
 
 /* ════════════════════════════════════════════════════════════════
+    WIZARD DE RECUPERACIÓN — clases nuevas (junio 2026)
+    Estas clases son exclusivas del flujo de 4 pasos en /login.
+    No existían en la versión anterior — su ausencia hacía que el
+    indicador de progreso se renderizara como texto plano sin estilos.
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Alert de éxito (comparte layout con --error) ───────────── */
+.login-alert--success {
+    background-color: #f0fdf4;
+    border: 1px solid #86efac;
+    color: #166534;
+}
+
+/* ── Barra de progreso del wizard (pasos 2-4) ───────────────── */
+.wizard-progress {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    margin-bottom: 2rem;
+}
+
+.wizard-progress__step-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    position: relative;
+}
+
+.wizard-progress__step {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--c-border);
+    color: var(--c-text-light);
+    font-size: 0.72rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background var(--transition), color var(--transition);
+    border: 2px solid var(--c-border);
+    position: relative;
+    z-index: 1;
+}
+
+.wizard-progress__step--active {
+    background: var(--c-navy);
+    color: var(--c-white);
+    border-color: var(--c-navy);
+    box-shadow: 0 0 0 3px rgba(13, 31, 53, 0.12);
+}
+
+.wizard-progress__step--done {
+    background: var(--c-gold);
+    color: var(--c-navy);
+    border-color: var(--c-gold);
+}
+
+.wizard-progress__label {
+    font-size: 0.68rem;
+    font-weight: 500;
+    color: var(--c-text-light);
+    white-space: nowrap;
+    margin-left: 0.35rem;
+    margin-right: 0.5rem;
+}
+
+.wizard-progress__line {
+    width: 32px;
+    height: 2px;
+    background: var(--c-border);
+    margin: 0 0.35rem;
+    flex-shrink: 0;
+    transition: background var(--transition);
+}
+
+.wizard-progress__line--done {
+    background: var(--c-gold);
+}
+
+/* ── Campo OTP — centrado, dígitos grandes ───────────────────── */
+.login-field__input--otp {
+    text-align: center;
+    font-size: 1.6rem;
+    font-weight: 700;
+    letter-spacing: 0.4em;
+    padding-left: 2.75rem;
+    padding-right: 1rem;
+    color: var(--c-navy);
+}
+
+/* ── Hints debajo de los campos ─────────────────────────────── */
+.login-field__hint {
+    font-size: 0.78rem;
+    color: var(--c-text-light);
+    margin-top: -0.1rem;
+}
+
+.login-field__hint--ok {
+    color: #166534;
+    font-weight: 500;
+}
+
+.login-field__hint--err {
+    color: var(--c-error);
+    font-weight: 500;
+}
+
+/* ── Indicador de fortaleza de contraseña ───────────────────── */
+.pw-strength {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-top: -0.1rem;
+}
+
+.pw-strength__bar {
+    height: 4px;
+    border-radius: 999px;
+    flex: 1;
+    transition: background var(--transition), width var(--transition);
+}
+
+.pw-strength__bar--debil  { background: var(--c-error); }
+.pw-strength__bar--media  { background: #f59e0b; }
+.pw-strength__bar--fuerte { background: #16a34a; }
+
+.pw-strength__label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    white-space: nowrap;
+    color: var(--c-text-mid);
+    min-width: 90px;
+}
+
+/* ── Botón estilizado como link (para "¿Olvidaste tu contraseña?")
+ * Se comporta como <button> para no crear navegación en el historial,
+ * pero visualmente es idéntico al <Link> de registro. */
+.login-form-footer__link--btn {
+    background: none;
+    border: none;
+    padding: 0;
+    font-family: var(--ff-body);
+    font-size: inherit;
+    cursor: pointer;
+    /* Hereda los estilos de .login-form-footer__link */
+    color: var(--c-navy);
+    font-weight: 600;
+    text-decoration: none;
+    position: relative;
+    transition: color var(--transition);
+}
+
+.login-form-footer__link--btn::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0; bottom: -2px;
+    height: 1px;
+    background: var(--c-gold);
+    transform: scaleX(0);
+    transform-origin: right;
+    transition: transform var(--transition);
+}
+
+.login-form-footer__link--btn:hover {
+    color: var(--c-gold-light);
+}
+
+.login-form-footer__link--btn:hover::after {
+    transform: scaleX(1);
+    transform-origin: left;
+}
+
+/* ════════════════════════════════════════════════════════════════
     RESPONSIVE — Tablet y móvil
    ════════════════════════════════════════════════════════════════ */
 @media (max-width: 860px) {

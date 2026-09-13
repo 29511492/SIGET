@@ -43,10 +43,7 @@ import { useAuth }      from './hooks/useAuth';
 
 // Páginas
 import Login            from './pages/auth/Login';
-import Register         from './pages/auth/Register';
-import ForgotPassword   from './pages/auth/ForgotPassword';
-import ResetPassword    from './pages/auth/ResetPassword';
-import DashboardRouter  from './pages/DashboardRouter';
+import DashboardPage    from './pages/DashboardPage';
 import FamiliaForm      from './pages/familias/FamiliaForm';
 import FamiliaList      from './pages/familias/FamiliaList';
 import HabitanteForm    from './pages/habitantes/HabitanteForm';
@@ -66,7 +63,7 @@ import ComunicadoForm   from './pages/comunicados/ComunicadoForm';
 import ComunicadoList   from './pages/comunicados/ComunicadoList';
 import ComunicadoDetail from './pages/comunicados/ComunicadoDetail';
 import ComunicadoEdit   from './pages/comunicados/ComunicadoEdit';
-import PerfilRouter     from './pages/PerfilRouter';
+import PerfilPage       from './pages/perfil/PerfilPage';
 import MiComunidad      from './pages/voceros/MiComunidad';
 import NoticiaList      from './pages/noticias/NoticiaList';
 import NoticiaForm      from './pages/noticias/NoticiaForm';
@@ -221,15 +218,13 @@ const App = () => (
                     <Route path="/login" element={
                         <PublicRoute><Login /></PublicRoute>
                     } />
-                    <Route path="/register" element={
-                        <PublicRoute><Register /></PublicRoute>
-                    } />
-                    <Route path="/forgot-password" element={
-                        <PublicRoute><ForgotPassword /></PublicRoute>
-                    } />
-                    <Route path="/reset-password" element={
-                        <PublicRoute><ResetPassword /></PublicRoute>
-                    } />
+                    {/* Registro y recuperación de contraseña ahora
+                        son pasos internos del wizard en /login.
+                        Estos redirects evitan que URLs viejas queden
+                        accesibles o en el historial del navegador. */}
+                    <Route path="/register"          element={<Navigate to="/login" replace />} />
+                    <Route path="/forgot-password"   element={<Navigate to="/login" replace />} />
+                    <Route path="/reset-password"    element={<Navigate to="/login" replace />} />
 
                     {/* Raíz → login (PublicRoute la redirigirá al dashboard
                         si ya hay sesión activa)                              */}
@@ -242,7 +237,7 @@ const App = () => (
 
                     <Route path="/dashboard" element={
                         <ProtectedRoute>
-                            <DashboardRouter />
+                            <DashboardPage />
                         </ProtectedRoute>
                     } />
 
@@ -425,12 +420,10 @@ const App = () => (
                         </ProtectedRoute>
                     } />
 
-                    {/* Rol: usuario → /perfil (PerfilRouter decide:
-                        UsuarioDashboard para rol usuario, PerfilPage
-                        normal con sidebar para los demás roles) */}
+                    {/* Rol: usuario → /perfil */}
                     <Route path="/perfil" element={
                         <ProtectedRoute allowedRoles={['usuario', 'admin', 'operador', 'vocero']}>
-                            <PerfilRouter />
+                            <PerfilPage />
                         </ProtectedRoute>
                     } />
 

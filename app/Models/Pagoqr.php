@@ -13,10 +13,10 @@ use Illuminate\Support\Facades\Cache;
  * El cambio de estado solo lo puede hacer un operador o admin
  * a través de PagoQrController::validar().
  *
- * FIX (junio 2026): se agrega 'user_id' nullable y su relación user().
- * Permite que un pago se registre directamente desde el rol "usuario"
- * sin depender de que tenga un habitante_id vinculado en la tabla
- * users. habitante_id sigue existiendo para el flujo de admin/operador.
+ * FIX (junio 2026): se agrega 'cuenta_pago_id' y su relación
+ * cuentaPago(). Vincula formalmente el pago a la cuenta de pago
+ * (servicio) que el usuario eligió al pagar, reemplazando la
+ * dependencia exclusiva del texto libre en 'concepto_pago'.
  */
 class PagoQr extends Model
 {
@@ -31,6 +31,7 @@ class PagoQr extends Model
         'user_id',
         'familia_id',
         'organizacion_id',
+        'cuenta_pago_id',
         'verificado_por',
         'referencia_bancaria',
         'monto',
@@ -50,6 +51,7 @@ class PagoQr extends Model
         'user_id'             => 'integer',
         'familia_id'          => 'integer',
         'organizacion_id'     => 'integer',
+        'cuenta_pago_id'      => 'integer',
         'verificado_por'      => 'integer',
     ];
 
@@ -80,10 +82,16 @@ class PagoQr extends Model
         return $this->belongsTo(Familia::class);
     }
 
-    /** Servicio público al que corresponde el pago. */
+    /** Servicio público al que corresponde el pago (módulo Organizaciones). */
     public function organizacion(): BelongsTo
     {
         return $this->belongsTo(Organizacion::class);
+    }
+
+    /** Cuenta de pago (servicio + datos bancarios) elegida al pagar. */
+    public function cuentaPago(): BelongsTo
+    {
+        return $this->belongsTo(CuentaPago::class, 'cuenta_pago_id');
     }
 
     /** Operador que verificó o rechazó el pago. */

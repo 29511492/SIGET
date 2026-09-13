@@ -28,6 +28,7 @@ use App\Http\Controllers\Api\V1\ProyectoController;
 use App\Http\Controllers\Api\V1\BeneficioController;
 use App\Http\Controllers\Api\V1\AuditoriaController;
 use App\Http\Controllers\Api\V1\OrganizacionController;
+use App\Http\Controllers\Api\V1\CuentaPagoController;
 use App\Http\Controllers\Api\V1\PagoQrController;
 use App\Http\Controllers\Api\V1\ReporteController;
 use App\Http\Controllers\Api\V1\ComunicadoController;
@@ -100,6 +101,14 @@ Route::prefix('v1')->group(function () {
         Route::get('pagos/mis', [PagoQrController::class, 'misPagos'])
             ->name('api.v1.pagos.mis');
 
+        // Cuentas de Pago — todos los roles autenticados pueden VER las
+        // activas, para elegir a cuál corresponde su pago. La escritura
+        // (crear/editar/eliminar) vive en Capa 3 y Capa 4 más abajo.
+        // REGLA: estática 'cuentas-pago' (sin parámetro) ya es la raíz,
+        // no hay conflicto de orden con la dinámica {cuenta} de Capa 2.
+        Route::get('cuentas-pago', [CuentaPagoController::class, 'index'])
+            ->name('api.v1.cuentas-pago.index');
+
 
         // ══════════════════════════════════════════════════════════
         //  CAPA 2 — LECTURA (todos los roles autenticados)
@@ -166,6 +175,10 @@ Route::prefix('v1')->group(function () {
 
             Route::get('organizaciones/{org}', [OrganizacionController::class, 'show'])
                 ->name('api.v1.organizaciones.show');
+
+            // Detalle de una cuenta de pago — el listado vive en Capa 1
+            Route::get('cuentas-pago/{cuenta}', [CuentaPagoController::class, 'show'])
+                ->name('api.v1.cuentas-pago.show');
 
             // Pagos QR — estática form-data ANTES que la dinámica {pago}
             Route::get('pagos/form-data', [PagoQrController::class, 'formData'])
@@ -240,6 +253,13 @@ Route::prefix('v1')->group(function () {
             Route::put('organizaciones/{org}', [OrganizacionController::class, 'update'])
                 ->name('api.v1.organizaciones.update');
 
+            // Crear y editar cuentas de pago — admin/operador
+            Route::post('cuentas-pago', [CuentaPagoController::class, 'store'])
+                ->name('api.v1.cuentas-pago.store');
+
+            Route::put('cuentas-pago/{cuenta}', [CuentaPagoController::class, 'update'])
+                ->name('api.v1.cuentas-pago.update');
+
             // Pagos QR — crear
             Route::post('pagos', [PagoQrController::class, 'store'])
                 ->name('api.v1.pagos.store');
@@ -308,6 +328,10 @@ Route::prefix('v1')->group(function () {
 
             Route::delete('organizaciones/{org}', [OrganizacionController::class, 'destroy'])
                 ->name('api.v1.organizaciones.destroy');
+
+            // Eliminar cuenta de pago — solo admin
+            Route::delete('cuentas-pago/{cuenta}', [CuentaPagoController::class, 'destroy'])
+                ->name('api.v1.cuentas-pago.destroy');
 
             Route::delete('pagos/{pago}', [PagoQrController::class, 'destroy'])
                 ->name('api.v1.pagos.destroy');

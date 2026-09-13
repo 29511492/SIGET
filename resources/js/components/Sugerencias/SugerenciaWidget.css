@@ -128,6 +128,7 @@
 }
 
 .sw-categoria-btn {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -136,12 +137,23 @@
     border: 1.5px solid var(--c-border);
     border-radius: var(--radius);
     cursor: pointer;
-    transition: border-color var(--transition), background var(--transition);
+    transition: border-color var(--transition), background var(--transition), box-shadow var(--transition);
     background: var(--c-offwhite);
 }
 .sw-categoria-btn:hover {
     border-color: var(--c-navy);
     background: var(--c-white);
+}
+
+/* FIX: el navegador dibuja su outline nativo de foco alrededor del
+ * <label> al navegar con teclado/clic sobre el input radio oculto,
+ * y eso se confundía visualmente con un estado "seleccionado" en
+ * una categoría distinta a la realmente activa (form.categoria).
+ * Se reemplaza por un anillo dorado intencional, solo visible en
+ * navegación por teclado (:focus-visible), nunca con clic de mouse. */
+.sw-categoria-btn:has(.sw-categoria-btn__input:focus-visible) {
+    box-shadow: 0 0 0 3px var(--c-gold-dim, rgba(201, 168, 76, 0.25));
+    border-color: var(--c-gold);
 }
 
 .sw-categoria-btn__input {
@@ -182,15 +194,24 @@
 }
 
 .sw-prioridad-opt {
+    position: relative;
     padding: 0.3rem 0.75rem;
     border: 1.5px solid var(--c-border);
     border-radius: 999px;
     font-size: 0.78rem;
     font-weight: 500;
     cursor: pointer;
-    transition: border-color var(--transition), background var(--transition);
+    transition: border-color var(--transition), background var(--transition), box-shadow var(--transition);
     color: var(--c-text-mid);
 }
+
+/* Mismo fix que .sw-categoria-btn: outline dorado intencional en
+ * lugar del outline nativo confuso del navegador. */
+.sw-prioridad-opt:has(.sw-prioridad-opt__input:focus-visible) {
+    box-shadow: 0 0 0 3px var(--c-gold-dim, rgba(201, 168, 76, 0.25));
+    border-color: var(--c-gold);
+}
+
 .sw-prioridad-opt__input {
     position: absolute;
     opacity: 0;

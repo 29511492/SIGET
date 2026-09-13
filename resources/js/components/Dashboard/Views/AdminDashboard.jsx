@@ -56,9 +56,10 @@ export default function AdminDashboard({ user }) {
     const [error,   setError]   = useState(null);
     const [exportModalAbierto, setExportModalAbierto] = useState(false);
 
-    // ── Estado de alertas (sugerencias pendientes) ──────────────
+    // ── Estado de alertas (sugerencias y pagos pendientes) ─────
     // Solo necesitamos el conteo, así que pedimos 1 página mínima.
     const [sugerenciasPendientes, setSugerenciasPendientes] = useState(0);
+    const [pagosPendientes,       setPagosPendientes]       = useState(0);
 
     const fetchStats = useCallback(async () => {
         setLoading(true);
@@ -89,10 +90,24 @@ export default function AdminDashboard({ user }) {
         }
     }, []);
 
+    // FIX (junio 2026): conteo de pagos QR pendientes de verificación,
+    // incluyendo los registrados directamente por el rol "usuario" desde
+    // el Portal Ciudadano (POST /v1/pagos/mio). Mismo endpoint que ya
+    // usa el panel de validación (/pagos?estado=pendiente), Capa 2.
+    const fetchPagosPendientes = useCallback(async () => {
+        try {
+            const { data } = await apiClient.get('/v1/pagos?estado=pendiente');
+            setPagosPendientes(data.meta?.total ?? 0);
+        } catch {
+            setPagosPendientes(0);
+        }
+    }, []);
+
     useEffect(() => {
         fetchStats();
         fetchSugerenciasPendientes();
-    }, [fetchStats, fetchSugerenciasPendientes]);
+        fetchPagosPendientes();
+    }, [fetchStats, fetchSugerenciasPendientes, fetchPagosPendientes]);
 
     // 1. SOLUCIÓN TÉCNICA: Guard de carga para evitar el error 'Cannot read properties of undefined'
     if (loading && !stats) {
@@ -110,6 +125,13 @@ export default function AdminDashboard({ user }) {
 
     // Construcción de alertas — solo entran las que tienen valor > 0
     const alertas = [
+        pagosPendientes > 0 && {
+            key: 'pagos',
+            href: '/pagos',
+            icon: '📱',
+            texto: `${pagosPendientes} pago${pagosPendientes !== 1 ? 's' : ''} QR sin verificar`,
+            tono: 'amber',
+        },
         sugerenciasPendientes > 0 && {
             key: 'sugerencias',
             href: '/sugerencias',

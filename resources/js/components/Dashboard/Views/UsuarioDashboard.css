@@ -288,6 +288,225 @@
 }
 
 /* ════════════════════════════════════════════════════════════════
+   DIVISOR DE SECCIÓN — ancla visual entre bloques del scroll
+   ───────────────────────────────────────────────────────────────
+   Se inserta antes de cada widget (Pagos, Noticias, Sugerencias,
+   Mi Cuenta) para romper la sensación de scroll continuo sin
+   jerarquía. Icono dorado + línea sutil, consistente con la
+   identidad visual del sistema (navy + dorado).
+   ════════════════════════════════════════════════════════════════ */
+.portal-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+}
+
+.portal-divider__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--c-navy);
+    font-size: 1.05rem;
+    flex-shrink: 0;
+    box-shadow: 0 2px 6px rgba(13, 31, 53, 0.2);
+}
+
+.portal-divider__line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(
+        to right,
+        var(--c-gold) 0%,
+        var(--c-border) 35%,
+        var(--c-border) 100%
+    );
+}
+
+/* ════════════════════════════════════════════════════════════════
+   MI CUENTA — clases heredadas de PerfilPage.jsx (Datos + Permisos)
+   ───────────────────────────────────────────────────────────────
+   FIX: estas clases existían en el JSX pero nunca se definieron en
+   este archivo CSS — UsuarioDashboard.css no importa PerfilPage.css,
+   así que el badge de rol y las tarjetas de Mi Cuenta se renderizaban
+   sin ningún estilo (invisibles / sin formato).
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Encabezado: avatar + nombre + badge de rol ──────────────── */
+.perfil-heading {
+    display: flex;
+    align-items: center;
+    gap: 1.1rem;
+    margin-bottom: 1.5rem;
+}
+
+.perfil-heading__avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--c-navy);
+    color: var(--c-gold);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--ff-display);
+    font-size: 1.5rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    border: 2px solid var(--c-gold);
+}
+
+.perfil-heading__info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.perfil-heading__name {
+    font-family: var(--ff-display);
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--c-text-dark);
+    line-height: 1.1;
+}
+
+/* ── Badge de rol — base + variantes por color de rol ────────── */
+.portal-root .role-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+    padding: 0.2rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* ANIDADAS bajo .portal-root: aumenta especificidad real para que
+ * estas reglas siempre ganen sobre .role-badge--usuario de
+ * DashboardPage.css (pensada para texto blanco sobre fondo navy del
+ * sidebar — aquí el badge va sobre fondo blanco/claro). */
+.portal-root .role-badge--usuario  { background: #ccfbf1; color: #0f766e; border: 1px solid #5eead4; }
+.portal-root .role-badge--vocero   { background: #fef9c3; color: #854d0e; border: 1px solid #fde68a; }
+.portal-root .role-badge--operador { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
+.portal-root .role-badge--admin    { background: #ede9fe; color: #5b21b6; border: 1px solid #c4b5fd; }
+
+/* ── Grid de dos columnas: Datos de la cuenta + Permisos ─────── */
+.perfil-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+}
+
+.perfil-card {
+    background: var(--c-white);
+    border: 1px solid var(--c-border);
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+.perfil-card__header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 1rem 1.25rem;
+    background: var(--c-offwhite);
+    border-bottom: 1px solid var(--c-border);
+}
+
+.perfil-card__header-icon { font-size: 1.1rem; }
+
+.perfil-card__title {
+    font-family: var(--ff-display);
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--c-text-dark);
+}
+
+/* ── Lista de datos (Nombre, Correo, Rol, Miembro desde) ─────── */
+.perfil-data-list {
+    padding: 0.5rem 1.25rem 1.1rem;
+}
+
+.perfil-data-list__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.7rem 0;
+    border-bottom: 1px solid #f5f2ed;
+}
+.perfil-data-list__row:last-child { border-bottom: none; }
+
+.perfil-data-list__label {
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--c-text-light);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    flex-shrink: 0;
+}
+
+.perfil-data-list__value {
+    font-size: 0.9rem;
+    color: var(--c-text-dark);
+    text-align: right;
+}
+
+/* ── Lista de permisos (con check / equis) ───────────────────── */
+.perfil-permisos-list {
+    padding: 0.5rem 1.25rem 1.1rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.perfil-permiso-item {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.65rem 0;
+    border-bottom: 1px solid #f5f2ed;
+}
+.perfil-permiso-item:last-child { border-bottom: none; }
+
+.perfil-permiso-item__icon { font-size: 1rem; flex-shrink: 0; }
+
+.perfil-permiso-item__label {
+    flex: 1;
+    font-size: 0.875rem;
+    color: var(--c-text-dark);
+}
+
+.perfil-permiso-item--inactivo .perfil-permiso-item__label {
+    color: var(--c-text-light);
+}
+
+.perfil-permiso-item__estado {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    font-size: 0.75rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+.perfil-permiso-item__estado--si {
+    background: #dcfce7;
+    color: #166534;
+}
+.perfil-permiso-item__estado--no {
+    background: #f3f4f6;
+    color: #9ca3af;
+}
+
+/* ════════════════════════════════════════════════════════════════
    FOOTER
    ════════════════════════════════════════════════════════════════ */
 .portal-footer {
@@ -309,6 +528,8 @@
     .portal-topbar { padding: 0 1.25rem; }
     .portal-topbar__nav { display: none; }
     .portal-main { padding: 1.5rem 1rem; }
+    .perfil-grid { grid-template-columns: 1fr; }
+    .perfil-data-list__value { text-align: left; }
 }
 
 @media (max-width: 480px) {

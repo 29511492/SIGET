@@ -40,6 +40,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth }           from '../../../hooks/useAuth';
 import NoticiaWidget         from '../../noticias/NoticiaWidget';
 import SugerenciaWidget      from '../../sugerencias/SugerenciaWidget';
+import PagoQrWidget          from '../../pagos/PagoQrWidget';
 import './UsuarioDashboard.css';
 
 // Hora del día para el saludo dinámico
@@ -53,24 +54,31 @@ const getSaludo = () => {
 // Acciones que el ciudadano SÍ puede realizar
 const ACCIONES_CIUDADANO = [
     {
+        icon:        '📱',
+        titulo:      'Pagar por QR',
+        descripcion: 'Realiza tu pago y sube el comprobante',
+        color:       'navy',
+        anchor:      'pagos',
+    },
+    {
         icon:        '💬',
         titulo:      'Enviar Sugerencia',
         descripcion: 'Comunícate con el Consejo Comunal',
-        color:       'navy',
+        color:       'gold',
         anchor:      'sugerencias',
     },
     {
         icon:        '📰',
         titulo:      'Últimas Noticias',
         descripcion: 'Entérate de lo que pasa en tu comunidad',
-        color:       'gold',
+        color:       'teal',
         anchor:      'noticias',
     },
     {
         icon:        '👤',
         titulo:      'Mis Datos',
         descripcion: 'Consulta tu cuenta y permisos en el sistema',
-        color:       'teal',
+        color:       'navy',
         anchor:      'cuenta',
     },
 ];
@@ -127,6 +135,12 @@ export default function UsuarioDashboard({ user: userProp }) {
                 </div>
 
                 <nav className="portal-topbar__nav" aria-label="Navegación ciudadana">
+                    <button
+                        className="portal-topbar__link"
+                        onClick={() => handleAnchor('pagos')}
+                    >
+                        📱 Pagos
+                    </button>
                     <button
                         className="portal-topbar__link"
                         onClick={() => handleAnchor('noticias')}
@@ -197,12 +211,29 @@ export default function UsuarioDashboard({ user: userProp }) {
                     </div>
                 </section>
 
+                {/* ── Pagos QR ──────────────────────────────── */}
+                <section
+                    id="portal-pagos"
+                    className="portal-widget-section"
+                    aria-label="Pagos QR"
+                >
+                    <div className="portal-divider">
+                        <span className="portal-divider__icon" aria-hidden="true">📱</span>
+                        <span className="portal-divider__line" />
+                    </div>
+                    <PagoQrWidget />
+                </section>
+
                 {/* ── Noticias ──────────────────────────────── */}
                 <section
                     id="portal-noticias"
                     className="portal-widget-section"
                     aria-label="Últimas noticias"
                 >
+                    <div className="portal-divider">
+                        <span className="portal-divider__icon" aria-hidden="true">📰</span>
+                        <span className="portal-divider__line" />
+                    </div>
                     <NoticiaWidget />
                 </section>
 
@@ -212,6 +243,10 @@ export default function UsuarioDashboard({ user: userProp }) {
                     className="portal-widget-section"
                     aria-label="Sugerencias y quejas"
                 >
+                    <div className="portal-divider">
+                        <span className="portal-divider__icon" aria-hidden="true">💬</span>
+                        <span className="portal-divider__line" />
+                    </div>
                     <SugerenciaWidget />
                 </section>
 
@@ -221,6 +256,10 @@ export default function UsuarioDashboard({ user: userProp }) {
                     className="portal-widget-section"
                     aria-label="Mi cuenta"
                 >
+                    <div className="portal-divider">
+                        <span className="portal-divider__icon" aria-hidden="true">👤</span>
+                        <span className="portal-divider__line" />
+                    </div>
                     <h2 className="portal-section-title">Mi Cuenta</h2>
 
                     <div className="perfil-heading">

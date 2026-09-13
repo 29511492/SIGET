@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth }     from '../../hooks/useAuth';
@@ -222,14 +221,29 @@ export default function PagoList() {
                                         >
                                             <td className="td-code">{pago.referencia_bancaria}</td>
                                             <td>
-                                                <span>{pago.habitante_nombre || '—'}</span>
-                                                {pago.familia_responsable && (
-                                                    <span className="td-meta__sub">
-                                                        Familia: {pago.familia_responsable}
-                                                    </span>
+                                                {pago.habitante_nombre ? (
+                                                    <>
+                                                        <span>{pago.habitante_nombre}</span>
+                                                        {pago.familia_responsable && (
+                                                            <span className="td-meta__sub">
+                                                                Familia: {pago.familia_responsable}
+                                                            </span>
+                                                        )}
+                                                    </>
+                                                ) : pago.usuario_nombre ? (
+                                                    <>
+                                                        <span>{pago.usuario_nombre}</span>
+                                                        <span className="td-meta__sub">
+                                                            Portal Ciudadano
+                                                        </span>
+                                                    </>
+                                                ) : (
+                                                    <span>—</span>
                                                 )}
                                             </td>
-                                            <td className="td-meta">{pago.organizacion_nombre || '—'}</td>
+                                            <td className="td-meta">
+                                                {pago.organizacion_nombre || pago.concepto_pago || '—'}
+                                            </td>
                                             <td className="td-center pago-monto">
                                                 Bs. {Number(pago.monto).toFixed(2)}
                                             </td>
@@ -293,16 +307,29 @@ export default function PagoList() {
                             {/* Datos del pago */}
                             <div className="pago-modal__datos">
                                 <div className="pago-dato">
-                                    <span className="pago-dato__label">Habitante</span>
-                                    <span className="pago-dato__value">{modalPago.habitante_nombre || '—'}</span>
+                                    <span className="pago-dato__label">
+                                        {modalPago.habitante_nombre ? 'Habitante' : 'Pagado por'}
+                                    </span>
+                                    <span className="pago-dato__value">
+                                        {modalPago.habitante_nombre
+                                            || modalPago.usuario_nombre
+                                            || '—'}
+                                        {!modalPago.habitante_nombre && modalPago.usuario_nombre && (
+                                            <span className="pago-dato__badge">Portal Ciudadano</span>
+                                        )}
+                                    </span>
                                 </div>
                                 <div className="pago-dato">
                                     <span className="pago-dato__label">Familia</span>
                                     <span className="pago-dato__value">{modalPago.familia_responsable || '—'}</span>
                                 </div>
                                 <div className="pago-dato">
-                                    <span className="pago-dato__label">Servicio</span>
-                                    <span className="pago-dato__value">{modalPago.organizacion_nombre || '—'}</span>
+                                    <span className="pago-dato__label">
+                                        {modalPago.organizacion_nombre ? 'Servicio' : 'Servicio (indicado por el usuario)'}
+                                    </span>
+                                    <span className="pago-dato__value">
+                                        {modalPago.organizacion_nombre || modalPago.concepto_pago || '—'}
+                                    </span>
                                 </div>
                                 <div className="pago-dato">
                                     <span className="pago-dato__label">Monto</span>

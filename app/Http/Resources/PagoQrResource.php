@@ -52,6 +52,12 @@ class PagoQrResource extends JsonResource
                 $this->user?->name
             ),
 
+            // Cuenta de pago (servicio) elegida al pagar — Fase 3
+            'cuenta_pago_id'       => $this->cuenta_pago_id,
+            'cuenta_pago_nombre'   => $this->whenLoaded('cuentaPago', fn () =>
+                $this->cuentaPago?->nombre_servicio
+            ),
+
             'familia_id'           => $this->familia_id,
             'familia_responsable'  => $this->whenLoaded('familia', fn () =>
                 $this->familia?->nombre_responsable
