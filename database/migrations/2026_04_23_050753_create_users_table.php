@@ -6,21 +6,25 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * ═══════════════════════════════════════════════════════════════
- *  TABLA: users
+ *  TABLA: users (+ password_reset_tokens, sessions)
  * ───────────────────────────────────────────────────────────────
- *  DECISIÓN ARQUITECTÓNICA:
- *  Se migra el campo `rol` de string libre a ENUM controlado.
- *  Un string libre permite valores inconsistentes ('Admin', 'ADMIN',
- *  'admin') que rompen la autorización. El ENUM garantiza integridad
- *  a nivel de base de datos, sin depender solo de la validación PHP.
+ *  DECISIONES ARQUITECTÓNICAS:
+ *  1. `rol` como ENUM controlado: evita valores inconsistentes
+ *     ('Admin', 'ADMIN', 'admin') que rompen la autorización.
  *
- *  Se agrega `softDeletes()`: los usuarios NUNCA se eliminan físicamente.
- *  Esto preserva la integridad referencial con `auditorias` y cumple
- *  con buenas prácticas de trazabilidad en sistemas de gestión pública.
+ *  2. `softDeletes()`: los usuarios NUNCA se eliminan físicamente,
+ *     para preservar la integridad con `auditorias`.
  *
- *  NOTA: `habitante_id` NO se agrega aquí. Se añadirá en una migración
- *  posterior (after habitantes) para respetar el orden de dependencias FK.
- *  Patrón: Dependency Order en migraciones.
+ *  3. Campos de seguridad (bloqueo por intentos fallidos y OTP de
+ *     recuperación) y `cedula` viven aquí desde la creación de la
+ *     tabla. Antes se agregaban con una migración `alter_users_...`
+ *     posterior; se fusionaron para dejar una instalación limpia
+ *     con un solo archivo por tabla.
+ *
+ *  NOTA: `habitante_id` NO se agrega aquí. Lo añade la migración
+ *  `add_habitante_id_to_users_table`, porque `habitantes` se crea
+ *  después de `users` (orden de dependencias FK, patrón
+ *  Two-Phase Migration).
  * ═══════════════════════════════════════════════════════════════
  */
 return new class extends Migration
@@ -30,11 +34,21 @@ return new class extends Migration
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->string('name', 100);
+            $table->string('cedula', 20)->nullable()->unique();
             $table->string('email', 150)->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
 
-            // ENUM estricto: evita valores arbitrarios como 'superAdmin' o 'OPERADOR'
+            // ── Bloqueo por intentos fallidos ─────────────────
+            $table->unsignedTinyInteger('failed_attempts')->default(0);
+            $table->boolean('is_locked')->default(false);
+            $table->timestamp('locked_at')->nullable();
+
+            // ── OTP para recuperación y desbloqueo ────────────
+            $table->string('otp_code', 6)->nullable();
+            $table->timestamp('otp_expires_at')->nullable();
+
+            // ENUM estricto: evita valores arbitrarios como 'superAdmin'
             $table->enum('rol', ['admin', 'operador', 'vocero', 'usuario'])
                 ->default('usuario');
 

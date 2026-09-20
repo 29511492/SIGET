@@ -6,37 +6,17 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * ═══════════════════════════════════════════════════════════════
- *  MIGRACIÓN DE REEMPLAZO — tabla organizaciones
+ *  TABLA: organizaciones
  * ───────────────────────────────────────────────────────────────
- *  Esta migración elimina la tabla anterior (vacía) y la recrea
- *  con la estructura correcta que usa el código actual de SIGET.
- *
- *  Archivo: database/migrations/[timestamp]_recreate_organizaciones_table.php
- *
- *  Comandos de instalación:
- *    php artisan migrate:rollback --path=database/migrations/[archivo_anterior]
- *    php artisan migrate --path=database/migrations/[este_archivo]
- *
- *  O si quieres correr todas las pendientes:
- *    php artisan migrate
- *
- *  Diferencias respecto a la tabla anterior:
- *    ANTES               → AHORA
- *    nombre_organizacion → nombre
- *    tipo (4 valores)    → tipo_servicio (8 valores)
- *    codigo_situr        → contacto
- *    (sin estatus)       → estatus boolean default true
- *    (sin deleted_at)    → deleted_at (SoftDeletes)
- *    sede_id FK          → eliminado (no está en el modelo actual)
+ *  Esquema final que usa el código actual de SIGET. Es la única
+ *  migración que crea esta tabla (ya no existe una versión previa
+ *  que haya que reemplazar con dropIfExists).
  * ═══════════════════════════════════════════════════════════════
  */
 return new class extends Migration
 {
     public function up(): void
     {
-        // Drop seguro — la tabla está vacía y confirmada por el usuario
-        Schema::dropIfExists('organizaciones');
-
         Schema::create('organizaciones', function (Blueprint $table) {
             $table->id();
 

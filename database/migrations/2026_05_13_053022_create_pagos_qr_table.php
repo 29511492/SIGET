@@ -6,55 +6,65 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * ═══════════════════════════════════════════════════════════════
- *  MIGRACIÓN DE REEMPLAZO — pagos_qr (tabla vacía confirmada)
+ *  TABLA: pagos_qr — esquema final
  * ───────────────────────────────────────────────────────────────
- *  Cambios respecto a la versión anterior:
+ *  Esta migración reemplaza a las que antes parchaban la tabla:
+ *  add_soft_deletes_to_pagos_qr, add_user_id_to_pagos_qr_table,
+ *  fix_columnas_faltantes_pagos_qr_table,
+ *  make_habitante_id_nullable_pagos_qr_table y
+ *  add_cuenta_pago_id_to_pagos_qr_table.
  *
- *  + familia_id        FK nullable → familias
- *                      Agrupa los pagos por núcleo familiar.
+ *  Dos flujos conviven en la misma tabla:
+ *    - admin/operador: habitante_id poblado, user_id null
+ *    - Portal Ciudadano (rol usuario): user_id poblado,
+ *      habitante_id null
+ *  Por eso `habitante_id` es nullable (con restrict: no se borra
+ *  un habitante que tenga pagos vinculados).
  *
- *  + organizacion_id   FK nullable → organizaciones
- *                      Vincula el pago a un servicio (Gas, Agua…).
- *
- *  ~ comprobante_path   → nombre corregido (era codigo_hash_qr en la migración anterior)
- *                      Ruta del archivo en storage/app/comprobantes/
- *                      Nombre más claro para su propósito real.
- *
- *  = habitante_id, verificado_por, referencia_bancaria, monto,
- *    concepto_pago, estado, motivo_rechazo, fecha_pago,
- *    fecha_verificacion  →  sin cambios.
+ *  DEPENDENCIAS: habitantes, familias, organizaciones, users y
+ *  cuentas_pago deben existir antes (por eso cuentas_pago tiene un
+ *  timestamp anterior a esta migración).
  * ═══════════════════════════════════════════════════════════════
  */
 return new class extends Migration
 {
     public function up(): void
     {
-        Schema::dropIfExists('pagos_qr');
-
         Schema::create('pagos_qr', function (Blueprint $table) {
             $table->id();
 
             // ── Quién paga ────────────────────────────────────
             $table->foreignId('habitante_id')
+                ->nullable()
                 ->constrained('habitantes')
                 ->onDelete('restrict');         // No borrar habitante con pagos
 
-            $table->foreignId('familia_id')     // Núcleo familiar del habitante
+            $table->foreignId('user_id')        // Flujo Portal Ciudadano
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
+
+            $table->foreignId('familia_id')     // Núcleo familiar
                 ->nullable()
                 ->constrained('familias')
-                ->onDelete('set null');
+                ->nullOnDelete();
 
             // ── Qué servicio se paga ──────────────────────────
-            $table->foreignId('organizacion_id') // Ej. CORPOELEC, Hidrocapital
+            $table->foreignId('organizacion_id')
                 ->nullable()
                 ->constrained('organizaciones')
-                ->onDelete('set null');
+                ->nullOnDelete();
+
+            $table->foreignId('cuenta_pago_id') // Cuenta elegida al pagar
+                ->nullable()
+                ->constrained('cuentas_pago')
+                ->nullOnDelete();
 
             // ── Quién verificó ────────────────────────────────
             $table->foreignId('verificado_por')
                 ->nullable()
                 ->constrained('users')
-                ->onDelete('set null');
+                ->nullOnDelete();
 
             // ── Datos del pago ────────────────────────────────
             $table->string('referencia_bancaria', 100)->unique();
@@ -73,13 +83,14 @@ return new class extends Migration
             $table->timestamp('fecha_pago');
             $table->timestamp('fecha_verificacion')->nullable();
 
-            $table->timestamps();
             $table->softDeletes();
+            $table->timestamps();
 
-            // Índices para las queries más frecuentes
-            $table->index(['estado', 'fecha_pago'],     'idx_pagos_estado_fecha');
-            $table->index(['habitante_id', 'estado'],   'idx_pagos_habitante_estado');
-            $table->index(['familia_id'],                'idx_pagos_familia');
+            // ── Índices al final ──────────────────────────────
+            $table->index(['estado', 'fecha_pago'], 'idx_estado_fecha');
+            $table->index('familia_id',             'idx_pagos_familia');
+            $table->index('user_id');
+            $table->index('cuenta_pago_id',         'idx_pagos_cuenta_pago');
         });
     }
 

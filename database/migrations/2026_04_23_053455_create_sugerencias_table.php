@@ -8,21 +8,17 @@ use Illuminate\Support\Facades\Schema;
  * ═══════════════════════════════════════════════════════════════
  *  TABLA: sugerencias
  * ───────────────────────────────────────────────────────────────
- *  DECISIÓN ARQUITECTÓNICA:
- *  1. `onDelete('set null')` en lugar de cascade: si el usuario
- *     que envió la sugerencia es dado de baja, la sugerencia debe
- *     conservarse. Puede contener información valiosa para la
- *     gestión comunal independientemente de quién la envió.
+ *  DECISIONES ARQUITECTÓNICAS:
+ *  1. `onDelete('set null')`: si el usuario que envió la sugerencia
+ *     se da de baja, la sugerencia se conserva.
  *
- *  2. Se agrega `revisada_por` (FK a users): ¿qué operador/admin
- *     marcó la sugerencia como revisada? En el original, solo
- *     había un booleano `revisada` y un timestamp, pero no se
- *     sabía QUIÉN la revisó. Esto cierra la cadena de trazabilidad.
+ *  2. `revisada_por` (FK a users): trazabilidad de QUIÉN revisó.
  *
- *  3. Se agrega `respuesta`: permite al operador responder
- *     formalmente la sugerencia dentro del sistema, sin necesidad
- *     de comunicación externa. Mejora la experiencia del vocero
- *     que envió la sugerencia.
+ *  3. `respuesta`: respuesta formal del operador dentro del sistema.
+ *
+ *  4. `categoria`, `prioridad` y `softDeletes` antes se agregaban
+ *     con la migración `add_campos_to_sugerencias_table`; se
+ *     fusionaron aquí para la instalación limpia.
  *
  *  Patrón: Workflow de doble actor (quien envía / quien revisa).
  * ═══════════════════════════════════════════════════════════════
@@ -38,7 +34,7 @@ return new class extends Migration
             $table->foreignId('user_id')
                 ->nullable()
                 ->constrained('users')
-                  ->onDelete('set null'); // corregido: era cascade
+                ->onDelete('set null');
 
             // Quien la revisó (admin u operador)
             $table->foreignId('revisada_por')
@@ -47,15 +43,32 @@ return new class extends Migration
                 ->onDelete('set null');
 
             $table->text('mensaje');
-            $table->text('respuesta')->nullable();       // Respuesta formal del operador
+
+            $table->enum('categoria', [
+                'mejora',
+                'queja',
+                'consulta',
+                'emergencia',
+            ])->default('consulta');
+
+            $table->enum('prioridad', [
+                'baja',
+                'media',
+                'alta',
+            ])->default('media');
+
+            $table->text('respuesta')->nullable(); // Respuesta formal del operador
 
             $table->boolean('revisada')->default(false);
             $table->timestamp('revisada_en')->nullable();
 
+            $table->softDeletes();
             $table->timestamps();
 
-            // Filtro frecuente: listar sugerencias pendientes de revisión
+            // Índices al final
             $table->index('revisada');
+            $table->index('categoria');
+            $table->index('prioridad');
         });
     }
 

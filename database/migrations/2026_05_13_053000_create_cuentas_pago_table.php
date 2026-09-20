@@ -7,20 +7,15 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Migración — create_cuentas_pago_table
  *
- * CONTEXTO (junio 2026):
- * Hasta ahora los datos bancarios que el ciudadano ve al pagar
- * (banco, teléfono, cédula/RIF, titular) estaban hardcodeados como
- * una constante fija en PagoQrWidget.jsx. El admin no tenía forma
- * de editarlos desde el sistema, y solo existía UNA cuenta posible.
+ * Cuentas bancarias de destino para los pagos QR. El admin/operador
+ * gestiona MÚLTIPLES cuentas (ej. "Gas", "Cuota mensual", "Aseo
+ * urbano"); el ciudadano elige a cuál corresponde su pago. Reemplaza
+ * los datos bancarios que estaban hardcodeados en PagoQrWidget.jsx.
  *
- * Esta tabla permite que el admin/operador gestione MÚLTIPLES
- * cuentas de pago (ej. "Gas", "Cuota mensual", "Aseo urbano"), cada
- * una con sus propios datos bancarios. El usuario, al ir a pagar,
- * elige a cuál corresponde su pago — reemplazando la dependencia
- * del texto libre en 'concepto_pago' para identificar el servicio.
+ * ORDEN: esta migración debe correr ANTES que `create_pagos_qr_table`
+ * (que tiene FK a `cuentas_pago`), por eso su timestamp es anterior.
  *
- * Orden de Blueprint respetado: columnas → softDeletes → timestamps
- * → índices al final.
+ * Orden de Blueprint: columnas → softDeletes → timestamps → índices.
  */
 return new class extends Migration
 {

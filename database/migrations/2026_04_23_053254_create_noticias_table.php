@@ -1,52 +1,56 @@
 <?php
-/**
- * ⚠️ MIGRACIÓN ORIGINAL — SCHEMA INCORRECTO
- * Esta migración creó la tabla noticias con columnas erróneas.
- * Fue corregida por: 2026_06_06_052032_fix_noticias_table_to_correct_schema.php
- * NO eliminar — Laravel necesita este registro para reconstruir el historial.
- */
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+/**
+ * ═══════════════════════════════════════════════════════════════
+ *  TABLA: noticias
+ * ───────────────────────────────────────────────────────────────
+ *  Esta migración define el esquema FINAL de `noticias`, tal como
+ *  existe en la base de datos en uso. Antes de esta versión, el
+ *  archivo creaba por error la tabla `organizaciones`, y `noticias`
+ *  se había creado con cambios directos en la BD; eso impedía una
+ *  instalación limpia. Todo cambio de esquema se hace SIEMPRE aquí
+ *  (migraciones), nunca directo en la BD.
+ *
+ *  - user_id: autor de la noticia. Si el usuario se da de baja, la
+ *    noticia se conserva (set null).
+ *  - publicado / published_at: el controlador rellena published_at
+ *    cuando `publicado` pasa de false a true.
+ *  - softDeletes: preserva el historial.
+ * ═══════════════════════════════════════════════════════════════
+ */
 return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('organizaciones', function (Blueprint $table) {
+        Schema::create('noticias', function (Blueprint $table) {
             $table->id();
 
-            $table->string('nombre', 150);
+            $table->foreignId('user_id')
+                ->nullable()
+                ->constrained('users')
+                ->onDelete('set null');
 
-            $table->enum('tipo_servicio', [
-                'agua',
-                'electricidad',
-                'gas',
-                'salud',
-                'educacion',
-                'seguridad',
-                'transporte',
-                'otro',
-            ])->default('otro');
+            $table->string('titulo', 255);
+            $table->text('contenido');
 
-            // Teléfono, WhatsApp o email — el frontend detecta el tipo
-            $table->string('contacto', 100)->nullable();
+            $table->boolean('publicado')->default(true);
+            $table->timestamp('published_at')->nullable();
 
-            $table->text('descripcion')->nullable();
-
-            // true = visible en el directorio público
-            $table->boolean('estatus')->default(true);
-
+            $table->softDeletes();
             $table->timestamps();
-            $table->softDeletes(); // admin da de baja sin eliminar físicamente
 
-            $table->index('tipo_servicio');
-            $table->index('estatus');
+            // Índices al final (convención PostgreSQL del proyecto)
+            $table->index('publicado');
+            $table->index('published_at');
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('organizaciones');
+        Schema::dropIfExists('noticias');
     }
 };
