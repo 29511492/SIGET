@@ -1,0 +1,159 @@
+/**
+ * HabitanteFieldset.css
+ * Estilos del sub-formulario de un habitante, usado dentro del
+ * array "habitantes" de FamiliaForm.jsx. Reutiliza las mismas
+ * clases de campo/toggle/radios que tenía el extinto
+ * HabitanteForm.css, para no perder consistencia visual —
+ * simplemente ya no hay layout de página completa (topbar,
+ * buscador de familia): eso lo absorbió FamiliaForm.
+ */
+
+:root {
+    --c-navy:       #0d1f35;
+    --c-navy-hover: #1e3a56;
+    --c-gold:       #c9a84c;
+    --c-offwhite:   #f8f6f1;
+    --c-white:      #ffffff;
+    --c-text-dark:  #1a1a2e;
+    --c-text-mid:   #4a5568;
+    --c-text-light: #718096;
+    --c-border:     #e8e3db;
+    --c-error:      #c0392b;
+    --ff-body:      'DM Sans', 'Segoe UI', sans-serif;
+    --radius:       8px;
+    --transition:   200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Tarjeta de un habitante dentro del array ─────────────────── */
+.habitante-card {
+    background: var(--c-offwhite);
+    border: 1px solid var(--c-border);
+    border-radius: 10px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+}
+.habitante-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+.habitante-card__title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--c-navy);
+}
+.habitante-card__remove {
+    background: none;
+    border: 1px solid var(--c-border);
+    color: var(--c-error);
+    font-size: 0.78rem;
+    padding: 0.3rem 0.7rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background var(--transition), border-color var(--transition);
+    white-space: nowrap;
+}
+.habitante-card__remove:hover:not(:disabled) { background: #fef2f2; border-color: #fca5a5; }
+.habitante-card__remove:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Filas / campos (mismas clases que usaba HabitanteForm) ────── */
+.habitante-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.habitante-form-row--three { grid-template-columns: 1fr 1fr 0.8fr; }
+
+.habitante-field { display: flex; flex-direction: column; gap: 0.4rem; }
+.habitante-field__label { font-size: 0.82rem; font-weight: 500; color: var(--c-text-dark); }
+.required { color: var(--c-error); margin-left: 2px; }
+.habitante-field__optional { font-size: 0.75rem; font-weight: 400; color: var(--c-text-light); margin-left: 4px; }
+
+.habitante-field__input,
+.habitante-field__select {
+    width: 100%; padding: 0.65rem 0.8rem;
+    font-family: var(--ff-body); font-size: 0.88rem; color: var(--c-text-dark);
+    background: var(--c-white); border: 1.5px solid var(--c-border);
+    border-radius: var(--radius); outline: none;
+    transition: border-color var(--transition), box-shadow var(--transition);
+    appearance: none;
+}
+.habitante-field__select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23718096' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 0.875rem center;
+    padding-right: 2.5rem; cursor: pointer;
+}
+.habitante-field__input:focus,
+.habitante-field__select:focus {
+    border-color: var(--c-navy-hover);
+    box-shadow: 0 0 0 3px rgba(30,58,86,0.1);
+}
+.habitante-field__input:disabled,
+.habitante-field__select:disabled { background: #f5f2ed; color: var(--c-text-light); cursor: not-allowed; }
+.habitante-field__input::placeholder { color: #b5b0a8; }
+.habitante-field__error { font-size: 0.75rem; color: var(--c-error); }
+.habitante-field__error::before { content: '⚠ '; }
+
+.habitante-field--error .habitante-field__input,
+.habitante-field--error .habitante-field__select { border-color: var(--c-error); }
+
+.habitante-field--conditional {
+    animation: hfSlideDown 0.2s ease;
+    background: #fffbf0;
+    padding: 0.875rem;
+    border-radius: var(--radius);
+    border: 1px solid rgba(201,168,76,0.3);
+}
+@keyframes hfSlideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Fecha + edad ──────────────────────────────────────────────── */
+.habitante-date-wrap { position: relative; display: flex; align-items: center; }
+.habitante-date-wrap .habitante-field__input { flex: 1; }
+.edad-badge {
+    position: absolute; right: 0.7rem;
+    background: var(--c-navy); color: white;
+    font-size: 0.7rem; font-weight: 600;
+    padding: 0.18rem 0.55rem; border-radius: 999px;
+    pointer-events: none; white-space: nowrap;
+}
+
+/* ── Nivel educativo (radio pills) ───────────────────────────────── */
+.nivel-radio-group { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.nivel-radio {
+    position: relative;
+    padding: 0.32rem 0.8rem;
+    background: var(--c-white); border: 1.5px solid var(--c-border);
+    border-radius: 999px; font-size: 0.78rem;
+    color: var(--c-text-mid); font-weight: 400;
+    cursor: pointer;
+    transition: all var(--transition);
+}
+.nivel-radio input[type="radio"] { position: absolute; opacity: 0; width: 0; height: 0; }
+.nivel-radio:hover { border-color: var(--c-navy-hover); color: var(--c-navy); }
+.nivel-radio--active { background: var(--c-navy); border-color: var(--c-navy); color: white; font-weight: 500; }
+
+/* ── Toggle de salud ──────────────────────────────────────────── */
+.habitante-toggle { display: flex; align-items: center; gap: 0.75rem; cursor: pointer; user-select: none; }
+.habitante-toggle__input { position: absolute; opacity: 0; width: 0; height: 0; }
+.habitante-toggle__track {
+    position: relative; width: 44px; height: 24px;
+    border-radius: 999px; background: #cbd5e0; transition: background var(--transition);
+    flex-shrink: 0;
+}
+.habitante-toggle__track::after {
+    content: ''; position: absolute; top: 3px; left: 3px;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: white; transition: transform var(--transition);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+.habitante-toggle__input:checked ~ .habitante-toggle__track { background: var(--c-navy); }
+.habitante-toggle__input:checked ~ .habitante-toggle__track::after { transform: translateX(20px); }
+.habitante-toggle__label { font-size: 0.85rem; color: var(--c-text-mid); }
+
+@media (max-width: 640px) {
+    .habitante-form-row,
+    .habitante-form-row--three { grid-template-columns: 1fr; }
+    .nivel-radio-group { gap: 0.4rem; }
+}

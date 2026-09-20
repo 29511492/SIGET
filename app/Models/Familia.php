@@ -23,15 +23,18 @@ class Familia extends Model
         'sede_id', 'calle_id', 'codigo_vivienda',
         'nombre_responsable', 'punto_referencia',
         'cantidad_bombonas', 'capacidad_bombona',
-        'posee_agua_potable', 'condicion_vivienda',
+        'posee_agua_potable', 'posee_luz', 'posee_aseo',
+        'condicion_vivienda',
     ];
 
     protected $casts = [
-        'sede_id'           => 'integer',
-        'calle_id'          => 'integer',
-        'cantidad_bombonas' => 'integer',
-        'posee_agua_potable'=> 'boolean',
-        'deleted_at'        => 'datetime',
+        'sede_id'            => 'integer',
+        'calle_id'           => 'integer',
+        'cantidad_bombonas'  => 'integer',
+        'posee_agua_potable' => 'boolean',
+        'posee_luz'          => 'boolean',
+        'posee_aseo'         => 'boolean',
+        'deleted_at'         => 'datetime',
     ];
 
 /**

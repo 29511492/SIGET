@@ -3,14 +3,18 @@
  *   apiClient    → '../../services/axios'
  *   useAuth      → '../../hooks/useAuth'
  *   ConfirmModal → '../../components/ui/ConfirmModal'
+ *   FormModal    → '../../components/ui/FormModal'
+ *   FamiliaForm  → './FamiliaForm'
  *   CSS          → './FamiliaList.css'
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth }      from '../../hooks/useAuth';
 import apiClient        from '../../services/axios';
 import ConfirmModal     from '../../components/ui/ConfirmModal';
+import FormModal        from '../../components/ui/FormModal';
+import FamiliaForm      from './FamiliaForm';
 import './FamiliaList.css';
 
 const CONDICION_LABEL = {
@@ -19,13 +23,20 @@ const CONDICION_LABEL = {
     critica: { label: 'Crítica', cls: 'badge--red'    },
 };
 
-const CONDICION_OPTIONS = [
-    { value: 'optima',  label: 'Óptima'  },
-    { value: 'regular', label: 'Regular' },
-    { value: 'critica', label: 'Crítica' },
-];
+const SEXO_LABEL = {
+    masculino: 'Masculino',
+    femenino:  'Femenino',
+    otro:      'Otro',
+};
 
-const CAPACIDAD_OPTIONS = ['10kg', '18kg', '43kg'];
+const NIVEL_LABEL = {
+    ninguno:       'Ninguno',
+    primaria:      'Primaria',
+    bachillerato:  'Bachillerato',
+    tecnico:       'Técnico',
+    universitario: 'Universitario',
+    postgrado:     'Postgrado',
+};
 
 export default function FamiliaList() {
     const navigate        = useNavigate();
@@ -40,15 +51,28 @@ export default function FamiliaList() {
     const [page,        setPage]        = useState(1);
     const searchTimer = useRef(null);
 
-    // ── Estado de edición inline ──────────────────────────────────
-    const [editingId,   setEditingId]   = useState(null);
-    const [editForm,    setEditForm]    = useState({});
-    const [editErrors,  setEditErrors]  = useState({});
-    const [saving,      setSaving]      = useState(false);
-
     // ── Estado de eliminación ─────────────────────────────────────
     const [toDelete,    setToDelete]    = useState(null);  // Familia a eliminar
     const [deleting,    setDeleting]    = useState(false);
+
+    // ── Estado del modal de registro/edición ────────────────────────
+    // showCreateModal: abre FamiliaForm en modo creación.
+    // editingFamilia: familia completa (con habitantes) para editar;
+    // null = modal de edición cerrado.
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [editingFamilia,  setEditingFamilia]  = useState(null);
+    const [loadingEditId,   setLoadingEditId]   = useState(null);
+
+    // ── Estado del menú plegable de habitantes por familia ──────────
+    // expandedId: id de la familia actualmente desplegada (o null).
+    // habitantesCache: { [familiaId]: [habitantes] } — evita repetir
+    // la petición si se colapsa y se vuelve a expandir la misma fila.
+    const [expandedId,       setExpandedId]       = useState(null);
+    const [habitantesCache,  setHabitantesCache]  = useState({});
+    const [loadingExpandId,  setLoadingExpandId]  = useState(null);
+
+    const showActionsCol = canWrite || isAdmin;
+    const totalCols = 6 + (showActionsCol ? 1 : 0); // toggle + 5 columnas + acciones
 
     // ── Carga de datos ────────────────────────────────────────────
     const fetchFamilias = useCallback(async (q = search, p = page) => {
@@ -77,43 +101,55 @@ export default function FamiliaList() {
         searchTimer.current = setTimeout(() => fetchFamilias(value, 1), 400);
     };
 
-    // ── Edición inline ────────────────────────────────────────────
-    const startEdit = (familia) => {
-        setEditingId(familia.id);
-        setEditForm({
-            codigo_vivienda:    familia.codigo_vivienda,
-            nombre_responsable: familia.nombre_responsable ?? '',
-            condicion_vivienda: familia.condicion_vivienda,
-            cantidad_bombonas:  familia.cantidad_bombonas,
-            capacidad_bombona:  familia.capacidad_bombona,
-            posee_agua_potable: familia.posee_agua_potable,
-        });
-        setEditErrors({});
-    };
+    // ── Menú plegable de habitantes ─────────────────────────────────
+    const toggleExpand = async (familia) => {
+        if (expandedId === familia.id) {
+            setExpandedId(null);
+            return;
+        }
+        setExpandedId(familia.id);
 
-    const cancelEdit = () => { setEditingId(null); setEditForm({}); setEditErrors({}); };
+        if (habitantesCache[familia.id]) return; // ya está en caché
 
-    const handleEditChange = (e) => {
-        const { name, value, type, checked } = e.target;
-        setEditForm(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
-        if (editErrors[name]) setEditErrors(prev => ({ ...prev, [name]: '' }));
-    };
-
-    const saveEdit = async (familiaId) => {
-        setSaving(true);
+        setLoadingExpandId(familia.id);
         try {
-            const res = await apiClient.put(`/v1/familias/${familiaId}`, editForm);
-            // Actualizar el registro en la lista local sin recargar todo
-            setFamilias(prev =>
-                prev.map(f => f.id === familiaId ? res.data.data : f)
-            );
-            setEditingId(null);
-        } catch (err) {
-            if (err.response?.status === 422) {
-                setEditErrors(err.response.data.errors ?? {});
-            }
+            const res = await apiClient.get(`/v1/familias/${familia.id}`);
+            setHabitantesCache(prev => ({ ...prev, [familia.id]: res.data.data.habitantes ?? [] }));
+        } catch {
+            setHabitantesCache(prev => ({ ...prev, [familia.id]: [] }));
         } finally {
-            setSaving(false);
+            setLoadingExpandId(null);
+        }
+    };
+
+    // ── Edición (modal completo, con habitantes) ────────────────────
+    const openEditModal = async (familia) => {
+        setLoadingEditId(familia.id);
+        try {
+            const res = await apiClient.get(`/v1/familias/${familia.id}`);
+            setEditingFamilia(res.data.data);
+        } catch (err) {
+            setError(err.response?.data?.message ?? 'No se pudo cargar la familia para editar.');
+        } finally {
+            setLoadingEditId(null);
+        }
+    };
+
+    const closeEditModal = () => setEditingFamilia(null);
+
+    const handleEditSuccess = () => {
+        const idEditado = editingFamilia?.id;
+        setEditingFamilia(null);
+        fetchFamilias();
+
+        // Invalidar el caché de habitantes de esa familia: si estaba
+        // expandida, la próxima vez que se abra debe traer datos frescos.
+        if (idEditado) {
+            setHabitantesCache(prev => {
+                const next = { ...prev };
+                delete next[idEditado];
+                return next;
+            });
         }
     };
 
@@ -124,8 +160,15 @@ export default function FamiliaList() {
         try {
             await apiClient.delete(`/v1/familias/${toDelete.id}`);
             setFamilias(prev => prev.filter(f => f.id !== toDelete.id));
-            // Actualizar paginación local
             setPagination(prev => prev ? { ...prev, total: prev.total - 1 } : prev);
+
+            if (expandedId === toDelete.id) setExpandedId(null);
+            setHabitantesCache(prev => {
+                const next = { ...prev };
+                delete next[toDelete.id];
+                return next;
+            });
+
             setToDelete(null);
         } catch (err) {
             setError(err.response?.data?.message ?? 'Error al dar de baja la familia.');
@@ -135,7 +178,15 @@ export default function FamiliaList() {
         }
     };
 
-    const fieldErr = (name) => editErrors[name]?.[0] ?? editErrors[name] ?? '';
+    // ── Registro de familia (modal) ────────────────────────────────
+    const closeCreateModal = () => setShowCreateModal(false);
+
+    const handleCreateSuccess = () => {
+        setShowCreateModal(false);
+        // Recarga la página actual del listado para reflejar la nueva familia.
+        // La URL nunca cambió de /familias durante todo el flujo.
+        fetchFamilias();
+    };
 
     // ─────────────────────────────────────────────────────────────
     //  RENDER
@@ -165,7 +216,7 @@ export default function FamiliaList() {
                     {canWrite && (
                         <button
                             className="list-btn list-btn--primary"
-                            onClick={() => navigate('/familias/crear')}
+                            onClick={() => setShowCreateModal(true)}
                         >
                             + Registrar Familia
                         </button>
@@ -213,148 +264,143 @@ export default function FamiliaList() {
                         <table className="list-table">
                             <thead>
                                 <tr>
+                                    <th className="th-toggle" aria-hidden="true"></th>
                                     <th>Código</th>
                                     <th>Responsable</th>
                                     <th>Condición</th>
-                                    <th>Bombonas</th>
-                                    <th>Agua</th>
+                                    <th>Servicios</th>
                                     <th>Sede / Calle</th>
-                                    {(canWrite || isAdmin) && <th className="th-actions">Acciones</th>}
+                                    {showActionsCol && <th className="th-actions">Acciones</th>}
                                 </tr>
                             </thead>
                             <tbody>
-                                {familias.map((familia) =>
-                                    editingId === familia.id ? (
-                                        /* ── Fila en modo edición ──────────────────── */
-                                        <tr key={familia.id} className="tr-editing">
-                                            <td>
-                                                <input
-                                                    name="codigo_vivienda"
-                                                    value={editForm.codigo_vivienda}
-                                                    onChange={handleEditChange}
-                                                    className={`edit-input ${fieldErr('codigo_vivienda') ? 'edit-input--error' : ''}`}
-                                                    maxLength={20}
-                                                />
-                                                {fieldErr('codigo_vivienda') && <span className="edit-error">{fieldErr('codigo_vivienda')}</span>}
-                                            </td>
-                                            <td>
-                                                <input
-                                                    name="nombre_responsable"
-                                                    value={editForm.nombre_responsable}
-                                                    onChange={handleEditChange}
-                                                    className="edit-input"
-                                                    maxLength={100}
-                                                />
-                                            </td>
-                                            <td>
-                                                <select
-                                                    name="condicion_vivienda"
-                                                    value={editForm.condicion_vivienda}
-                                                    onChange={handleEditChange}
-                                                    className={`edit-select edit-select--${editForm.condicion_vivienda}`}
-                                                >
-                                                    {CONDICION_OPTIONS.map(o => (
-                                                        <option key={o.value} value={o.value}>{o.label}</option>
-                                                    ))}
-                                                </select>
-                                            </td>
-                                            <td>
-                                                <div className="edit-row">
-                                                    <input
-                                                        name="cantidad_bombonas"
-                                                        type="number" min={0} max={99}
-                                                        value={editForm.cantidad_bombonas}
-                                                        onChange={handleEditChange}
-                                                        className="edit-input edit-input--sm"
-                                                    />
-                                                    <select
-                                                        name="capacidad_bombona"
-                                                        value={editForm.capacidad_bombona}
-                                                        onChange={handleEditChange}
-                                                        className="edit-select"
-                                                    >
-                                                        {CAPACIDAD_OPTIONS.map(c => (
-                                                            <option key={c} value={c}>{c}</option>
-                                                        ))}
-                                                    </select>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <label className="edit-checkbox">
-                                                    <input
-                                                        type="checkbox"
-                                                        name="posee_agua_potable"
-                                                        checked={editForm.posee_agua_potable}
-                                                        onChange={handleEditChange}
-                                                    />
-                                                    <span>{editForm.posee_agua_potable ? '💧 Sí' : '🚫 No'}</span>
-                                                </label>
-                                            </td>
-                                            <td className="td-meta">—</td>
-                                            <td>
-                                                <div className="td-actions">
+                                {familias.map((familia) => {
+                                    const isExpanded = expandedId === familia.id;
+                                    const habitantesDeEstaFamilia = habitantesCache[familia.id];
+
+                                    return (
+                                        <Fragment key={familia.id}>
+                                            <tr className={isExpanded ? 'tr-expanded-parent' : ''}>
+                                                <td className="td-toggle">
                                                     <button
-                                                        className="action-btn action-btn--save"
-                                                        onClick={() => saveEdit(familia.id)}
-                                                        disabled={saving}
+                                                        type="button"
+                                                        className="toggle-expand-btn"
+                                                        onClick={() => toggleExpand(familia)}
+                                                        aria-label={isExpanded ? 'Ocultar habitantes' : 'Ver habitantes'}
+                                                        aria-expanded={isExpanded}
                                                     >
-                                                        {saving ? '⏳' : '✓ Guardar'}
+                                                        {isExpanded ? '▾' : '▸'}
                                                     </button>
-                                                    <button
-                                                        className="action-btn action-btn--cancel"
-                                                        onClick={cancelEdit}
-                                                        disabled={saving}
-                                                    >
-                                                        ✕
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        /* ── Fila en modo lectura ──────────────────── */
-                                        <tr key={familia.id}>
-                                            <td className="td-code">{familia.codigo_vivienda}</td>
-                                            <td>{familia.nombre_responsable ?? '—'}</td>
-                                            <td>
-                                                <span className={`badge ${CONDICION_LABEL[familia.condicion_vivienda]?.cls}`}>
-                                                    {CONDICION_LABEL[familia.condicion_vivienda]?.label}
-                                                </span>
-                                            </td>
-                                            <td className="td-center">
-                                                {familia.cantidad_bombonas} × {familia.capacidad_bombona}
-                                            </td>
-                                            <td className="td-center">
-                                                {familia.posee_agua_potable ? '💧' : '🚫'}
-                                            </td>
-                                            <td className="td-meta">
-                                                {familia.sede?.nombre ?? '—'}
-                                                {familia.calle?.nombre && <span className="td-meta__sub"> · {familia.calle.nombre}</span>}
-                                            </td>
-                                            {(canWrite || isAdmin) && (
+                                                </td>
+                                                <td className="td-code">{familia.codigo_vivienda}</td>
+                                                <td>{familia.nombre_responsable ?? '—'}</td>
                                                 <td>
-                                                    <div className="td-actions">
-                                                        {canWrite && (
-                                                            <button
-                                                                className="action-btn action-btn--edit"
-                                                                onClick={() => startEdit(familia)}
-                                                            >
-                                                                ✏
-                                                            </button>
-                                                        )}
-                                                        {isAdmin && (
-                                                            <button
-                                                                className="action-btn action-btn--delete"
-                                                                onClick={() => setToDelete(familia)}
-                                                            >
-                                                                🗑
-                                                            </button>
-                                                        )}
+                                                    <span className={`badge ${CONDICION_LABEL[familia.condicion_vivienda]?.cls}`}>
+                                                        {CONDICION_LABEL[familia.condicion_vivienda]?.label}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    {/* ── Servicios: gas + agua + luz + aseo ── */}
+                                                    <div className="servicios-list">
+                                                        <span className="servicio-chip servicio-chip--gas" title="Gas doméstico">
+                                                            🔥 {familia.cantidad_bombonas}×{familia.capacidad_bombona}
+                                                        </span>
+                                                        <span
+                                                            className={`servicio-chip ${familia.posee_agua_potable ? 'servicio-chip--activo' : 'servicio-chip--inactivo'}`}
+                                                            title={familia.posee_agua_potable ? 'Con agua potable' : 'Sin agua potable'}
+                                                        >
+                                                            💧 Agua
+                                                        </span>
+                                                        <span
+                                                            className={`servicio-chip ${familia.posee_luz ? 'servicio-chip--activo' : 'servicio-chip--inactivo'}`}
+                                                            title={familia.posee_luz ? 'Con servicio eléctrico' : 'Sin servicio eléctrico'}
+                                                        >
+                                                            💡 Luz
+                                                        </span>
+                                                        <span
+                                                            className={`servicio-chip ${familia.posee_aseo ? 'servicio-chip--activo' : 'servicio-chip--inactivo'}`}
+                                                            title={familia.posee_aseo ? 'Con recolección de aseo' : 'Sin recolección de aseo'}
+                                                        >
+                                                            🗑️ Aseo
+                                                        </span>
                                                     </div>
                                                 </td>
+                                                <td className="td-meta">
+                                                    {familia.sede?.nombre ?? '—'}
+                                                    {familia.calle?.nombre && <span className="td-meta__sub"> · {familia.calle.nombre}</span>}
+                                                </td>
+                                                {showActionsCol && (
+                                                    <td>
+                                                        <div className="td-actions">
+                                                            {canWrite && (
+                                                                <button
+                                                                    className="action-btn action-btn--edit"
+                                                                    onClick={() => openEditModal(familia)}
+                                                                    disabled={loadingEditId === familia.id}
+                                                                >
+                                                                    {loadingEditId === familia.id ? '⏳' : '✏'}
+                                                                </button>
+                                                            )}
+                                                            {isAdmin && (
+                                                                <button
+                                                                    className="action-btn action-btn--delete"
+                                                                    onClick={() => setToDelete(familia)}
+                                                                >
+                                                                    🗑
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                )}
+                                            </tr>
+
+                                            {/* ── Fila plegable: habitantes de la familia ──── */}
+                                            {isExpanded && (
+                                                <tr className="tr-expanded" key={`${familia.id}-habitantes`}>
+                                                    <td colSpan={totalCols}>
+                                                        <div className="habitantes-expand">
+                                                            {loadingExpandId === familia.id ? (
+                                                                <div className="habitantes-expand__loading">
+                                                                    <span className="list-loading__spinner list-loading__spinner--sm" />
+                                                                    Cargando habitantes...
+                                                                </div>
+                                                            ) : !habitantesDeEstaFamilia || habitantesDeEstaFamilia.length === 0 ? (
+                                                                <div className="habitantes-expand__empty">
+                                                                    Esta familia no tiene habitantes registrados.
+                                                                </div>
+                                                            ) : (
+                                                                <ul className="habitantes-expand__list">
+                                                                    {habitantesDeEstaFamilia.map(h => (
+                                                                        <li key={h.id} className="habitantes-expand__item">
+                                                                            <span className="habitantes-expand__name">
+                                                                                👤 {h.nombre_completo}
+                                                                            </span>
+                                                                            <span className="habitantes-expand__meta">
+                                                                                {h.edad !== null ? `${h.edad} años` : 'Edad —'}
+                                                                                {' · '}
+                                                                                {SEXO_LABEL[h.sexo] ?? h.sexo}
+                                                                                {' · '}
+                                                                                {NIVEL_LABEL[h.nivel_educativo] ?? h.nivel_educativo}
+                                                                            </span>
+                                                                            <span className="habitantes-expand__extra">
+                                                                                {h.cedula && (
+                                                                                    <span className="habitantes-expand__cedula">{h.cedula}</span>
+                                                                                )}
+                                                                                {h.es_discapacitado && (
+                                                                                    <span className="badge badge--purple">♿ Discapacidad</span>
+                                                                                )}
+                                                                            </span>
+                                                                        </li>
+                                                                    ))}
+                                                                </ul>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
                                             )}
-                                        </tr>
-                                    )
-                                )}
+                                        </Fragment>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     )}
@@ -412,6 +458,36 @@ export default function FamiliaList() {
                     </div>
                 )}
             </div>
+
+            {/* ── Modal de registro de familia ─────────────────
+                Ya no navega a /familias/crear: se abre encima de
+                /familias sin cambiar la URL.                     */}
+            <FormModal
+                isOpen={showCreateModal}
+                title="Registrar Nueva Familia"
+                onClose={closeCreateModal}
+            >
+                <FamiliaForm
+                    onCancel={closeCreateModal}
+                    onSuccess={handleCreateSuccess}
+                />
+            </FormModal>
+
+            {/* ── Modal de edición de familia (con sus habitantes) ── */}
+            <FormModal
+                isOpen={!!editingFamilia}
+                title="Editar Familia"
+                onClose={closeEditModal}
+            >
+                {editingFamilia && (
+                    <FamiliaForm
+                        key={editingFamilia.id}
+                        familiaExistente={editingFamilia}
+                        onCancel={closeEditModal}
+                        onSuccess={handleEditSuccess}
+                    />
+                )}
+            </FormModal>
 
             {/* ── Modal de confirmación de baja ──────────────── */}
             <ConfirmModal

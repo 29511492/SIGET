@@ -1,28 +1,5 @@
 /**
  * resources/js/app.jsx — SIGET
- *
- * ═══════════════════════════════════════════════════════════════
- *  CORRECCIONES APLICADAS EN ESTA VERSIÓN:
- *
- *  FIX #1 — Nuevo componente PublicRoute:
- *            Evita que un usuario ya autenticado pueda volver a
- *            ver /login o /register. Si hay sesión activa, redirige
- *            según el rol directamente a su destino.
- *            Sin esto, tras el login el useEffect de Login.jsx podía
- *            generar una redirección redundante que causaba el parpadeo.
- *
- *  FIX #2 — Rutas /perfil y /mi-comunidad agregadas.
- *            Estaban ausentes: cuando Login.jsx llamaba a
- *            navigate('/perfil') o navigate('/mi-comunidad'),
- *            React Router no encontraba la ruta y el catch-all
- *            "path=*" la redirigía a /login, recreando el bucle
- *            para los roles `usuario` y `vocero`.
- *
- *  FIX #3 — ProtectedRoute sin cambios funcionales. La lógica
- *            ya era correcta (isLoading → user → allowedRoles).
- *            El fix real está en AuthContext.jsx (isLoading=true
- *            al iniciar). Se agrega comentario explicativo.
- * ═══════════════════════════════════════════════════════════════
  */
 
 import './bootstrap';
@@ -44,10 +21,7 @@ import { useAuth }      from './hooks/useAuth';
 // Páginas
 import Login            from './pages/auth/Login';
 import DashboardPage    from './pages/DashboardPage';
-import FamiliaForm      from './pages/familias/FamiliaForm';
 import FamiliaList      from './pages/familias/FamiliaList';
-import HabitanteForm    from './pages/habitantes/HabitanteForm';
-import HabitanteList    from './pages/habitantes/HabitanteList';
 import VoceroForm       from './pages/voceros/VoceroForm';
 import VoceroList       from './pages/voceros/VoceroList';
 import ProyectoForm     from './pages/proyecto/ProyectoForm';
@@ -213,7 +187,6 @@ const App = () => (
                 <Routes>
 
                     {/* ══ PÚBLICAS — protegidas con PublicRoute ════════════════
-                        Si hay sesión activa, redirigen al destino por rol.
                         Evita que un usuario logueado vea /login nuevamente.   */}
                     <Route path="/login" element={
                         <PublicRoute><Login /></PublicRoute>
@@ -244,12 +217,6 @@ const App = () => (
                     <Route path="/familias" element={
                         <ProtectedRoute>
                             <FamiliaList />
-                        </ProtectedRoute>
-                    } />
-
-                    <Route path="/habitantes" element={
-                        <ProtectedRoute>
-                            <HabitanteList />
                         </ProtectedRoute>
                     } />
 
@@ -284,19 +251,10 @@ const App = () => (
                     } />
 
 
-                    {/* ══ PRIVADAS — ADMIN + OPERADOR ═════════════════════════ */}
-
-                    <Route path="/familias/crear" element={
-                        <ProtectedRoute allowedRoles={['admin', 'operador']}>
-                            <FamiliaForm />
-                        </ProtectedRoute>
-                    } />
-
-                    <Route path="/habitantes/crear" element={
-                        <ProtectedRoute allowedRoles={['admin', 'operador']}>
-                            <HabitanteForm />
-                        </ProtectedRoute>
-                    } />
+                    {/* ══ PRIVADAS — ADMIN + OPERADOR ═════════════════════════
+                        NOTA: /familias/crear fue eliminada — el registro de
+                        familias ahora es un modal dentro de /familias
+                        (FamiliaList.jsx → FormModal → FamiliaForm.jsx).     */}
 
                     <Route path="/voceros/crear" element={
                         <ProtectedRoute allowedRoles={['admin', 'operador']}>

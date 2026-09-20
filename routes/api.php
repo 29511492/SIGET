@@ -4,7 +4,7 @@
  * ═══════════════════════════════════════════════════════════════
  *  routes/api.php
  *
- *  CORRECCIÓN APLICADA EN ESTA VERSIÓN:
+ *  CORRECCIÓN APLICADA (histórico, se conserva):
  *
  *  FIX — Route::delete('comunicados/{comunicado}') estaba
  *         registrada DOS VECES:
@@ -15,6 +15,15 @@
  *         el destroy de comunicados es operación exclusiva
  *         del rol admin (Capa 4). Se elimina el duplicado
  *         de Capa 3. La ruta en Capa 4 se conserva intacta.
+ *
+ *  CAMBIO (sept-2026) — Módulo de Habitantes eliminado:
+ *  Las rutas /api/v1/habitantes (index, show, store, update,
+ *  destroy) se retiran por completo. Los habitantes ahora se
+ *  crean, editan y dan de baja DENTRO del mismo payload de
+ *  /api/v1/familias (array `habitantes[]`), gestionados por
+ *  FamiliaController — ver ese archivo para el detalle. El
+ *  import de HabitanteController se elimina porque ya no lo usa
+ *  ninguna ruta.
  * ═══════════════════════════════════════════════════════════════
  */
 
@@ -22,7 +31,6 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\CalleController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\FamiliaController;
-use App\Http\Controllers\Api\V1\HabitanteController;
 use App\Http\Controllers\Api\V1\VoceroController;
 use App\Http\Controllers\Api\V1\ProyectoController;
 use App\Http\Controllers\Api\V1\BeneficioController;
@@ -118,19 +126,12 @@ Route::prefix('v1')->group(function () {
             Route::get('dashboard/stats', [DashboardController::class, 'stats'])
                 ->name('api.v1.dashboard.stats');
 
-            // Familias — lectura
+            // Familias — lectura (incluye habitantes anidados en show())
             Route::get('familias', [FamiliaController::class, 'index'])
                 ->name('api.v1.familias.index');
 
             Route::get('familias/{familia}', [FamiliaController::class, 'show'])
                 ->name('api.v1.familias.show');
-
-            // Habitantes — lectura
-            Route::get('habitantes', [HabitanteController::class, 'index'])
-                ->name('api.v1.habitantes.index');
-
-            Route::get('habitantes/{habitante}', [HabitanteController::class, 'show'])
-                ->name('api.v1.habitantes.show');
 
             // Sedes y Calles — opciones para selects encadenados
             Route::get('sedes', [CalleController::class, 'listaSedes'])
@@ -211,19 +212,13 @@ Route::prefix('v1')->group(function () {
         // ══════════════════════════════════════════════════════════
         Route::middleware('role:admin,operador')->group(function () {
 
-            // Familias — crear y editar
+            // Familias — crear y editar (el payload de ambas incluye
+            // el array `habitantes[]` — ver FamiliaController)
             Route::post('familias', [FamiliaController::class, 'store'])
                 ->name('api.v1.familias.store');
 
             Route::put('familias/{familia}', [FamiliaController::class, 'update'])
                 ->name('api.v1.familias.update');
-
-            // Habitantes — crear y editar
-            Route::post('habitantes', [HabitanteController::class, 'store'])
-                ->name('api.v1.habitantes.store');
-
-            Route::put('habitantes/{habitante}', [HabitanteController::class, 'update'])
-                ->name('api.v1.habitantes.update');
 
             // Voceros — crear y editar
             Route::post('voceros', [VoceroController::class, 'store'])
@@ -313,9 +308,6 @@ Route::prefix('v1')->group(function () {
             // SoftDelete — los registros quedan en BD con deleted_at
             Route::delete('familias/{familia}', [FamiliaController::class, 'destroy'])
                 ->name('api.v1.familias.destroy');
-
-            Route::delete('habitantes/{habitante}', [HabitanteController::class, 'destroy'])
-                ->name('api.v1.habitantes.destroy');
 
             Route::delete('voceros/{vocero}', [VoceroController::class, 'destroy'])
                 ->name('api.v1.voceros.destroy');

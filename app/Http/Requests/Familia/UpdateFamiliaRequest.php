@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Familia;
 
+use App\Models\Habitante;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -40,6 +41,20 @@ use Illuminate\Validation\Rule;
  *    codigo_vivienda. Sin ->whereNull(), la validación 'unique'
  *    fallaría aunque el registro esté borrado lógicamente.
  *    Con ->whereNull(), solo compara contra registros activos.
+ * ───────────────────────────────────────────────────────────────
+ *  CAMBIO (sept-2026) — Habitantes anidados en la edición:
+ *  El payload puede traer `habitantes[]`. Cada elemento puede
+ *  traer `id` (habitante existente que se edita) o no traerlo
+ *  (habitante nuevo agregado durante la edición). En
+ *  withValidator() se verifica que todo `id` recibido pertenezca
+ *  realmente a ESTA familia — evita que, por error de datos en el
+ *  frontend, se edite el habitante de otra familia desde este
+ *  formulario.
+ *
+ *  La unicidad de cédula NO se valida con la regla `unique` de
+ *  Laravel a nivel de array (no soporta "ignorar el registro N del
+ *  wildcard"), así que se hace a mano en withValidator(),
+ *  excluyendo el propio id del habitante cuando aplica.
  * ═══════════════════════════════════════════════════════════════
  */
 class UpdateFamiliaRequest extends FormRequest
@@ -63,7 +78,11 @@ class UpdateFamiliaRequest extends FormRequest
                     ->whereNull('deleted_at'),
             ],
 
-            'nombre_responsable' => ['sometimes', 'required', 'string', 'max:100'],
+            'nombre_responsable' => [
+                'sometimes', 'required', 'string', 'max:100',
+                // Solo letras (con tildes/ñ), espacios, apóstrofes y guiones
+                'regex:/^[\p{L}\s\'\-]+$/u',
+            ],
             'sede_id' => ['sometimes', 'required', 'integer', 'exists:sedes,id'],
             'calle_id' => ['sometimes', 'required', 'integer', 'exists:calles,id'],
 
@@ -95,13 +114,143 @@ class UpdateFamiliaRequest extends FormRequest
                 'boolean',
             ],
 
+            'posee_luz' => [
+                'sometimes',
+                'required',
+                'boolean',
+            ],
+
+            'posee_aseo' => [
+                'sometimes',
+                'required',
+                'boolean',
+            ],
+
             'punto_referencia' => [
                 'sometimes',
                 'nullable',
                 'string',
                 'max:255',
             ],
+
+            // ── Habitantes de la familia (array opcional) ────────
+            'habitantes' => [
+                'sometimes',
+                'array',
+            ],
+            'habitantes.*.id' => [
+                'sometimes',
+                'nullable',
+                'integer',
+                'exists:habitantes,id',
+            ],
+            'habitantes.*.cedula' => [
+                'nullable',
+                'string',
+                'max:15',
+                'distinct', // Sin cédulas repetidas dentro del mismo envío
+                // Unicidad contra la BD (ignorando el propio registro)
+                // se valida a mano en withValidator() — ver comentario arriba.
+            ],
+            'habitantes.*.nombres' => [
+                'required_with:habitantes',
+                'string',
+                'max:100',
+                'regex:/^[\p{L}\s\'\-]+$/u',
+            ],
+            'habitantes.*.apellidos' => [
+                'required_with:habitantes',
+                'string',
+                'max:100',
+                'regex:/^[\p{L}\s\'\-]+$/u',
+            ],
+            'habitantes.*.fecha_nacimiento' => [
+                'required_with:habitantes',
+                'date_format:Y-m-d',
+                'before:today',
+                'after:1900-01-01',
+            ],
+            'habitantes.*.sexo' => [
+                'required_with:habitantes',
+                'string',
+                'in:masculino,femenino,otro',
+            ],
+            'habitantes.*.es_discapacitado' => [
+                'required_with:habitantes',
+                'boolean',
+            ],
+            'habitantes.*.tipo_discapacidad' => [
+                'nullable',
+                'string',
+                'max:100',
+            ],
+            'habitantes.*.enfermedad_cronica' => [
+                'nullable',
+                'string',
+                'max:150',
+            ],
+            'habitantes.*.nivel_educativo' => [
+                'required_with:habitantes',
+                'string',
+                'in:ninguno,primaria,bachillerato,tecnico,universitario,postgrado',
+            ],
         ];
+    }
+
+    /**
+     * Validación cruzada por habitante: tipo_discapacidad condicional,
+     * pertenencia del id a esta familia, y unicidad de cédula contra
+     * la BD ignorando el propio registro.
+     */
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator) {
+            $familia    = $this->route('familia');
+            $habitantes = $this->input('habitantes', []);
+
+            // IDs de habitantes que realmente pertenecen a esta familia
+            $idsPropios = $familia
+                ? $familia->habitantes()->pluck('id')->all()
+                : [];
+
+            foreach ($habitantes as $i => $h) {
+                $id              = $h['id'] ?? null;
+                $tipo            = trim((string) ($h['tipo_discapacidad'] ?? ''));
+                $esDiscapacitado = filter_var($h['es_discapacitado'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+                // Tipo de discapacidad obligatorio si aplica
+                if ($esDiscapacitado && $tipo === '') {
+                    $validator->errors()->add(
+                        "habitantes.{$i}.tipo_discapacidad",
+                        'Debes describir el tipo de discapacidad.'
+                    );
+                }
+
+                // El id, si viene, debe pertenecer a ESTA familia
+                if ($id && !in_array($id, $idsPropios, true)) {
+                    $validator->errors()->add(
+                        "habitantes.{$i}.id",
+                        'Este habitante no pertenece a la familia que estás editando.'
+                    );
+                }
+
+                // Unicidad de cédula contra la BD, ignorando el propio registro
+                $cedula = trim((string) ($h['cedula'] ?? ''));
+                if ($cedula !== '') {
+                    $existe = Habitante::where('cedula', $cedula)
+                        ->whereNull('deleted_at')
+                        ->when($id, fn ($q) => $q->where('id', '!=', $id))
+                        ->exists();
+
+                    if ($existe) {
+                        $validator->errors()->add(
+                            "habitantes.{$i}.cedula",
+                            'Esta cédula ya pertenece a otro habitante registrado.'
+                        );
+                    }
+                }
+            }
+        });
     }
 
     public function attributes(): array
@@ -115,6 +264,8 @@ class UpdateFamiliaRequest extends FormRequest
             'cantidad_bombonas'  => 'cantidad de bombonas',
             'capacidad_bombona'  => 'capacidad de bombona',
             'posee_agua_potable' => 'agua potable',
+            'posee_luz'          => 'servicio de luz',
+            'posee_aseo'         => 'servicio de aseo',
             'punto_referencia'   => 'punto de referencia',
         ];
     }
@@ -122,11 +273,16 @@ class UpdateFamiliaRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'codigo_vivienda.unique' => 'Este código de vivienda ya pertenece a otra familia.',
-            'sede_id.exists'         => 'La sede seleccionada no existe.',
-            'calle_id.exists'        => 'La calle seleccionada no existe.',
-            'condicion_vivienda.in'  => 'La condición debe ser: óptima, regular o crítica.',
-            'capacidad_bombona.in'   => 'La capacidad debe ser: 10kg, 18kg o 43kg.',
+            'codigo_vivienda.unique'         => 'Este código de vivienda ya pertenece a otra familia.',
+            'sede_id.exists'                 => 'La sede seleccionada no existe.',
+            'calle_id.exists'                => 'La calle seleccionada no existe.',
+            'condicion_vivienda.in'          => 'La condición debe ser: óptima, regular o crítica.',
+            'capacidad_bombona.in'           => 'La capacidad debe ser: 10kg, 18kg o 43kg.',
+            'nombre_responsable.regex'       => 'El responsable solo puede contener letras.',
+            'habitantes.*.nombres.regex'     => 'Los nombres solo pueden contener letras.',
+            'habitantes.*.apellidos.regex'   => 'Los apellidos solo pueden contener letras.',
+            'habitantes.*.id.exists'         => 'Uno de los habitantes ya no existe.',
+            'habitantes.*.cedula.distinct'   => 'Hay cédulas repetidas entre los habitantes.',
         ];
     }
 
