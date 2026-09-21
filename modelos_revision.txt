@@ -1,0 +1,1232 @@
+﻿=== Auditoria.php ===
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+/**
+ * â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+ *  Auditoria â€” SIGET
+ * â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ *  DECISIONES DE DISEÃ‘O:
+ *
+ *  1. Sin SoftDeletes â€” los logs de auditorÃ­a son INMUTABLES.
+ *     Nunca se eliminan ni se editan. PatrÃ³n: Append-Only Log.
+ *
+ *  2. Sin updated_at â€” la migraciÃ³n solo define created_at.
+ *     Desactivar updated_at con $timestamps = false causarÃ­a
+ *     que Eloquent tampoco gestione created_at. En su lugar,
+ *     se declara $updatedAt = false para desactivar solo ese campo.
+ *
+ *  3. Casts 'array' para valor_anterior y valor_nuevo:
+ *     La migraciÃ³n usa json nativo de PostgreSQL/MySQL.
+ *     El cast 'array' hace que Eloquent serialice/deserialice
+ *     automÃ¡ticamente â€” en el Resource se devuelven como arrays PHP.
+ *
+ *  4. Sin booted() con Cache::forget â€” los registros de auditorÃ­a
+ *     no afectan las estadÃ­sticas del Dashboard.
+ * â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+ */
+class Auditoria extends Model
+{
+    // Solo created_at â€” sin updated_at (tabla append-only)
+    const UPDATED_AT = null;
+
+    protected $table = 'auditorias';
+
+    protected $fillable = [
+        'user_id',
+        'accion',
+        'tabla_afectada',
+        'registro_id',
+        'direccion_ip',
+        'user_agent',
+        'valor_anterior',
+        'valor_nuevo',
+    ];
+
+    protected $casts = [
+        'user_id'         => 'integer',
+        'registro_id'     => 'integer',
+        'valor_anterior'  => 'array',   // JSON nativo â†’ array PHP automÃ¡tico
+        'valor_nuevo'     => 'array',
+        'created_at'      => 'datetime',
+    ];
+
+    // â”€â”€ Relaciones â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+    /**
+     * Operador que realizÃ³ la acciÃ³n.
+     * nullable: acciones del sistema pueden no tener user_id.
+     */
+    public function usuario(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+}
+=== Beneficio.php ===
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Cache;
+
+class Beneficio extends Model
+{
+    use HasFactory, SoftDeletes;
+
+    protected $table = 'beneficios';
+
+    protected $fillable = [
+        'familia_id',
+        'user_id',
+        'nombre_beneficio',
+        'fecha_entrega',
+        'observaciones',
+    ];
+
+    protected $casts = [
+        'fecha_entrega' => 'date',
+        'familia_id'    => 'integer',
+        'user_id'       => 'integer',
+    ];
+
+    // â”€â”€ Cache-Aside â€” igual que Proyecto, Familia, Habitante â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    protected static function booted(): void
+    {
+        static::saved(fn ()   => Cache::forget('dashboard_stats'));
+        static::deleted(fn () => Cache::forget('dashboard_stats'));
+    }
+
+    // â”€â”€ Relaciones â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    public function familia(): BelongsTo
+    {
+        return $this->belongsTo(Familia::class);
+    }
+
+    // Alias semÃ¡ntico para trazabilidad â€” consistente con el Resource
+    public function registradoPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+}
+=== Calle.php ===
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+/**
+ *  Tabla: calles
+ *  MigraciÃ³n: 2026_03_30_000001_create_calles_table.php
+ *
+ *  Campos definidos en la migraciÃ³n:
+ *  - sede_id:  foreignId â†’ sedes (CASCADE)
+ *  - nombre:   string(150)
+ *
+ *  RELACIONES:
+ *  - Una Calle pertenece a una Sede    (belongsTo)
+ *  - Una Calle tiene muchas Familias   (hasMany)
+ *
+ *  NOTA: No tiene SoftDeletes porque si una calle desaparece
+ *  fÃ­sicamente del sistema, sus familias pasan a calle_id = null
+ *  (SET NULL definido en la migraciÃ³n con onDelete('set null')).
+ * â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+ */
+class Calle extends Model
+{
+    use HasFactory;
+
+    protected $table = 'calles';
+
+    protected $fillable = [
+        'sede_id',
+        'nombre',
+    ];
+
+    // â”€â”€ Relaciones â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+    /**
+     * Una calle pertenece a una sede.
+     * Acceso: $calle->sede->nombre
+     */
+    public function sede(): BelongsTo
+    {
+        return $this->belongsTo(Sede::class);
+    }
+
+    /**
+     * Una calle agrupa muchas familias/viviendas.
+     * Acceso: $calle->familias()->where('condicion_vivienda', 'critica')->count()
+     */
+    public function familias(): HasMany
+    {
+        return $this->hasMany(Familia::class);
+    }
+}
+=== Comite.php ===
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+/**
+ * â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+ *  Comite â€” ComitÃ© comunal normalizado
+ * â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ *  Tabla: comites
+ *  nombre: string(100) unique â€” evita duplicados como "Salud"/"salud"
+ *  descripcion: text nullable
+ * â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+ */
+class Comite extends Model
+{
+    use HasFactory;
+
+    protected $table = 'comites';
+
+    protected $fillable = [
+        'nombre',
+        'descripcion',
+    ];
+
+    // â”€â”€ Relaciones â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+    /**
+     * Voceros que pertenecen a este comitÃ©.
+     * comite_id es nullable en voceros (SET NULL al eliminar comite).
+     */
+    public function voceros(): HasMany
+    {
+        return $this->hasMany(Vocero::class);
+    }
+
+    public function proyectos(): HasMany
+    {
+        return $this->hasMany(Proyecto::class);
+    }
+}
+=== Comunicado.php ===
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class Comunicado extends Model
+{
+    use SoftDeletes;
+
+    protected $table = 'comunicados';
+
+    protected $fillable = [
+        'user_id',
+        'destinatario',
+        'cargo_destinatario',
+        'asunto',
+        'cuerpo',
+        'estado',
+        'numero_oficio',
+    ];
+
+    protected $casts = [
+        'user_id'    => 'integer',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'deleted_at' => 'datetime',
+    ];
+
+    // â”€â”€â”€ Relaciones â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    // â”€â”€â”€ Scopes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+    public function scopeEnviados($query)
+    {
+        return $query->where('estado', 'enviado');
+    }
+
+    public function scopeBorradores($query)
+    {
+        return $query->where('estado', 'borrador');
+    }
+
+    // â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+    /**
+     * Genera el nÃºmero de oficio correlativo automÃ¡tico.
+     * Formato: CC-YYYY-NNNN  (CC = Consejo Comunal)
+     * Se llama desde el servicio antes de guardar.
+     */
+    public static function generarNumeroOficio(): string
+    {
+        $anio    = now()->year;
+        $ultimo  = self::whereYear('created_at', $anio)
+                       ->whereNotNull('numero_oficio')
+                       ->withTrashed()
+                       ->count();
+
+        $correlativo = str_pad($ultimo + 1, 4, '0', STR_PAD_LEFT);
+
+        return "CC-{$anio}-{$correlativo}";
+    }
+}
+=== CuentaPago.php ===
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+/**
+ * App\Models\CuentaPago
+ *
+ * Representa una cuenta bancaria de destino para pagos QR del
+ * Consejo Comunal, asociada a un servicio (Gas, Cuota, Aseo, etc.).
+ * El admin/operador la gestiona; el rol "usuario" la consulta de
+ * solo lectura al momento de pagar (Capa 1).
+ */
+class CuentaPago extends Model
+{
+    use HasFactory, SoftDeletes;
+
+    protected $table = 'cuentas_pago';
+
+    protected $fillable = [
+        'nombre_servicio',
+        'banco',
+        'telefono',
+        'cedula_rif',
+        'titular',
+        'descripcion',
+        'activa',
+    ];
+
+    protected $casts = [
+        'activa' => 'boolean',
+    ];
+
+    // â”€â”€ Relaciones â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    public function pagos(): HasMany
+    {
+        return $this->hasMany(PagoQr::class, 'cuenta_pago_id');
+    }
+
+    // â”€â”€ Scopes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    public function scopeActivas($query)
+    {
+        return $query->where('activa', true);
+    }
+}
+=== Familia.php ===
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Cache;
+
+/**
+ * CAMPOS RELEVANTES PARA EL DASHBOARD:
+ * - condicion_vivienda: enum('optima','regular','critica')
+ *   Usado en: WHERE condicion_vivienda = 'critica'
+ */
+class Familia extends Model
+{
+    use HasFactory, SoftDeletes;
+
+    protected $table    = 'familias';
+    protected $fillable = [
+        'sede_id', 'calle_id', 'codigo_vivienda',
+        'nombre_responsable', 'punto_referencia',
+        'cantidad_bombonas', 'capacidad_bombona',
+        'posee_agua_potable', 'posee_luz', 'posee_aseo',
+        'condicion_vivienda',
+    ];
+
+    protected $casts = [
+        'sede_id'            => 'integer',
+        'calle_id'           => 'integer',
+        'cantidad_bombonas'  => 'integer',
+        'posee_agua_potable' => 'boolean',
+        'posee_luz'          => 'boolean',
+        'posee_aseo'         => 'boolean',
+        'deleted_at'         => 'datetime',
+    ];
+
+/**
+ * Invalidar cachÃ© del dashboard cuando se crea/modifica una familia.
+ * PatrÃ³n Cache-Aside: el modelo que muta los datos es responsable
+ * de invalidar el cachÃ©, no el controlador que lee.
+ */
+    protected static function booted(): void
+    {
+        static::saved(function () {
+            Cache::forget('dashboard_stats');
+        });
+
+        static::deleted(function () {
+            Cache::forget('dashboard_stats');
+        });
+    }
+
+    // â”€â”€ Relaciones â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    public function sede(): BelongsTo
+    {
+        return $this->belongsTo(Sede::class);
+    }
+
+    public function calle(): BelongsTo
+    {
+        return $this->belongsTo(Calle::class);
+    }
+
+    public function habitantes(): HasMany
+    {
+        return $this->hasMany(Habitante::class);
+    }
+
+    public function beneficios(): HasMany
+    {
+        return $this->hasMany(Beneficio::class);
+    }
+}
+=== Habitante.php ===
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Cache;
+
+/**
+ * â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+ *  Habitante â€” Persona del padrÃ³n comunal
+ * â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ *  PATCH aplicado: se agrega booted() con Cache::forget.
+ *
+ *  DECISIÃ“N â€” Â¿Por quÃ© invalidar cachÃ© aquÃ­ y no en el controlador?
+ *  El Dashboard cuenta habitantes y personas con discapacidad.
+ *  Si el controlador invalidara el cachÃ©, cualquier otro punto del
+ *  sistema que cree habitantes (importaciones masivas, seeders,
+ *  otras rutas futuras) NO invalidarÃ­a el cachÃ© porque no pasan
+ *  por ese controlador. El evento del modelo se dispara SIEMPRE
+ *  que Eloquent persiste, sin importar el origen. Esto es el
+ *  patrÃ³n Cache-Aside: el modelo es la Ãºnica fuente de verdad.
+ * â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+ */
+class Habitante extends Model
+{
+    use HasFactory, SoftDeletes;
+
+    protected $table = 'habitantes';
+
+    protected $fillable = [
+        'familia_id',
+        'cedula',
+        'nombres',
+        'apellidos',
+        'fecha_nacimiento',
+        'sexo',
+        'es_discapacitado',
+        'tipo_discapacidad',
+        'enfermedad_cronica',
+        'nivel_educativo',
+    ];
+
+    protected $casts = [
+        'fecha_nacimiento' => 'date',
+        'es_discapacitado' => 'boolean',
+        'deleted_at'       => 'datetime',
+    ];
+
+    /**
+     * Cache-Aside: invalida 'dashboard_stats' en cada cambio.
+     * El dashboard cuenta total_habitantes y con_discapacidad.
+     * Ambos conteos deben actualizarse cuando se registra o elimina
+     * un habitante o cuando cambia su estado de discapacidad.
+     */
+    protected static function booted(): void
+    {
+        static::saved(function () {
+            Cache::forget('dashboard_stats');
+        });
+
+        static::deleted(function () {
+            Cache::forget('dashboard_stats');
+        });
+    }
+
+    // â”€â”€ Relaciones â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+    public function familia(): BelongsTo
+    {
+        return $this->belongsTo(Familia::class);
+    }
+
+    public function vocero(): HasOne
+    {
+        return $this->hasOne(Vocero::class);
+    }
+
+    public function user(): HasOne
+    {
+        return $this->hasOne(User::class);
+    }
+}
+=== Noticia.php ===
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Cache;
+
+/**
+ * App\Models\Noticia
+ *
+ * Modelo de noticias comunales publicadas por admin/operador.
+ * Los demÃ¡s roles solo pueden leer las noticias publicadas.
+ *
+ * Relaciones:
+ *   - belongsTo User (autor)
+ *
+ * Cache-Aside: invalida 'noticias_recientes' en saved/deleted
+ * para que el widget de noticias en MiComunidad y PerfilPage
+ * siempre muestre datos actualizados.
+ */
+class Noticia extends Model
+{
+    use SoftDeletes;
+
+    protected $table = 'noticias';
+
+    protected $fillable = [
+        'user_id',
+        'titulo',
+        'contenido',
+        'publicado',
+        'published_at',
+    ];
+
+    protected $casts = [
+        'publicado'    => 'boolean',
+        'published_at' => 'datetime',
+    ];
+
+    // â”€â”€ Relaciones â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    public function autor()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    // â”€â”€ Cache-Aside â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    protected static function booted(): void
+    {
+        static::saved(fn ()  => Cache::forget('noticias_recientes'));
+        static::deleted(fn () => Cache::forget('noticias_recientes'));
+    }
+
+    // â”€â”€ Scopes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+    /**
+     * Solo noticias publicadas â€” para roles de lectura
+     */
+    public function scopePublicadas($query)
+    {
+        return $query->where('publicado', true)
+                     ->whereNotNull('published_at');
+    }
+
+    /**
+     * Ordena por fecha de publicaciÃ³n descendente
+     */
+    public function scopeRecientes($query)
+    {
+        return $query->orderBy('published_at', 'desc');
+    }
+}
+=== Organizacion.php ===
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Cache;
+
+class Organizacion extends Model
+{
+    use HasFactory, SoftDeletes;   // â† SoftDeletes activo â€” deleted_at existe en la tabla
+
+    protected $table = 'organizaciones';
+
+    public const TIPOS_SERVICIO = [
+        'agua'          => 'Agua',
+        'electricidad'  => 'Electricidad',
+        'gas'           => 'Gas',
+        'salud'         => 'Salud',
+        'educacion'     => 'EducaciÃ³n',
+        'seguridad'     => 'Seguridad',
+        'transporte'    => 'Transporte',
+        'otro'          => 'Otro',
+    ];
+
+    protected $fillable = [
+        'nombre',
+        'tipo_servicio',
+        'contacto',
+        'descripcion',
+        'estatus',        // â† columna confirmada en la nueva migraciÃ³n
+    ];
+
+    protected $casts = [
+        'estatus'    => 'boolean',
+        'deleted_at' => 'datetime',
+    ];
+
+    protected static function booted(): void
+    {
+        static::saved(fn ()   => Cache::forget('organizaciones_index'));
+        static::deleted(fn () => Cache::forget('organizaciones_index'));
+    }
+}
+=== Pagoqr.php ===
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Cache;
+
+/**
+ * MÃ¡quina de estados: pendiente â†’ verificado | rechazado
+ * El cambio de estado solo lo puede hacer un operador o admin
+ * a travÃ©s de PagoQrController::validar().
+ *
+ * FIX (junio 2026): se agrega 'cuenta_pago_id' y su relaciÃ³n
+ * cuentaPago(). Vincula formalmente el pago a la cuenta de pago
+ * (servicio) que el usuario eligiÃ³ al pagar, reemplazando la
+ * dependencia exclusiva del texto libre en 'concepto_pago'.
+ */
+class PagoQr extends Model
+{
+    use HasFactory, SoftDeletes;
+
+    protected $table = 'pagos_qr';
+
+    public const ESTADOS = ['pendiente', 'verificado', 'rechazado'];
+
+    protected $fillable = [
+        'habitante_id',
+        'user_id',
+        'familia_id',
+        'organizacion_id',
+        'cuenta_pago_id',
+        'verificado_por',
+        'referencia_bancaria',
+        'monto',
+        'concepto_pago',
+        'comprobante_path',
+        'estado',
+        'motivo_rechazo',
+        'fecha_pago',
+        'fecha_verificacion',
+    ];
+
+    protected $casts = [
+        'monto'               => 'decimal:2',
+        'fecha_pago'          => 'datetime',
+        'fecha_verificacion'  => 'datetime',
+        'habitante_id'        => 'integer',
+        'user_id'             => 'integer',
+        'familia_id'          => 'integer',
+        'organizacion_id'     => 'integer',
+        'cuenta_pago_id'      => 'integer',
+        'verificado_por'      => 'integer',
+    ];
+
+    // â”€â”€ Cache-Aside â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    protected static function booted(): void
+    {
+        static::saved(fn ()   => Cache::forget('pagos_pendientes_count'));
+        static::deleted(fn () => Cache::forget('pagos_pendientes_count'));
+    }
+
+    // â”€â”€ Relaciones â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+    /** Habitante que realizÃ³ el pago (flujo admin/operador). */
+    public function habitante(): BelongsTo
+    {
+        return $this->belongsTo(Habitante::class);
+    }
+
+    /** Usuario que registrÃ³ el pago directamente (flujo Portal Ciudadano). */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    /** Familia del habitante (para agrupar pagos por nÃºcleo). */
+    public function familia(): BelongsTo
+    {
+        return $this->belongsTo(Familia::class);
+    }
+
+    /** Servicio pÃºblico al que corresponde el pago (mÃ³dulo Organizaciones). */
+    public function organizacion(): BelongsTo
+    {
+        return $this->belongsTo(Organizacion::class);
+    }
+
+    /** Cuenta de pago (servicio + datos bancarios) elegida al pagar. */
+    public function cuentaPago(): BelongsTo
+    {
+        return $this->belongsTo(CuentaPago::class, 'cuenta_pago_id');
+    }
+
+    /** Operador que verificÃ³ o rechazÃ³ el pago. */
+    public function verificador(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'verificado_por');
+    }
+
+    // â”€â”€ Scopes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+    public function scopePendientes($query)
+    {
+        return $query->where('estado', 'pendiente');
+    }
+
+    public function scopeDeUsuario($query, int $userId)
+    {
+        return $query->where('user_id', $userId);
+    }
+
+    // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+    /** URL pÃºblica del comprobante almacenado en storage. */
+    public function getComprobanteUrlAttribute(): ?string
+    {
+        return $this->comprobante_path
+            ? asset('storage/' . $this->comprobante_path)
+            : null;
+    }
+
+    public function esPendiente(): bool   { return $this->estado === 'pendiente';   }
+    public function esVerificado(): bool  { return $this->estado === 'verificado';  }
+    public function esRechazado(): bool   { return $this->estado === 'rechazado';   }
+}
+=== Proyecto.php ===
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Cache;
+
+class Proyecto extends Model
+{
+    use HasFactory, SoftDeletes;
+
+    protected $table = 'proyectos';
+
+    protected $fillable = [
+        'sede_id',
+        'comite_id',
+        'user_id',
+        'nombre_proyecto',
+        'objetivo',
+        'monto_aprobado',
+        'fuente_financiamiento',
+        'estatus',
+        'fecha_inicio',
+        'fecha_fin',
+    ];
+
+    protected $casts = [
+        'monto_aprobado' => 'decimal:2',
+        'fecha_inicio'   => 'date',
+        'fecha_fin'      => 'date',
+        'sede_id'        => 'integer',
+        'comite_id'      => 'integer',
+        'user_id'        => 'integer',
+    ];
+
+    // â”€â”€â”€ Cache-Aside (Regla 3.7) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    protected static function booted(): void
+    {
+        static::saved(fn () => Cache::forget('dashboard_stats'));
+        static::deleted(fn () => Cache::forget('dashboard_stats'));
+    }
+
+    // â”€â”€â”€ Relaciones â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    public function sede(): BelongsTo
+    {
+        return $this->belongsTo(Sede::class);
+    }
+
+    public function comite(): BelongsTo
+    {
+        return $this->belongsTo(Comite::class);
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    // â”€â”€â”€ Scopes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    public function scopePorEstatus($query, string $estatus)
+    {
+        return $query->where('estatus', $estatus);
+    }
+
+    public function scopePorSede($query, int $sedeId)
+    {
+        return $query->where('sede_id', $sedeId);
+    }
+}
+=== Sede.php ===
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+/**
+ * â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+ *  Sede â€” Sede comunal (Casa Comunal, Centro de Salud, etc.)
+ * â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ *  ENUMs de la migraciÃ³n:
+ *  tipo_sede: administrativa|salud|educativa|deportiva|cultural|otra
+ *  estado_infraestructura: optima|regular|critica
+ * â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+ */
+class Sede extends Model
+{
+    use HasFactory, SoftDeletes;
+
+    protected $table = 'sedes';
+
+    protected $fillable = [
+        'nombre',
+        'direccion',
+        'tipo_sede',
+        'estado_infraestructura',
+        'observaciones',
+    ];
+
+    protected $casts = [
+        'deleted_at' => 'datetime',
+    ];
+
+    // â”€â”€ Relaciones â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+    public function calles(): HasMany
+    {
+        return $this->hasMany(Calle::class);
+    }
+
+    public function familias(): HasMany
+    {
+        return $this->hasMany(Familia::class);
+    }
+
+    /**
+     * Voceros asignados a esta sede.
+     * Acceso: $sede->voceros()->activos()->count()
+     */
+    public function voceros(): HasMany
+    {
+        return $this->hasMany(Vocero::class);
+    }
+
+    public function proyectos(): HasMany
+    {
+        return $this->hasMany(Proyecto::class);
+    }
+}
+=== Sugerencia.php ===
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+/**
+ * App\Models\Sugerencia
+ *
+ * Modelo de sugerencias/quejas enviadas por usuarios al Consejo Comunal.
+ * Workflow: pendiente â†’ en_revision â†’ resuelta â†’ archivada
+ *
+ * Relaciones:
+ *   - belongsTo User (quien enviÃ³)
+ *   - belongsTo User (quien revisÃ³)
+ *
+ * No implementa Cache-Aside porque las sugerencias no afectan
+ * los contadores del Dashboard.
+ */
+class Sugerencia extends Model
+{
+    use SoftDeletes;
+
+    protected $table = 'sugerencias';
+
+    protected $fillable = [
+        'user_id',
+        'revisada_por',
+        'mensaje',
+        'respuesta',
+        'categoria',
+        'prioridad',
+        'revisada',
+        'revisada_en',
+    ];
+
+    protected $casts = [
+        'revisada'    => 'boolean',
+        'revisada_en' => 'datetime',
+    ];
+
+    // â”€â”€ Relaciones â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    public function autor()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function revisor()
+    {
+        return $this->belongsTo(User::class, 'revisada_por');
+    }
+
+    // â”€â”€ Scopes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    public function scopePendientes($query)
+    {
+        return $query->where('revisada', false);
+    }
+
+    public function scopeRevisadas($query)
+    {
+        return $query->where('revisada', true);
+    }
+
+    public function scopeDeUsuario($query, int $userId)
+    {
+        return $query->where('user_id', $userId);
+    }
+
+    public function scopePorCategoria($query, string $categoria)
+    {
+        return $query->where('categoria', $categoria);
+    }
+
+    public function scopePorPrioridad($query, string $prioridad)
+    {
+        return $query->where('prioridad', $prioridad);
+    }
+}
+=== User.php ===
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
+
+/**
+ * â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+ *  User â€” Modelo de usuario
+ * â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ *  TRAIT CRÃTICO: HasApiTokens
+ *  Sin este trait, el mÃ©todo $user->createToken() no existe
+ *  y el AuthController lanzarÃ¡ un error fatal al intentar
+ *  emitir el token de Sanctum.
+ *
+ *  Verificar que este trait estÃ© importado es el segundo punto
+ *  de diagnÃ³stico mÃ¡s comÃºn despuÃ©s del bootstrap/app.php.
+ * â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+ */
+class User extends Authenticatable
+{
+    use HasApiTokens;   // â† CRÃTICO para Sanctum â€” sin esto, no hay tokens
+    use HasFactory;
+    use Notifiable;
+    use SoftDeletes;    // deleted_at â€” los usuarios se desactivan, no se eliminan
+
+    protected $fillable = [
+        'name',
+        'cedula',
+        'email',
+        'password',
+        'rol',
+        'habitante_id',
+        'failed_attempts',
+        'is_locked',
+        'locked_at',
+        'otp_code',
+        'otp_expires_at',
+    ];
+
+    protected $hidden = [
+        'password',
+        'remember_token',
+        'otp_code',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'email_verified_at' => 'datetime',
+            'password'          => 'hashed',
+            'deleted_at'        => 'datetime',
+            'locked_at'         => 'datetime',
+            'otp_expires_at'    => 'datetime',
+            'is_locked'         => 'boolean',
+            'failed_attempts'   => 'integer',
+        ];
+    }
+
+    // â”€â”€â”€ Helpers de seguridad â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    /**
+     * Incrementa el contador de intentos fallidos.
+     * Si llega a 3, bloquea la cuenta automÃ¡ticamente.
+     */
+    public function registrarIntentoFallido(): void
+    {
+        $this->increment('failed_attempts');
+        if ($this->failed_attempts >= 3) {
+            $this->update([
+                'is_locked' => true,
+                'locked_at' => now(),
+            ]);
+        }
+    }
+
+    //Limpia los intentos fallidos tras un login exitoso.
+    public function limpiarIntentos(): void
+    {
+        $this->update([
+            'failed_attempts' => 0,
+            'is_locked'       => false,
+            'locked_at'       => null,
+        ]);
+    }
+
+    //Genera y guarda un OTP de 6 dÃ­gitos con expiraciÃ³n de 15 minutos.
+    // Retorna el cÃ³digo en texto plano para enviarlo por correo.
+    public function generarOtp(): string
+    {
+        $codigo = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        $this->update([
+            'otp_code'       => $codigo,
+            'otp_expires_at' => now()->addMinutes(15),
+        ]);
+
+        return $codigo;
+    }
+
+    //Verifica si el OTP proporcionado es vÃ¡lido y no ha expirado.
+    public function otpEsValido(string $codigo): bool
+    {
+        return $this->otp_code === $codigo
+            && $this->otp_expires_at !== null
+            && now()->lessThanOrEqualTo($this->otp_expires_at);
+    }
+
+    //Limpia el OTP despuÃ©s de usarlo exitosamente.
+    public function limpiarOtp(): void
+    {
+        $this->update([
+            'otp_code'       => null,
+            'otp_expires_at' => null,
+        ]);
+    }
+
+    //Desbloquea la cuenta y limpia todos los campos de seguridad.
+    public function desbloquear(): void
+    {
+        $this->update([
+            'is_locked'       => false,
+            'locked_at'       => null,
+            'failed_attempts' => 0,
+            'otp_code'        => null,
+            'otp_expires_at'  => null,
+        ]);
+    }
+
+    // â”€â”€ RelaciÃ³n con el censo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    public function habitante(): BelongsTo
+    {
+        return $this->belongsTo(Habitante::class);
+    }
+
+    // â”€â”€ Helpers de rol (usados en Policies y Middleware) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    public function esAdmin(): bool
+    {
+        return $this->rol === 'admin';
+    }
+
+    public function esOperador(): bool
+    {
+        return in_array($this->rol, ['admin', 'operador'], true);
+    }
+
+    public function puedeEliminar(): bool
+    {
+        return $this->rol === 'admin';
+    }
+}
+=== Vocero.php ===
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Cache;
+
+/**
+ * â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+ *  Vocero â€” Representante comunal vinculado al padrÃ³n
+ * â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ *  Tabla: voceros
+ *  Sin SoftDeletes: un vocero dado de baja cambia a esta_activo=false.
+ *  Los registros histÃ³ricos de mandatos anteriores se conservan.
+ *
+ *  CACHE-ASIDE:
+ *  El dashboard cuenta total_voceros con WHERE esta_activo = true.
+ *  Cuando un vocero se activa, desactiva o crea, el cachÃ© debe
+ *  invalidarse para que el contador refleje el estado real.
+ * â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+ */
+class Vocero extends Model
+{
+    use HasFactory;
+
+    protected $table = 'voceros';
+
+    protected $fillable = [
+        'habitante_id',
+        'sede_id',
+        'comite_id',
+        'unidad_comunal',
+        'fecha_eleccion',
+        'fecha_fin',
+        'esta_activo',
+    ];
+
+    protected $casts = [
+        'fecha_eleccion' => 'date',
+        'fecha_fin'      => 'date',
+        'esta_activo'    => 'boolean',
+        'habitante_id'   => 'integer',
+        'sede_id'        => 'integer',
+        'comite_id'      => 'integer',
+    ];
+
+    /**
+     * Cache-Aside: invalida 'dashboard_stats' en cada cambio.
+     * El dashboard cuenta total_voceros (WHERE esta_activo = true).
+     * Al crear un vocero o cambiar esta_activo, el total debe actualizarse.
+     */
+    protected static function booted(): void
+    {
+        static::saved(function () {
+            Cache::forget('dashboard_stats');
+        });
+
+        static::deleted(function () {
+            Cache::forget('dashboard_stats');
+        });
+    }
+
+    // â”€â”€ Relaciones â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+    /**
+     * El habitante que ocupa el cargo de vocero.
+     * Acceso: $vocero->habitante->nombres
+     */
+    public function habitante(): BelongsTo
+    {
+        return $this->belongsTo(Habitante::class);
+    }
+
+    /**
+     * La sede donde ejerce el vocero.
+     * La FK usa onDelete('restrict') â€” no se puede borrar una sede
+     * si tiene voceros activos vinculados.
+     */
+    public function sede(): BelongsTo
+    {
+        return $this->belongsTo(Sede::class);
+    }
+
+    /**
+     * El comitÃ© al que pertenece el vocero (nullable).
+     * Si el comitÃ© se elimina, comite_id queda en null (SET NULL).
+     */
+    public function comite(): BelongsTo
+    {
+        return $this->belongsTo(Comite::class);
+    }
+
+    // â”€â”€ Scopes de consulta frecuente â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+    /**
+     * Scope para voceros activos.
+     * Uso: Vocero::activos()->with([...])->get()
+     */
+    public function scopeActivos($query)
+    {
+        return $query->where('esta_activo', true);
+    }
+}
