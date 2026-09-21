@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,11 +15,11 @@ use Illuminate\Support\Facades\Cache;
  *  Tabla: voceros
  *  Sin SoftDeletes: un vocero dado de baja cambia a esta_activo=false.
  *  Los registros históricos de mandatos anteriores se conservan.
+ *  Un habitante puede tener varios registros (uno por mandato).
  *
  *  CACHE-ASIDE:
  *  El dashboard cuenta total_voceros con WHERE esta_activo = true.
- *  Cuando un vocero se activa, desactiva o crea, el caché debe
- *  invalidarse para que el contador refleje el estado real.
+ *  Al crear, activar o desactivar un vocero, el caché se invalida.
  * ═══════════════════════════════════════════════════════════════
  */
 class Vocero extends Model
@@ -46,59 +47,39 @@ class Vocero extends Model
         'comite_id'      => 'integer',
     ];
 
-    /**
-     * Cache-Aside: invalida 'dashboard_stats' en cada cambio.
-     * El dashboard cuenta total_voceros (WHERE esta_activo = true).
-     * Al crear un vocero o cambiar esta_activo, el total debe actualizarse.
-     */
     protected static function booted(): void
     {
-        static::saved(function () {
-            Cache::forget('dashboard_stats');
-        });
-
-        static::deleted(function () {
-            Cache::forget('dashboard_stats');
-        });
+        static::saved(fn ()   => Cache::forget('dashboard_stats'));
+        static::deleted(fn () => Cache::forget('dashboard_stats'));
     }
 
     // ── Relaciones ────────────────────────────────────────────────
 
-    /**
-     * El habitante que ocupa el cargo de vocero.
-     * Acceso: $vocero->habitante->nombres
-     */
+    /** Habitante que ocupa el cargo. Acceso: $vocero->habitante->nombres */
     public function habitante(): BelongsTo
     {
-        return $this->belongsTo(Habitante::class);
+        return $this->belongsTo(Habitante::class)->withTrashed();
     }
 
     /**
-     * La sede donde ejerce el vocero.
-     * La FK usa onDelete('restrict') — no se puede borrar una sede
-     * si tiene voceros activos vinculados.
+     * Sede donde ejerce el vocero. La FK usa onDelete('restrict'):
+     * no se puede borrar físicamente una sede con voceros.
      */
     public function sede(): BelongsTo
     {
-        return $this->belongsTo(Sede::class);
+        return $this->belongsTo(Sede::class)->withTrashed();
     }
 
-    /**
-     * El comité al que pertenece el vocero (nullable).
-     * Si el comité se elimina, comite_id queda en null (SET NULL).
-     */
+    /** Comité del vocero (nullable, set null al eliminar el comité). */
     public function comite(): BelongsTo
     {
         return $this->belongsTo(Comite::class);
     }
 
-    // ── Scopes de consulta frecuente ──────────────────────────────
+    // ── Scopes ────────────────────────────────────────────────────
 
-    /**
-     * Scope para voceros activos.
-     * Uso: Vocero::activos()->with([...])->get()
-     */
-    public function scopeActivos($query)
+    /** Voceros activos. Uso: Vocero::activos()->with([...])->get() */
+    public function scopeActivos(Builder $query): Builder
     {
         return $query->where('esta_activo', true);
     }

@@ -9,22 +9,20 @@ use Illuminate\Support\Facades\Schema;
  *  TABLA: habitantes
  * ───────────────────────────────────────────────────────────────
  *  DECISIÓN ARQUITECTÓNICA:
- *  1. `softDeletes()`: un habitante dado de baja (mudanza, fallecimiento)
- *     no debe borrarse. Sus registros históricos (pagos, beneficios)
- *     deben mantenerse. El soft delete actúa como "dar de baja" al
- *     ciudadano sin destruir su historial.
+ *  1. `softDeletes()`: un habitante dado de baja (mudanza,
+ *     fallecimiento) no debe borrarse. Sus registros históricos
+ *     (pagos, beneficios) deben mantenerse.
  *
- *  2. `nivel_educativo` agrega 'tecnico' y 'postgrado': la clasificación
- *     original era demasiado básica para un censo moderno.
+ *  2. `nivel_educativo` incluye 'tecnico' y 'postgrado': la
+ *     clasificación original era demasiado básica para un censo.
  *
- *  3. Índice en `cedula`: es la forma más común de buscar un habitante
- *     ("buscar por cédula"). Sin índice, cada búsqueda es O(n).
- *     Con el índice, es O(log n). En un census con miles de registros,
- *     la diferencia es significativa.
+ *  3. `cedula` es unique (y nullable): el índice único ya sirve
+ *     para buscar por cédula, por eso no se define un índice
+ *     adicional.
  *
- *  4. Índice en `familia_id`: Eloquent usará este índice al cargar
- *     la relación $familia->habitantes (método hasMany). Sin él,
- *     MySQL haría full scan en cada carga de página de familia.
+ *  4. Índice en `familia_id`: PostgreSQL no indexa las FK
+ *     automáticamente; este índice acelera la carga de
+ *     $familia->habitantes (hasMany).
  * ═══════════════════════════════════════════════════════════════
  */
 return new class extends Migration
@@ -49,21 +47,19 @@ return new class extends Migration
             $table->string('tipo_discapacidad', 100)->nullable(); // Detalle si es_discapacitado = true
             $table->string('enfermedad_cronica', 150)->nullable();
 
-            // Nivel educativo ampliado
             $table->enum('nivel_educativo', [
                 'ninguno',
                 'primaria',
                 'bachillerato',
-                'tecnico',        // añadido
+                'tecnico',
                 'universitario',
-                'postgrado',      // añadido
+                'postgrado',
             ])->default('ninguno');
 
             $table->softDeletes();
             $table->timestamps();
 
-            // Índices para búsquedas frecuentes
-            $table->index('cedula');
+            // Índices al final
             $table->index('familia_id');
         });
     }

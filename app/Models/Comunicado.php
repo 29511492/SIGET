@@ -2,9 +2,10 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Comunicado extends Model
 {
@@ -23,27 +24,25 @@ class Comunicado extends Model
     ];
 
     protected $casts = [
-        'user_id'    => 'integer',
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
-        'deleted_at' => 'datetime',
+        'user_id' => 'integer',
     ];
 
     // ─── Relaciones ────────────────────────────────────────────────────────────
 
+    /** Redactor del comunicado (withTrashed: se conserva al dar de baja al usuario). */
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class)->withTrashed();
     }
 
     // ─── Scopes ────────────────────────────────────────────────────────────────
 
-    public function scopeEnviados($query)
+    public function scopeEnviados(Builder $query): Builder
     {
         return $query->where('estado', 'enviado');
     }
 
-    public function scopeBorradores($query)
+    public function scopeBorradores(Builder $query): Builder
     {
         return $query->where('estado', 'borrador');
     }
@@ -53,7 +52,7 @@ class Comunicado extends Model
     /**
      * Genera el número de oficio correlativo automático.
      * Formato: CC-YYYY-NNNN  (CC = Consejo Comunal)
-     * Se llama desde el servicio antes de guardar.
+     * Se llama antes de guardar.
      */
     public static function generarNumeroOficio(): string
     {

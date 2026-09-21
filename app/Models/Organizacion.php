@@ -4,12 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Cache;
 
 class Organizacion extends Model
 {
-    use HasFactory, SoftDeletes;   // ← SoftDeletes activo — deleted_at existe en la tabla
+    use HasFactory, SoftDeletes;
 
     protected $table = 'organizaciones';
 
@@ -29,17 +30,24 @@ class Organizacion extends Model
         'tipo_servicio',
         'contacto',
         'descripcion',
-        'estatus',        // ← columna confirmada en la nueva migración
+        'estatus',
     ];
 
     protected $casts = [
-        'estatus'    => 'boolean',
-        'deleted_at' => 'datetime',
+        'estatus' => 'boolean',
     ];
 
     protected static function booted(): void
     {
         static::saved(fn ()   => Cache::forget('organizaciones_index'));
         static::deleted(fn () => Cache::forget('organizaciones_index'));
+    }
+
+    // ── Relaciones ────────────────────────────────────────────────
+
+    /** Pagos vinculados a este servicio (pagos_qr.organizacion_id). */
+    public function pagos(): HasMany
+    {
+        return $this->hasMany(PagoQr::class);
     }
 }

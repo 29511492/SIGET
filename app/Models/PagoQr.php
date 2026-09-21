@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,14 +10,19 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Cache;
 
 /**
+ * PagoQr — pago registrado con comprobante.
+ *
  * Máquina de estados: pendiente → verificado | rechazado
  * El cambio de estado solo lo puede hacer un operador o admin
  * a través de PagoQrController::validar().
  *
- * FIX (junio 2026): se agrega 'cuenta_pago_id' y su relación
- * cuentaPago(). Vincula formalmente el pago a la cuenta de pago
- * (servicio) que el usuario eligió al pagar, reemplazando la
- * dependencia exclusiva del texto libre en 'concepto_pago'.
+ * Dos flujos conviven en la misma tabla:
+ *   - admin/operador: habitante_id poblado, user_id null
+ *   - Portal Ciudadano: user_id poblado, habitante_id null
+ *
+ * Todas las relaciones usan withTrashed(): un pago es un registro
+ * histórico y debe conservar a quien lo hizo aunque ese habitante,
+ * usuario, familia, etc. haya sido dado de baja.
  */
 class PagoQr extends Model
 {
@@ -67,47 +73,47 @@ class PagoQr extends Model
     /** Habitante que realizó el pago (flujo admin/operador). */
     public function habitante(): BelongsTo
     {
-        return $this->belongsTo(Habitante::class);
+        return $this->belongsTo(Habitante::class)->withTrashed();
     }
 
     /** Usuario que registró el pago directamente (flujo Portal Ciudadano). */
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class)->withTrashed();
     }
 
     /** Familia del habitante (para agrupar pagos por núcleo). */
     public function familia(): BelongsTo
     {
-        return $this->belongsTo(Familia::class);
+        return $this->belongsTo(Familia::class)->withTrashed();
     }
 
     /** Servicio público al que corresponde el pago (módulo Organizaciones). */
     public function organizacion(): BelongsTo
     {
-        return $this->belongsTo(Organizacion::class);
+        return $this->belongsTo(Organizacion::class)->withTrashed();
     }
 
     /** Cuenta de pago (servicio + datos bancarios) elegida al pagar. */
     public function cuentaPago(): BelongsTo
     {
-        return $this->belongsTo(CuentaPago::class, 'cuenta_pago_id');
+        return $this->belongsTo(CuentaPago::class, 'cuenta_pago_id')->withTrashed();
     }
 
     /** Operador que verificó o rechazó el pago. */
     public function verificador(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'verificado_por');
+        return $this->belongsTo(User::class, 'verificado_por')->withTrashed();
     }
 
     // ── Scopes ────────────────────────────────────────────────
 
-    public function scopePendientes($query)
+    public function scopePendientes(Builder $query): Builder
     {
         return $query->where('estado', 'pendiente');
     }
 
-    public function scopeDeUsuario($query, int $userId)
+    public function scopeDeUsuario(Builder $query, int $userId): Builder
     {
         return $query->where('user_id', $userId);
     }

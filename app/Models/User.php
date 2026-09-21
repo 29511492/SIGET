@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -18,8 +19,9 @@ use Laravel\Sanctum\HasApiTokens;
  *  y el AuthController lanzará un error fatal al intentar
  *  emitir el token de Sanctum.
  *
- *  Verificar que este trait esté importado es el segundo punto
- *  de diagnóstico más común después del bootstrap/app.php.
+ *  RELACIONES: cada FK hacia `users` en la base de datos tiene su
+ *  relación inversa (hasMany) declarada aquí. Ver la matriz de
+ *  relaciones del proyecto.
  * ═══════════════════════════════════════════════════════════════
  */
 class User extends Authenticatable
@@ -54,7 +56,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password'          => 'hashed',
-            'deleted_at'        => 'datetime',
+            'habitante_id'      => 'integer',
             'locked_at'         => 'datetime',
             'otp_expires_at'    => 'datetime',
             'is_locked'         => 'boolean',
@@ -78,7 +80,7 @@ class User extends Authenticatable
         }
     }
 
-    //Limpia los intentos fallidos tras un login exitoso.
+    // Limpia los intentos fallidos tras un login exitoso.
     public function limpiarIntentos(): void
     {
         $this->update([
@@ -88,7 +90,7 @@ class User extends Authenticatable
         ]);
     }
 
-    //Genera y guarda un OTP de 6 dígitos con expiración de 15 minutos.
+    // Genera y guarda un OTP de 6 dígitos con expiración de 15 minutos.
     // Retorna el código en texto plano para enviarlo por correo.
     public function generarOtp(): string
     {
@@ -102,7 +104,7 @@ class User extends Authenticatable
         return $codigo;
     }
 
-    //Verifica si el OTP proporcionado es válido y no ha expirado.
+    // Verifica si el OTP proporcionado es válido y no ha expirado.
     public function otpEsValido(string $codigo): bool
     {
         return $this->otp_code === $codigo
@@ -110,7 +112,7 @@ class User extends Authenticatable
             && now()->lessThanOrEqualTo($this->otp_expires_at);
     }
 
-    //Limpia el OTP después de usarlo exitosamente.
+    // Limpia el OTP después de usarlo exitosamente.
     public function limpiarOtp(): void
     {
         $this->update([
@@ -119,7 +121,7 @@ class User extends Authenticatable
         ]);
     }
 
-    //Desbloquea la cuenta y limpia todos los campos de seguridad.
+    // Desbloquea la cuenta y limpia todos los campos de seguridad.
     public function desbloquear(): void
     {
         $this->update([
@@ -131,10 +133,63 @@ class User extends Authenticatable
         ]);
     }
 
-    // ── Relación con el censo ──────────────────────────────────────
+    // ── Relaciones ─────────────────────────────────────────────────
+
+    /** Registro del censo vinculado a este usuario (opcional). */
     public function habitante(): BelongsTo
     {
-        return $this->belongsTo(Habitante::class);
+        return $this->belongsTo(Habitante::class)->withTrashed();
+    }
+
+    public function noticias(): HasMany
+    {
+        return $this->hasMany(Noticia::class);
+    }
+
+    /** Sugerencias que este usuario envió. */
+    public function sugerencias(): HasMany
+    {
+        return $this->hasMany(Sugerencia::class);
+    }
+
+    /** Sugerencias que este usuario revisó (admin/operador). */
+    public function sugerenciasRevisadas(): HasMany
+    {
+        return $this->hasMany(Sugerencia::class, 'revisada_por');
+    }
+
+    /** Pagos que este usuario registró por el Portal Ciudadano. */
+    public function pagos(): HasMany
+    {
+        return $this->hasMany(PagoQr::class);
+    }
+
+    /** Pagos que este usuario verificó o rechazó. */
+    public function pagosVerificados(): HasMany
+    {
+        return $this->hasMany(PagoQr::class, 'verificado_por');
+    }
+
+    public function comunicados(): HasMany
+    {
+        return $this->hasMany(Comunicado::class);
+    }
+
+    public function auditorias(): HasMany
+    {
+        return $this->hasMany(Auditoria::class);
+    }
+
+    /** Proyectos que este usuario registró. */
+    public function proyectos(): HasMany
+    {
+        return $this->hasMany(Proyecto::class);
+    }
+
+    /** Entregas de beneficios que este usuario registró. */
+    public function beneficiosRegistrados(): HasMany
+    {
+        return $this->hasMany(Beneficio::class);
     }
 
     // ── Helpers de rol (usados en Policies y Middleware) ───────────

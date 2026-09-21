@@ -15,17 +15,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *     Nunca se eliminan ni se editan. Patrón: Append-Only Log.
  *
  *  2. Sin updated_at — la migración solo define created_at.
- *     Desactivar updated_at con $timestamps = false causaría
- *     que Eloquent tampoco gestione created_at. En su lugar,
- *     se declara $updatedAt = false para desactivar solo ese campo.
+ *     `const UPDATED_AT = null` desactiva solo ese campo y deja
+ *     que Eloquent siga gestionando created_at.
  *
- *  3. Casts 'array' para valor_anterior y valor_nuevo:
- *     La migración usa json nativo de PostgreSQL/MySQL.
- *     El cast 'array' hace que Eloquent serialice/deserialice
- *     automáticamente — en el Resource se devuelven como arrays PHP.
+ *  3. Casts 'array' para valor_anterior y valor_nuevo: la
+ *     migración usa json nativo, y el cast serializa/deserializa
+ *     automáticamente.
  *
- *  4. Sin booted() con Cache::forget — los registros de auditoría
- *     no afectan las estadísticas del Dashboard.
+ *  4. Sin Cache-Aside — los registros de auditoría no afectan
+ *     las estadísticas del Dashboard.
  * ═══════════════════════════════════════════════════════════════
  */
 class Auditoria extends Model
@@ -51,17 +49,17 @@ class Auditoria extends Model
         'registro_id'     => 'integer',
         'valor_anterior'  => 'array',   // JSON nativo → array PHP automático
         'valor_nuevo'     => 'array',
-        'created_at'      => 'datetime',
     ];
 
     // ── Relaciones ────────────────────────────────────────────────
 
     /**
-     * Operador que realizó la acción.
-     * nullable: acciones del sistema pueden no tener user_id.
+     * Operador que realizó la acción. Nullable: las acciones del
+     * sistema pueden no tener user_id. withTrashed: el log conserva
+     * al autor aunque el usuario haya sido dado de baja.
      */
     public function usuario(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class, 'user_id')->withTrashed();
     }
 }

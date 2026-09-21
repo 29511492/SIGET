@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -36,17 +37,17 @@ class Proyecto extends Model
         'user_id'        => 'integer',
     ];
 
-    // ─── Cache-Aside (Regla 3.7) ────────────────────────────────────────────
+    // ─── Cache-Aside ────────────────────────────────────────────────────────
     protected static function booted(): void
     {
-        static::saved(fn () => Cache::forget('dashboard_stats'));
+        static::saved(fn ()   => Cache::forget('dashboard_stats'));
         static::deleted(fn () => Cache::forget('dashboard_stats'));
     }
 
     // ─── Relaciones ─────────────────────────────────────────────────────────
     public function sede(): BelongsTo
     {
-        return $this->belongsTo(Sede::class);
+        return $this->belongsTo(Sede::class)->withTrashed();
     }
 
     public function comite(): BelongsTo
@@ -54,18 +55,19 @@ class Proyecto extends Model
         return $this->belongsTo(Comite::class);
     }
 
+    /** Operador que registró el proyecto. */
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class)->withTrashed();
     }
 
     // ─── Scopes ─────────────────────────────────────────────────────────────
-    public function scopePorEstatus($query, string $estatus)
+    public function scopePorEstatus(Builder $query, string $estatus): Builder
     {
         return $query->where('estatus', $estatus);
     }
 
-    public function scopePorSede($query, int $sedeId)
+    public function scopePorSede(Builder $query, int $sedeId): Builder
     {
         return $query->where('sede_id', $sedeId);
     }

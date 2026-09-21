@@ -14,6 +14,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  *  ENUMs de la migración:
  *  tipo_sede: administrativa|salud|educativa|deportiva|cultural|otra
  *  estado_infraestructura: optima|regular|critica
+ *
+ *  Al crear los modelos de Cartografía (cartografia.sede_id),
+ *  agregar aquí su relación hasMany.
  * ═══════════════════════════════════════════════════════════════
  */
 class Sede extends Model
@@ -30,10 +33,6 @@ class Sede extends Model
         'observaciones',
     ];
 
-    protected $casts = [
-        'deleted_at' => 'datetime',
-    ];
-
     // ── Relaciones ────────────────────────────────────────────────
 
     public function calles(): HasMany
@@ -46,10 +45,7 @@ class Sede extends Model
         return $this->hasMany(Familia::class);
     }
 
-    /**
-     * Voceros asignados a esta sede.
-     * Acceso: $sede->voceros()->activos()->count()
-     */
+    /** Voceros asignados a esta sede. Acceso: $sede->voceros()->activos()->count() */
     public function voceros(): HasMany
     {
         return $this->hasMany(Vocero::class);

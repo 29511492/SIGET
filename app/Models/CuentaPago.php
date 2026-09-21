@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -10,8 +11,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 /**
  * App\Models\CuentaPago
  *
- * Representa una cuenta bancaria de destino para pagos QR del
- * Consejo Comunal, asociada a un servicio (Gas, Cuota, Aseo, etc.).
+ * Cuenta bancaria de destino para pagos QR del Consejo Comunal,
+ * asociada a un servicio (Gas, Cuota, Aseo, etc.).
  * El admin/operador la gestiona; el rol "usuario" la consulta de
  * solo lectura al momento de pagar (Capa 1).
  */
@@ -42,7 +43,7 @@ class CuentaPago extends Model
     }
 
     // ── Scopes ────────────────────────────────────────────────
-    public function scopeActivas($query)
+    public function scopeActivas(Builder $query): Builder
     {
         return $query->where('activa', true);
     }

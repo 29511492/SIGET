@@ -38,12 +38,12 @@ class Beneficio extends Model
     // ── Relaciones ───────────────────────────────────────────────────────────
     public function familia(): BelongsTo
     {
-        return $this->belongsTo(Familia::class);
+        return $this->belongsTo(Familia::class)->withTrashed();
     }
 
-    // Alias semántico para trazabilidad — consistente con el Resource
+    /** Operador que registró la entrega (trazabilidad). */
     public function registradoPor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class, 'user_id')->withTrashed();
     }
 }

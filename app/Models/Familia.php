@@ -10,15 +10,21 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Cache;
 
 /**
- * CAMPOS RELEVANTES PARA EL DASHBOARD:
- * - condicion_vivienda: enum('optima','regular','critica')
+ * Familia — núcleo familiar del censo.
+ *
+ * Campo relevante para el dashboard:
+ *   condicion_vivienda: enum('optima','regular','critica')
  *   Usado en: WHERE condicion_vivienda = 'critica'
+ *
+ * Cache-Aside: el modelo que muta los datos es responsable de
+ * invalidar el caché del dashboard, no el controlador que lee.
  */
 class Familia extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $table    = 'familias';
+    protected $table = 'familias';
+
     protected $fillable = [
         'sede_id', 'calle_id', 'codigo_vivienda',
         'nombre_responsable', 'punto_referencia',
@@ -34,29 +40,18 @@ class Familia extends Model
         'posee_agua_potable' => 'boolean',
         'posee_luz'          => 'boolean',
         'posee_aseo'         => 'boolean',
-        'deleted_at'         => 'datetime',
     ];
 
-/**
- * Invalidar caché del dashboard cuando se crea/modifica una familia.
- * Patrón Cache-Aside: el modelo que muta los datos es responsable
- * de invalidar el caché, no el controlador que lee.
- */
     protected static function booted(): void
     {
-        static::saved(function () {
-            Cache::forget('dashboard_stats');
-        });
-
-        static::deleted(function () {
-            Cache::forget('dashboard_stats');
-        });
+        static::saved(fn ()   => Cache::forget('dashboard_stats'));
+        static::deleted(fn () => Cache::forget('dashboard_stats'));
     }
 
     // ── Relaciones ────────────────────────────────────────────────
     public function sede(): BelongsTo
     {
-        return $this->belongsTo(Sede::class);
+        return $this->belongsTo(Sede::class)->withTrashed();
     }
 
     public function calle(): BelongsTo
@@ -72,5 +67,10 @@ class Familia extends Model
     public function beneficios(): HasMany
     {
         return $this->hasMany(Beneficio::class);
+    }
+
+    public function pagos(): HasMany
+    {
+        return $this->hasMany(PagoQr::class);
     }
 }

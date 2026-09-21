@@ -8,6 +8,12 @@ use Illuminate\Support\Facades\Schema;
  * ═══════════════════════════════════════════════════════════════
  *  TABLA: users (+ password_reset_tokens, sessions)
  * ───────────────────────────────────────────────────────────────
+ *  ORDEN DE DEPENDENCIAS:
+ *  Esta migración corre DESPUÉS de `habitantes` porque `users`
+ *  tiene FK a `habitantes` (habitante_id). Ninguna tabla anterior
+ *  (sedes, comites, calles, familias, habitantes) depende de
+ *  `users`, así que no hace falta una migración aparte para la FK.
+ *
  *  DECISIONES ARQUITECTÓNICAS:
  *  1. `rol` como ENUM controlado: evita valores inconsistentes
  *     ('Admin', 'ADMIN', 'admin') que rompen la autorización.
@@ -16,15 +22,11 @@ use Illuminate\Support\Facades\Schema;
  *     para preservar la integridad con `auditorias`.
  *
  *  3. Campos de seguridad (bloqueo por intentos fallidos y OTP de
- *     recuperación) y `cedula` viven aquí desde la creación de la
- *     tabla. Antes se agregaban con una migración `alter_users_...`
- *     posterior; se fusionaron para dejar una instalación limpia
- *     con un solo archivo por tabla.
+ *     recuperación) y `cedula` viven aquí desde la creación.
  *
- *  NOTA: `habitante_id` NO se agrega aquí. Lo añade la migración
- *  `add_habitante_id_to_users_table`, porque `habitantes` se crea
- *  después de `users` (orden de dependencias FK, patrón
- *  Two-Phase Migration).
+ *  4. `habitante_id` (nullable, set null): vincula al usuario con
+ *     su registro del censo. Es opcional porque un admin técnico
+ *     puede no estar en el padrón comunal.
  * ═══════════════════════════════════════════════════════════════
  */
 return new class extends Migration
@@ -51,6 +53,12 @@ return new class extends Migration
             // ENUM estricto: evita valores arbitrarios como 'superAdmin'
             $table->enum('rol', ['admin', 'operador', 'vocero', 'usuario'])
                 ->default('usuario');
+
+            // Vínculo opcional con el censo
+            $table->foreignId('habitante_id')
+                ->nullable()
+                ->constrained('habitantes')
+                ->onDelete('set null');
 
             $table->rememberToken();
             $table->softDeletes(); // deleted_at: desactivación lógica, no física
