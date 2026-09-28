@@ -18,6 +18,13 @@
  * El QR se regenera dinámicamente cada vez que cambia la cuenta
  * seleccionada, codificando los datos bancarios de ESA cuenta.
  *
+ * FIX (sept-2026): se agregó el prop opcional `onPagoRegistrado`.
+ * UsuarioDashboard.jsx lo usa para refrescar su propio contador de
+ * "pagos pendientes" (badge del grid, de la pestaña y la píldora del
+ * hero) justo después de que el ciudadano suba un comprobante, sin
+ * esperar a recargar la página. Es opcional y no rompe a quien use
+ * este widget sin pasarlo (queda como no-op).
+ *
  * Consume:
  *   GET  /api/v1/cuentas-pago     → listar cuentas activas
  *   POST /api/v1/pagos/mio        → registrar pago con comprobante
@@ -43,7 +50,7 @@ const ESTADO_CONFIG = {
     rechazado:  { label: '✗ Rechazado',   cls: 'pqw-estado--rechazado'  },
 };
 
-export default function PagoQrWidget() {
+export default function PagoQrWidget({ onPagoRegistrado } = {}) {
     const canvasRef = useRef(null);
 
     // ── Estado de cuentas de pago ───────────────────────────────
@@ -218,6 +225,12 @@ export default function PagoQrWidget() {
             setPreviewUrl('');
             cargarHistorial();
             setVerHistorial(true);
+
+            // FIX (sept-2026): avisa al componente padre (si lo pidió)
+            // que se registró un pago nuevo, para que pueda refrescar
+            // sus propios contadores de "pendientes" sin esperar a un
+            // recargo de página. No hace nada si no se pasó el prop.
+            onPagoRegistrado?.();
         } catch (err) {
             const { status, data } = err.response ?? {};
             if (status === 422) {

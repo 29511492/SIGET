@@ -66,6 +66,20 @@
 .list-heading__title { font-family: var(--ff-display); font-size: 1.9rem; font-weight: 400; color: var(--c-text-dark); }
 .list-heading__subtitle { font-size: 0.875rem; color: var(--c-text-light); margin-top: 0.25rem; }
 
+/* Chip de conteo total — mismo patrón que FamiliaList.css
+   (corrección 2: interfaz gráfica / puntos focales). */
+.list-heading__count {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--c-navy);
+    background: rgba(13, 31, 53, 0.06);
+    padding: 0.25rem 0.7rem;
+    border-radius: 999px;
+}
+
 /* Botón principal */
 .list-btn {
     padding: 0.65rem 1.25rem; border-radius: var(--radius);
@@ -75,7 +89,15 @@
     transition: filter var(--transition), transform var(--transition);
 }
 .list-btn:hover { filter: brightness(1.05); transform: translateY(-1px); }
-.list-btn--primary { background: var(--c-navy); color: #fff; }
+.list-btn--primary {
+    background: var(--c-navy);
+    color: #fff;
+    box-shadow: 0 1px 3px rgba(13, 31, 53, 0.2);
+}
+.list-btn--primary:hover {
+    background: var(--c-navy-hover);
+    box-shadow: 0 4px 14px rgba(13, 31, 53, 0.25);
+}
 
 /* Toolbar / buscador */
 .list-toolbar { margin-bottom: 1rem; }

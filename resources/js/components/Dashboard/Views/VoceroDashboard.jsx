@@ -5,10 +5,29 @@
  *   apiClient → '../../../services/axios'   (3 niveles arriba)
  *   No usa StatCard, así que no hay import de componentes locales.
  *
- * ENDPOINTS corregidos: '/v1/vocero/...' (sin /api, eso lo agrega baseURL)
+ * ENDPOINTS: '/v1/vocero/...' (sin /api, eso lo agrega baseURL)
+ *
+ * ─────────────────────────────────────────────────────────────────
+ * FIX (septiembre 2026) — Corrección del profesor: "parece landing page"
+ * ─────────────────────────────────────────────────────────────────
+ * Se agregó el mismo patrón de hero + grid "¿Qué quieres hacer hoy?"
+ * que AdminDashboard.jsx y UsuarioDashboard.jsx, usando las clases
+ * compartidas .dashboard-hero* / .dashboard-accion-card* (definidas
+ * en DashboardPage.css).
+ *
+ * BUG CORREGIDO: las acciones rápidas de este componente enlazaban a
+ * '/familias/crear' y '/habitantes/crear' — el rol vocero NO tiene
+ * acceso a Familias (Capa 3, solo admin/operador, ver sección 5.1 del
+ * Documento Maestro) y la ruta /habitantes ni siquiera existe. Se
+ * reemplazaron por acciones que el vocero sí puede realizar. También
+ * se cambiaron los <a href> por <Link> para no recargar la SPA.
+ *
+ * La antigua sección "Mis Acciones" al final del componente se eliminó
+ * — quedaba duplicada con el nuevo grid del hero.
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import apiClient from '../../../services/axios'; // ← 3 niveles arriba
 
 const ESTADO_CONFIG = {
@@ -17,6 +36,46 @@ const ESTADO_CONFIG = {
     pendiente:   { label: 'Pendiente',   cls: 'badge--gray'  },
     critico:     { label: 'Crítico',     cls: 'badge--red'   },
 };
+
+// Saludo dinámico según hora del día — mismo criterio que AdminDashboard/UsuarioDashboard
+const getSaludo = () => {
+    const h = new Date().getHours();
+    if (h >= 5  && h < 12) return 'Buenos días';
+    if (h >= 12 && h < 19) return 'Buenas tardes';
+    return 'Buenas noches';
+};
+
+// Acciones que el rol vocero SÍ puede realizar (sin Familias/Habitantes)
+const ACCIONES_VOCERO = [
+    {
+        titulo: 'Cargar Pago QR',
+        desc:   'Registra un comprobante de pago para tu sector',
+        icon:   '📱',
+        color:  'navy',
+        href:   '/pagos/nuevo',
+    },
+    {
+        titulo: 'Ver Voceros',
+        desc:   'Consulta el listado de voceros de tu comité',
+        icon:   '🎙',
+        color:  'gold',
+        href:   '/voceros',
+    },
+    {
+        titulo: 'Ver Sugerencias',
+        desc:   'Revisa las sugerencias registradas en el sistema',
+        icon:   '💬',
+        color:  'teal',
+        href:   '/sugerencias',
+    },
+    {
+        titulo: 'Ver Noticias',
+        desc:   'Consulta los comunicados y noticias publicadas',
+        icon:   '📰',
+        color:  'amber',
+        href:   '/noticias',
+    },
+];
 
 export default function VoceroDashboard({ user }) {
     const [resumen,  setResumen]  = useState(null);
@@ -50,16 +109,22 @@ export default function VoceroDashboard({ user }) {
 
     return (
         <section className="dashboard-view">
-            <header className="dashboard-view__header">
-                <div>
-                    <h2 className="dashboard-view__title">Mi Comunidad</h2>
-                    <p className="dashboard-view__subtitle">
+
+            {/* ══ HERO ══════════════════════════════════════════ */}
+            <div className="dashboard-hero">
+                <div className="dashboard-hero__bg" aria-hidden="true" />
+                <div className="dashboard-hero__content">
+                    <p className="dashboard-hero__saludo">
+                        {getSaludo()}, <strong>{user?.name?.split(' ')[0] ?? 'Vocero'}</strong> 👋
+                    </p>
+                    <h1 className="dashboard-hero__titulo">Mi Comunidad</h1>
+                    <p className="dashboard-hero__subtitulo">
                         {resumen?.nombre_sede
                             ? `Sede: ${resumen.nombre_sede}`
                             : 'Cargando datos de tu sector...'}
                     </p>
                 </div>
-            </header>
+            </div>
 
             {error && (
                 <div className="dashboard-error" role="alert">
@@ -71,21 +136,55 @@ export default function VoceroDashboard({ user }) {
                 </div>
             )}
 
-            <div className="vocero-stats">
-                {[
-                    { label: 'Familias en mi sector',   value: resumen?.familias_sector   ?? '—', icon: '🏠' },
-                    { label: 'Habitantes registrados',  value: resumen?.habitantes_sector ?? '—', icon: '👥' },
-                    { label: 'Pagos QR pendientes',     value: resumen?.pagos_pendientes  ?? '—', icon: '📄' },
-                ].map((item) => (
-                    <div key={item.label} className="vocero-stat-item">
-                        <span className="vocero-stat-item__icon">{item.icon}</span>
-                        <p className="vocero-stat-item__value">
-                            {loading ? <span className="skeleton-text" /> : item.value}
-                        </p>
-                        <p className="vocero-stat-item__label">{item.label}</p>
-                    </div>
-                ))}
-            </div>
+            {/* ══ ACCIONES — "¿Qué quieres hacer hoy?" ═══════════ */}
+            <section className="dashboard-acciones" aria-label="¿Qué quieres hacer hoy?">
+                <h2 className="dashboard-acciones__title">¿Qué quieres hacer hoy?</h2>
+                <div className="dashboard-acciones__grid">
+                    {ACCIONES_VOCERO.map((accion) => (
+                        <Link
+                            key={accion.titulo}
+                            to={accion.href}
+                            className={`dashboard-accion-card dashboard-accion-card--${accion.color}`}
+                        >
+                            <span className="dashboard-accion-card__icon" aria-hidden="true">
+                                {accion.icon}
+                            </span>
+                            <h3 className="dashboard-accion-card__titulo">{accion.titulo}</h3>
+                            <p className="dashboard-accion-card__desc">{accion.desc}</p>
+                            <span className="dashboard-accion-card__arrow" aria-hidden="true">→</span>
+                        </Link>
+                    ))}
+                </div>
+            </section>
+
+            {/* ══ RESUMEN DEL SECTOR ══════════════════════════════ */}
+            <section className="dashboard-resumen">
+                <h2 className="dashboard-resumen__title">Resumen de tu sector</h2>
+                <div className="vocero-stats">
+                    {[
+                        { id: 'familias',   label: 'Familias en mi sector',   value: resumen?.familias_sector   ?? '—', icon: '🏠' },
+                        { id: 'habitantes', label: 'Habitantes registrados',  value: resumen?.habitantes_sector ?? '—', icon: '👥' },
+                        { id: 'pagos',      label: 'Pagos QR pendientes',     value: resumen?.pagos_pendientes  ?? '—', icon: '📄' },
+                    ].map((item) => {
+                        // FIX (sept-2026, corrección 2 — puntos focales): los
+                        // pagos pendientes necesitan resaltar sobre las otras
+                        // dos métricas, que son solo informativas.
+                        const esUrgente = item.id === 'pagos' && Number(item.value) > 0;
+                        return (
+                            <div
+                                key={item.label}
+                                className={`vocero-stat-item ${esUrgente ? 'vocero-stat-item--urgente' : ''}`}
+                            >
+                                <span className="vocero-stat-item__icon">{item.icon}</span>
+                                <p className="vocero-stat-item__value">
+                                    {loading ? <span className="skeleton-text" /> : item.value}
+                                </p>
+                                <p className="vocero-stat-item__label">{item.label}</p>
+                            </div>
+                        );
+                    })}
+                </div>
+            </section>
 
             <section className="task-list-section">
                 <h3 className="task-list-section__title">Tareas de Censo Pendientes</h3>
@@ -130,24 +229,6 @@ export default function VoceroDashboard({ user }) {
                         })}
                     </ul>
                 )}
-            </section>
-
-            <section className="quick-actions">
-                <h3 className="quick-actions__title">Mis Acciones</h3>
-                <div className="quick-actions__grid">
-                    {[
-                        { label: 'Registrar Familia', icon: '🏠', href: '/familias/crear' },
-                        { label: 'Agregar Habitante', icon: '👤', href: '/habitantes/crear' },
-                        { label: 'Cargar Pago QR',   icon: '📸', href: '/pagos/nuevo' },
-                        { label: 'Ver Noticias',     icon: '📰', href: '/noticias' },
-                    ].map((action) => (
-                        <a key={action.href} href={action.href} className="quick-action-card">
-                            <span className="quick-action-card__icon">{action.icon}</span>
-                            <span className="quick-action-card__label">{action.label}</span>
-                            <span className="quick-action-card__arrow">→</span>
-                        </a>
-                    ))}
-                </div>
             </section>
         </section>
     );

@@ -40,11 +40,17 @@ import apiClient                       from '../../services/axios';
 import './Login.css';
 
 // ── Constantes ─────────────────────────────────────────────────
+// FIX (sept-2026): el rol usuario entraba a /perfil en vez de
+// /dashboard, inconsistente con el resto de los roles (todos entran
+// a /dashboard salvo vocero, que tiene su propia vista /mi-comunidad).
+// Ver también app.jsx — DashboardRouter/PerfilRouter ahora renderizan
+// UsuarioDashboard en ambas rutas para el rol usuario, así que este
+// cambio no rompe nada que dependiera de /perfil.
 const REDIRECT_BY_ROL = {
     admin:    '/dashboard',
     operador: '/dashboard',
     vocero:   '/mi-comunidad',
-    usuario:  '/perfil',
+    usuario:  '/dashboard',
 };
 
 const PASOS = {

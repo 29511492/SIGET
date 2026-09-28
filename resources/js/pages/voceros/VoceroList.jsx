@@ -213,9 +213,11 @@ export default function VoceroList() {
                     <div>
                         <h1 className="list-heading__title">Voceros Comunales</h1>
                         <p className="list-heading__subtitle">
-                            {pagination
-                                ? `${pagination.total} voceros registrados`
-                                : 'Cargando...'}
+                            {pagination ? (
+                                <span className="list-heading__count">
+                                    🎙 {pagination.total} voceros registrados
+                                </span>
+                            ) : 'Cargando...'}
                         </p>
                     </div>
                     {canWrite && (

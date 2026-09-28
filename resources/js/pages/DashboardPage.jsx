@@ -1,10 +1,33 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate, useLocation }  from 'react-router-dom';
 import { useAuth }                         from '../hooks/useAuth';
 import { getDashboardComponent }           from '../components/Dashboard/Factories/DashboardFactory';
-import apiClient                           from '../services/axios';
 import './DashboardPage.css';
 
+/**
+ * ─────────────────────────────────────────────────────────────────
+ * FIX (septiembre 2026) — Corrección del profesor: "parece landing page"
+ * ─────────────────────────────────────────────────────────────────
+ * 1. Se eliminó el ítem "Habitantes" de NAV_ITEMS y la acción rápida
+ *    "Agregar Habitante" — el módulo de Habitantes ya no existe como
+ *    ruta independiente (se gestiona dentro de Familias, ver Documento
+ *    Maestro sección 7.3/7.4). Eran enlaces muertos en el sidebar.
+ *
+ * 2. Se eliminó por completo la sección "Acciones Rápidas" que vivía
+ *    al final de esta página (ACCIONES_RAPIDAS, fetchPendientes,
+ *    sugerenciasPendientes). Quedaba duplicada con el nuevo grid
+ *    "¿Qué quieres hacer hoy?" que ahora vive dentro de cada
+ *    AdminDashboard.jsx / VoceroDashboard.jsx — tener dos puntos de
+ *    entrada distintos para las mismas acciones era parte de la
+ *    sensación de "landing page sin flujo" que señaló el profesor.
+ *    Esta página ahora se limita a la navegación (sidebar + topbar)
+ *    y delega todo el contenido de "qué hacer" a la vista de cada rol.
+ *
+ * 3. El botón "+ Registrar Familia" del topbar apuntaba a
+ *    '/familias/crear', ruta que ya no existe (el registro de
+ *    familias ahora es por modal sobre '/familias'). Corregido.
+ * ─────────────────────────────────────────────────────────────────
+ */
 export default function DashboardPage() {
     const { user, isLoading, logout, canWrite, isAdmin } = useAuth();
     const navigate      = useNavigate();
@@ -16,29 +39,10 @@ export default function DashboardPage() {
     const adminBool = Boolean(isAdmin  ?? (user?.rol === 'admin'));
     const writeBool = Boolean(canWrite ?? (user?.rol === 'admin' || user?.rol === 'operador'));
 
-    // ── Conteo de sugerencias pendientes para el badge ─────────
-    // Mismo endpoint que ya consume AdminDashboard — Capa 2, accesible
-    // para admin/operador/vocero. Si falla, simplemente no se muestra
-    // el badge (no rompe el resto de Acciones Rápidas).
-    const [sugerenciasPendientes, setSugerenciasPendientes] = useState(0);
-
-    const fetchPendientes = useCallback(() => {
-        apiClient.get('/v1/sugerencias?revisada=false')
-            .then(({ data }) => setSugerenciasPendientes(data.meta?.pendientes ?? 0))
-            .catch(() => setSugerenciasPendientes(0));
-    }, []);
-
-    useEffect(() => {
-        if (writeBool || adminBool) {
-            fetchPendientes();
-        }
-    }, [writeBool, adminBool, fetchPendientes]);
-
     // ── Navegación del sidebar ─────────────────────────────────
     const NAV_ITEMS = [
         { label: 'Dashboard',       icon: '⊞',  href: '/dashboard',     permiso: null              },
         { label: 'Familias',        icon: '🏠', href: '/familias',      permiso: null              },
-        { label: 'Habitantes',      icon: '👥', href: '/habitantes',    permiso: null              },
         { label: 'Voceros',         icon: '🎙', href: '/voceros',       permiso: null              },
         { label: 'Proyectos',       icon: '📋', href: '/proyectos',     permiso: null              },
         { label: 'Beneficios',      icon: '🎁', href: '/beneficios',    permiso: null              },
@@ -50,26 +54,6 @@ export default function DashboardPage() {
         { label: 'Auditoría',       icon: '🔍', href: '/auditoria',     permiso: 'es_admin'        },
         { label: 'Configuración',   icon: '⚙️', href: '/configuracion', permiso: 'es_admin'        },
     ];
-
-    // ── Acciones Rápidas ───────────────────────────────────────
-    // Usa las clases .quick-action-card definidas en DashboardPage.css.
-    // Visible solo para admin y operador (writeBool).
-    // Ver Auditoría: solo admin (adminBool).
-    //
-    // FIX (junio 2026): se agregó 'badge' opcional — si tiene valor > 0,
-    // se renderiza un contador visual sobre la tarjeta (ej. sugerencias
-    // pendientes). No afecta a las tarjetas que no lo usan.
-    const ACCIONES_RAPIDAS = [
-        { label: 'Registrar Familia',  icon: '🏠', href: '/familias/crear',   mostrar: writeBool, badge: 0 },
-        { label: 'Agregar Habitante',  icon: '👤', href: '/habitantes/crear', mostrar: writeBool, badge: 0 },
-        { label: 'Nuevo Proyecto',     icon: '📋', href: '/proyectos/crear',  mostrar: writeBool, badge: 0 },
-        { label: 'Entregar Beneficio', icon: '🎁', href: '/beneficios/nuevo', mostrar: writeBool, badge: 0 },
-        { label: 'Ver Sugerencias',    icon: '💬', href: '/sugerencias',      mostrar: writeBool, badge: sugerenciasPendientes },
-        { label: 'Cuentas de Pago',    icon: '🏦', href: '/cuentas-pago',     mostrar: writeBool, badge: 0 },
-        { label: 'Ver Auditoría',      icon: '🔍', href: '/auditoria',        mostrar: adminBool, badge: 0 },
-    ];
-
-    const accionesVisibles = ACCIONES_RAPIDAS.filter(a => a.mostrar);
 
     // ── Guard: cargando ────────────────────────────────────────
     if (isLoading) {
@@ -222,7 +206,7 @@ export default function DashboardPage() {
 
                     <div className="topbar-actions">
                         {writeBool && (
-                            <Link to="/familias/crear" className="topbar-btn topbar-btn--primary">
+                            <Link to="/familias" className="topbar-btn topbar-btn--primary">
                                 + Registrar Familia
                             </Link>
                         )}
@@ -236,59 +220,9 @@ export default function DashboardPage() {
 
                 <main className="dashboard-content" id="main-content">
 
-                    {/* Vista por rol — AdminDashboard o VoceroDashboard */}
+                    {/* Vista por rol — AdminDashboard, OperadorDashboard o VoceroDashboard.
+                        Cada una incluye su propio hero + grid "¿Qué quieres hacer hoy?". */}
                     <DashboardView user={user} />
-
-                    {/* ── Acciones Rápidas ─────────────────────────
-                     *
-                     *  Clases del CSS real (DashboardPage.css):
-                     *    .quick-actions            → sección contenedora
-                     *    .quick-actions__title     → título con ff-display
-                     *    .quick-actions__grid      → grid auto-fill 180px
-                     *    .quick-action-card        → tarjeta con hover
-                     *    .quick-action-card__icon  → icono 1.1rem
-                     *    .quick-action-card__label → texto flex:1
-                     *    .quick-action-card__arrow → flecha derecha
-                     *    .quick-action-card__badge → NUEVO: contador (ej. pendientes)
-                     *
-                     *  Se usa <Link> para mantener la navegación SPA
-                     *  sin recargar la página.
-                     *
-                     *  NOTA: Esta es la ÚNICA sección "Acciones Rápidas"
-                     *  en todo el Dashboard. La que existía duplicada
-                     *  dentro de AdminDashboard.jsx fue eliminada — esa
-                     *  vista ahora muestra una fila de Alertas dinámicas
-                     *  en su lugar.
-                     * ─────────────────────────────────────────── */}
-                    {accionesVisibles.length > 0 && (
-                        <section className="quick-actions" aria-label="Acciones rápidas">
-                            <h2 className="quick-actions__title">Acciones Rápidas</h2>
-                            <div className="quick-actions__grid">
-                                {accionesVisibles.map(({ label, icon, href, badge }) => (
-                                    <Link
-                                        key={href}
-                                        to={href}
-                                        className="quick-action-card"
-                                    >
-                                        <span className="quick-action-card__icon" aria-hidden="true">
-                                            {icon}
-                                        </span>
-                                        <span className="quick-action-card__label">
-                                            {label}
-                                        </span>
-                                        {badge > 0 && (
-                                            <span className="quick-action-card__badge">
-                                                {badge}
-                                            </span>
-                                        )}
-                                        <span className="quick-action-card__arrow" aria-hidden="true">
-                                            →
-                                        </span>
-                                    </Link>
-                                ))}
-                            </div>
-                        </section>
-                    )}
 
                 </main>
             </div>

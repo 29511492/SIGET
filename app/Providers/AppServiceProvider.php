@@ -8,6 +8,7 @@ use App\Models\Habitante;
 use App\Models\Proyecto;
 use App\Models\Vocero;
 use App\Models\Organizacion;
+use App\Models\User;
 use App\Observers\AdminAuditoriaObserver;
 use Illuminate\Support\ServiceProvider;
 
@@ -45,5 +46,8 @@ class AppServiceProvider extends ServiceProvider
         Proyecto::observe(AdminAuditoriaObserver::class);
         Beneficio::observe(AdminAuditoriaObserver::class);
         Organizacion::observe(AdminAuditoriaObserver::class);
+        // Sept-2026: cambios de rol / estado de cuentas quedan auditados.
+        // El Observer descarta password y otp_code antes de guardar.
+        User::observe(AdminAuditoriaObserver::class);
     }
 }

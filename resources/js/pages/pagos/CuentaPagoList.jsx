@@ -174,9 +174,11 @@ export default function CuentaPagoList() {
                     <div>
                         <h1 className="list-heading__title">Cuentas de Pago</h1>
                         <p className="list-heading__subtitle">
-                            {pagination
-                                ? `${pagination.total ?? cuentas.length} cuenta${(pagination.total ?? cuentas.length) !== 1 ? 's' : ''} registrada${(pagination.total ?? cuentas.length) !== 1 ? 's' : ''}`
-                                : 'Cargando...'}
+                            {pagination ? (
+                                <span className="list-heading__count">
+                                    🏦 {pagination.total ?? cuentas.length} cuenta{(pagination.total ?? cuentas.length) !== 1 ? 's' : ''} registrada{(pagination.total ?? cuentas.length) !== 1 ? 's' : ''}
+                                </span>
+                            ) : 'Cargando...'}
                         </p>
                     </div>
                     {/* Botón de crear: admin y operador */}
@@ -355,7 +357,7 @@ export default function CuentaPagoList() {
                                     ) : (
 
                                         /* ── Fila lectura — todos los roles ───── */
-                                        <tr key={cuenta.id}>
+                                        <tr key={cuenta.id} className={!cuenta.activa ? 'tr-inactive' : ''}>
                                             <td className="td-code">{cuenta.nombre_servicio || '—'}</td>
                                             <td className="td-meta">{cuenta.banco || '—'}</td>
                                             <td className="td-meta">{cuenta.telefono || '—'}</td>

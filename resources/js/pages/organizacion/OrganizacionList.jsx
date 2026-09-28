@@ -211,9 +211,11 @@ export default function OrganizacionList() {
                     <div>
                         <h1 className="list-heading__title">Directorio de Servicios Públicos</h1>
                         <p className="list-heading__subtitle">
-                            {pagination
-                                ? `${pagination.total ?? orgs.length} organizaciones registradas`
-                                : 'Cargando...'}
+                            {pagination ? (
+                                <span className="list-heading__count">
+                                    🏛️ {pagination.total ?? orgs.length} organizaciones registradas
+                                </span>
+                            ) : 'Cargando...'}
                         </p>
                     </div>
                     {/* Botón de crear: solo admin */}
@@ -384,7 +386,7 @@ export default function OrganizacionList() {
                                     ) : (
 
                                         /* ── Fila lectura — todos los roles ───── */
-                                        <tr key={org.id}>
+                                        <tr key={org.id} className={!org.estatus ? 'tr-inactive' : ''}>
                                             <td className="td-code">{org.nombre || '—'}</td>
 
                                             {/* Badge de tipo de servicio */}

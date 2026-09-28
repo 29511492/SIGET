@@ -96,6 +96,11 @@ function ComunicadoList() {
                     <p className="com-list__subtitulo">
                         Registro de cartas y oficios emitidos por el Consejo Comunal
                     </p>
+                    {meta && (
+                        <span className="com-list__count">
+                            📄 {meta.total} comunicado{meta.total !== 1 ? 's' : ''} registrado{meta.total !== 1 ? 's' : ''}
+                        </span>
+                    )}
                 </div>
                 <Link to="/comunicados/nuevo" className="com-list__btn-nuevo">
                     + Nuevo Comunicado

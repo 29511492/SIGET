@@ -116,8 +116,10 @@ class AdminAuditoriaObserver
             return null;
         }
 
-        // Amplía esta lista si tu proyecto añade campos sensibles
-        $sensibles = ['password', 'remember_token', 'token', 'api_token'];
+        // Amplía esta lista si tu proyecto añade campos sensibles.
+        // otp_code (sept-2026): User ahora se audita y su getOriginal()
+        // incluye el OTP vigente — jamás debe quedar en el log.
+        $sensibles = ['password', 'remember_token', 'token', 'api_token', 'otp_code'];
 
         return array_diff_key($datos, array_flip($sensibles));
     }

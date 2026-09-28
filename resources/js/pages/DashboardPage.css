@@ -5,6 +5,15 @@
  *  SISTEMA DE DISEÑO: Consistente con Login.css
  *  Variables compartidas permiten cambiar el tema global
  *  modificando solo :root en un archivo base.
+ *
+ *  FIX (sept-2026, corrección del profesor "parece landing page"):
+ *  se agregaron los bloques DASHBOARD HERO y DASHBOARD ACCIONES.
+ *  El patrón de tarjeta (.dashboard-accion-card) es el mismo que
+ *  usa UsuarioDashboard.css en el Portal Ciudadano (antes
+ *  .portal-accion-card) — unificado para que Admin, Vocero y
+ *  Usuario compartan el mismo lenguaje visual de "tarjeta de
+ *  acción" tipo Sistema Patria. Ver nota de duplicación intencional
+ *  en UsuarioDashboard.css.
  * ═══════════════════════════════════════════════════════════════
  */
 
@@ -308,10 +317,6 @@
     flex-shrink: 0;
 }
 
-/* Botón "Exportar Reporte" — antes sin estilo propio (texto plano).
- * Ahora con jerarquía visual: fondo Azul Petróleo, ícono + texto,
- * sombra sutil y elevación al hover, consistente con topbar-btn
- * y quick-action-card del resto del sistema. */
 .dashboard-view__export-btn {
     display: inline-flex;
     align-items: center;
@@ -373,12 +378,108 @@
 }
 
 /* ════════════════════════════════════════════════════════════════
+   DASHBOARD HERO (AdminDashboard / VoceroDashboard)
+   ───────────────────────────────────────────────────────────────
+   Banner de bienvenida tipo Sistema Patria: saludo + identidad +
+   acciones principales, contenido DENTRO del layout con sidebar
+   (a diferencia de .portal-hero del Portal Ciudadano, que es a todo
+   el ancho porque esa vista no tiene sidebar).
+   ════════════════════════════════════════════════════════════════ */
+.dashboard-hero {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    background: var(--c-navy);
+    border-radius: 16px;
+    padding: 2rem 2.25rem;
+    margin-bottom: 1.75rem;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(13, 31, 53, 0.18);
+}
+
+.dashboard-hero__bg {
+    position: absolute;
+    inset: 0;
+    background-image:
+        radial-gradient(circle at 15% 30%, rgba(201, 168, 76, 0.14) 0%, transparent 50%),
+        radial-gradient(circle at 85% 70%, rgba(201, 168, 76, 0.08) 0%, transparent 45%);
+    pointer-events: none;
+}
+
+.dashboard-hero__content { position: relative; z-index: 1; }
+
+.dashboard-hero__saludo {
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 0.4rem;
+    font-weight: 400;
+}
+.dashboard-hero__saludo strong { color: var(--c-gold); font-weight: 600; }
+
+.dashboard-hero__titulo {
+    font-family: var(--ff-display);
+    font-size: 1.65rem;
+    font-weight: 400;
+    color: var(--c-white);
+    margin: 0 0 0.3rem;
+    line-height: 1.2;
+}
+
+.dashboard-hero__subtitulo {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.dashboard-hero__actions {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-shrink: 0;
+}
+
+.dashboard-hero__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 1.1rem;
+    border-radius: var(--radius);
+    font-family: var(--ff-body);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    border: none;
+    transition: filter var(--transition), transform var(--transition), background var(--transition);
+}
+.dashboard-hero__btn:hover { transform: translateY(-1px); }
+.dashboard-hero__btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.dashboard-hero__btn--gold {
+    background: var(--c-gold);
+    color: var(--c-navy);
+}
+.dashboard-hero__btn--gold:hover { background: var(--c-gold-light); }
+
+.dashboard-hero__btn--ghost {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--c-white);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    width: 38px; height: 38px;
+    justify-content: center;
+    padding: 0;
+}
+.dashboard-hero__btn--ghost:hover { background: rgba(255, 255, 255, 0.18); }
+
+/* ════════════════════════════════════════════════════════════════
    ALERT BANNER ROW (AdminDashboard)
    ───────────────────────────────────────────────────────────────
    Fila de alertas dinámicas y clicables. Solo se renderiza cuando
    hay algo que requiere atención (sugerencias pendientes, viviendas
-   críticas). Reemplaza la antigua sección "Acciones Rápidas" que
-   estaba duplicada dentro de AdminDashboard.jsx.
+   críticas).
    ════════════════════════════════════════════════════════════════ */
 .alert-banner-row {
     display: grid;
@@ -418,6 +519,147 @@
     background: var(--c-error-bg);
     border-color: rgba(192,57,43,0.25);
     color: var(--c-error);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   DASHBOARD ACCIONES — "¿Qué quieres hacer hoy?"
+   ───────────────────────────────────────────────────────────────
+   Grid principal de acciones tipo Sistema Patria. Usado por
+   AdminDashboard.jsx y VoceroDashboard.jsx. El componente de tarjeta
+   (.dashboard-accion-card) es el MISMO que usa UsuarioDashboard.jsx
+   en el Portal Ciudadano (antes llamado .portal-accion-card) — se
+   unificó el nombre para que las tres vistas de rol compartan el
+   mismo lenguaje visual. UsuarioDashboard.css mantiene una copia
+   idéntica de este bloque porque esa vista se renderiza de forma
+   independiente, sin pasar por DashboardPage.jsx/.css.
+   ════════════════════════════════════════════════════════════════ */
+.dashboard-acciones { margin-bottom: 2.5rem; }
+
+.dashboard-acciones__title {
+    font-family: var(--ff-display);
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--c-text-dark);
+    margin-bottom: 1rem;
+}
+
+.dashboard-acciones__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem;
+}
+
+.dashboard-accion-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 1.5rem 1.25rem;
+    border-radius: 14px;
+    border: none;
+    text-decoration: none;
+    cursor: pointer;
+    text-align: left;
+    position: relative;
+    overflow: hidden;
+    transition: transform var(--transition), box-shadow var(--transition);
+    box-shadow: 0 2px 8px rgba(13, 31, 53, 0.08);
+}
+
+.dashboard-accion-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(13, 31, 53, 0.14);
+}
+
+/* Variantes de color */
+.dashboard-accion-card--navy   { background: var(--c-navy); color: var(--c-white); }
+.dashboard-accion-card--gold   { background: linear-gradient(135deg, #c9a84c 0%, #e8c96a 100%); color: var(--c-navy); }
+.dashboard-accion-card--teal   { background: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%); color: var(--c-white); }
+.dashboard-accion-card--amber  { background: linear-gradient(135deg, #b45309 0%, #d97706 100%); color: var(--c-white); }
+.dashboard-accion-card--red    { background: linear-gradient(135deg, #9b1c1c 0%, #c0392b 100%); color: var(--c-white); }
+.dashboard-accion-card--purple { background: linear-gradient(135deg, #4c1d95 0%, #6d28d9 100%); color: var(--c-white); }
+
+.dashboard-accion-card__icon {
+    font-size: 1.75rem;
+    line-height: 1;
+    margin-bottom: 0.25rem;
+}
+
+.dashboard-accion-card__titulo {
+    font-family: var(--ff-display);
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 0;
+    line-height: 1.2;
+}
+
+.dashboard-accion-card__desc {
+    font-size: 0.8rem;
+    opacity: 0.82;
+    line-height: 1.4;
+    margin: 0;
+    flex: 1;
+}
+
+.dashboard-accion-card__arrow {
+    font-size: 1.1rem;
+    margin-top: auto;
+    opacity: 0.6;
+    align-self: flex-end;
+}
+
+/* Badge de contador sobre la tarjeta (ej. pagos/sugerencias pendientes) */
+.dashboard-accion-card__badge {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 0.4rem;
+    background: var(--c-white);
+    color: var(--c-error);
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   DASHBOARD RESUMEN (stats — ahora secundario, después de acciones)
+   ════════════════════════════════════════════════════════════════ */
+.dashboard-resumen { margin-top: 0.5rem; }
+
+.dashboard-resumen__title {
+    font-family: var(--ff-display);
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--c-text-dark);
+    margin-bottom: 1rem;
+}
+
+/* Tarjeta de stat que requiere atención (ej. Viviendas Críticas > 0)
+   — mismo criterio de puntos focales que fila-critica en las listas
+   (corrección 2: interfaz gráfica / puntos focales). */
+.stat-card-wrap { position: relative; }
+.stat-card-wrap--urgente .stat-card {
+    box-shadow: 0 0 0 2px var(--c-error), 0 6px 18px rgba(192, 57, 43, 0.18);
+}
+.stat-card-wrap__flag {
+    position: absolute;
+    top: -8px;
+    right: 10px;
+    z-index: 2;
+    background: var(--c-error);
+    color: var(--c-white);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    box-shadow: 0 2px 6px rgba(192, 57, 43, 0.3);
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -484,6 +726,11 @@
 
 /* ════════════════════════════════════════════════════════════════
    QUICK ACTIONS
+   ───────────────────────────────────────────────────────────────
+   NOTA: ya no se usan en AdminDashboard ni VoceroDashboard (fueron
+   reemplazadas por .dashboard-acciones / .dashboard-accion-card).
+   Se conservan por si OperadorDashboard.jsx u otra vista aún las usa
+   — no se tocó ese archivo en esta sesión.
    ════════════════════════════════════════════════════════════════ */
 .quick-actions { margin-top: 2.5rem; }
 .quick-actions__title { font-family: var(--ff-display); font-size: 1.1rem; color: var(--c-text-dark); margin-bottom: 1rem; }
@@ -557,6 +804,15 @@
 .vocero-stat-item__icon  { font-size: 1.75rem; display: block; margin-bottom: 0.5rem; }
 .vocero-stat-item__value { font-family: var(--ff-display); font-size: 1.75rem; color: var(--c-text-dark); line-height: 1; margin-bottom: 0.25rem; }
 .vocero-stat-item__label { font-size: 0.8rem; color: var(--c-text-light); }
+
+/* Stat de vocero que requiere atención (ej. pagos pendientes > 0)
+   — mismo criterio que la tarjeta urgente de AdminDashboard
+   (corrección 2: interfaz gráfica / puntos focales). */
+.vocero-stat-item--urgente {
+    border-color: var(--c-error);
+    background: var(--c-error-bg);
+}
+.vocero-stat-item--urgente .vocero-stat-item__value { color: var(--c-error); }
 
 .skeleton-text { display: inline-block; width: 3rem; height: 1.75rem; background: #e2e8f0; border-radius: 4px; animation: pulse 1.5s ease infinite; }
 
@@ -648,11 +904,15 @@
     .stats-grid        { grid-template-columns: repeat(2, 1fr); }
     .vocero-stats      { grid-template-columns: repeat(2, 1fr); }
     .quick-actions__grid { grid-template-columns: repeat(2, 1fr); }
+    .dashboard-acciones__grid { grid-template-columns: repeat(2, 1fr); }
     .alert-banner-row  { grid-template-columns: 1fr; }
     .dashboard-view__header { flex-wrap: wrap; gap: 0.75rem; }
+    .dashboard-hero    { flex-direction: column; align-items: flex-start; padding: 1.5rem; }
+    .dashboard-hero__actions { width: 100%; }
 }
 
 @media (max-width: 480px) {
     .stats-grid   { grid-template-columns: 1fr 1fr; }
     .vocero-stats { grid-template-columns: 1fr; }
+    .dashboard-acciones__grid { grid-template-columns: 1fr; }
 }

@@ -152,9 +152,11 @@ export default function BeneficioList() {
                     <div>
                         <h1 className="list-heading__title">Beneficios Entregados</h1>
                         <p className="list-heading__subtitle">
-                            {pagination
-                                ? `${pagination.total} beneficio${pagination.total !== 1 ? 's' : ''} registrado${pagination.total !== 1 ? 's' : ''}`
-                                : 'Cargando...'}
+                            {pagination ? (
+                                <span className="list-heading__count">
+                                    🎁 {pagination.total} beneficio{pagination.total !== 1 ? 's' : ''} registrado{pagination.total !== 1 ? 's' : ''}
+                                </span>
+                            ) : 'Cargando...'}
                         </p>
                     </div>
                     {canWrite && (

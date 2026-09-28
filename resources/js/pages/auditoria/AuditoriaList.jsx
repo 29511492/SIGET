@@ -35,6 +35,7 @@ const TABLA_OPTIONS = [
     { value: 'voceros',    label: 'Voceros'    },
     { value: 'proyectos',  label: 'Proyectos'  },
     { value: 'beneficios', label: 'Beneficios' },
+    { value: 'users',      label: 'Usuarios (roles y cuentas)' },
 ];
 
 const ACCION_OPTIONS = [
@@ -144,9 +145,11 @@ export default function AuditoriaList() {
                     <div>
                         <h1 className="list-heading__title">Historial de Auditoría</h1>
                         <p className="list-heading__subtitle">
-                            {pagination
-                                ? `${pagination.total} eventos registrados`
-                                : 'Cargando...'}
+                            {pagination ? (
+                                <span className="list-heading__count">
+                                    🔍 {pagination.total} eventos registrados
+                                </span>
+                            ) : 'Cargando...'}
                             {' — '}Solo acciones de administradores
                         </p>
                     </div>

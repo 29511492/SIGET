@@ -144,9 +144,11 @@ export default function PagoList() {
                     <div>
                         <h1 className="list-heading__title">Panel de Pagos QR</h1>
                         <p className="list-heading__subtitle">
-                            {pagination
-                                ? `${pagination.total ?? pagos.length} pagos encontrados`
-                                : 'Cargando...'}
+                            {pagination ? (
+                                <span className="list-heading__count">
+                                    💳 {pagination.total ?? pagos.length} pagos encontrados
+                                </span>
+                            ) : 'Cargando...'}
                         </p>
                     </div>
                 </div>

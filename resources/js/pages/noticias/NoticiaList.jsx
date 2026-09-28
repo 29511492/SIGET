@@ -109,7 +109,9 @@ export default function NoticiaList() {
                     <div>
                         <h1 className="list-heading__title">Noticias Comunales</h1>
                         <p className="list-heading__subtitle">
-                            {pagination.total} noticia{pagination.total !== 1 ? 's' : ''} en total
+                            <span className="list-heading__count">
+                                📰 {pagination.total} noticia{pagination.total !== 1 ? 's' : ''} en total
+                            </span>
                         </p>
                     </div>
                     <Link to="/noticias/nueva" className="list-btn list-btn--primary">

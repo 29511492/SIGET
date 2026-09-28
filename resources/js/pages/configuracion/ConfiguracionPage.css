@@ -1,0 +1,561 @@
+/**
+ * ConfiguracionPage.css — SIGET
+ *
+ * CSS AUTÓNOMO (prefijo cfg-): no depende de que FamiliaList.css esté
+ * importado globalmente (ver hallazgo de NoticiaList.css, sept-2026).
+ * Usa la paleta oficial con fallback por si las variables :root no
+ * estuvieran disponibles en esta página.
+ *
+ * Puntos focales (Documento Maestro 9.8):
+ *   · .cfg-count           → chip de conteo total
+ *   · .cfg-btn--primary    → sombra / elevación al hover
+ *   · tr.fila-atencion     → cuenta bloqueada (acento rojo)
+ *   · tr.tr-inactive       → cuenta desactivada (atenuada)
+ */
+
+.cfg-page {
+    --cfg-navy:       var(--c-navy, #0d1f35);
+    --cfg-navy-hover: var(--c-navy-hover, #1e3a56);
+    --cfg-gold:       var(--c-gold, #c9a84c);
+    --cfg-bg:         var(--c-offwhite, #f8f6f1);
+    --cfg-white:      var(--c-white, #ffffff);
+    --cfg-text:       var(--c-text-dark, #1a1a2e);
+    --cfg-text-mid:   var(--c-text-mid, #4a5568);
+    --cfg-text-light: var(--c-text-light, #718096);
+    --cfg-border:     var(--c-border, #e8e3db);
+    --cfg-error:      var(--c-error, #c0392b);
+    --cfg-error-bg:   var(--c-error-bg, #fdf2f2);
+
+    min-height: 100vh;
+    background: var(--cfg-bg);
+    color: var(--cfg-text);
+    font-family: 'DM Sans', system-ui, sans-serif;
+}
+
+/* ── Topbar ─────────────────────────────────────────────── */
+.cfg-topbar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.85rem 1.5rem;
+    background: var(--cfg-white);
+    border-bottom: 1px solid var(--cfg-border);
+}
+
+.cfg-topbar__back {
+    background: none;
+    border: 1px solid var(--cfg-border);
+    border-radius: 8px;
+    padding: 0.4rem 0.85rem;
+    font: inherit;
+    font-size: 0.85rem;
+    color: var(--cfg-navy);
+    cursor: pointer;
+}
+
+.cfg-topbar__back:hover { background: var(--cfg-bg); }
+
+.cfg-topbar__breadcrumb {
+    display: flex;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--cfg-text-light);
+}
+
+.cfg-topbar__breadcrumb span:last-child {
+    color: var(--cfg-navy);
+    font-weight: 600;
+}
+
+/* ── Contenedor y encabezado ────────────────────────────── */
+.cfg-container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 1.75rem 1.5rem 3rem;
+}
+
+.cfg-heading { margin-bottom: 1.25rem; }
+
+.cfg-heading__title {
+    margin: 0 0 0.4rem;
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: 1.9rem;
+    font-weight: 400;
+    color: var(--cfg-navy);
+}
+
+.cfg-heading__subtitle {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--cfg-text-mid);
+}
+
+.cfg-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--cfg-navy);
+    background: rgba(13, 31, 53, 0.06);
+    padding: 0.25rem 0.7rem;
+    border-radius: 999px;
+}
+
+/* ── Pestañas ───────────────────────────────────────────── */
+.cfg-tabs {
+    display: flex;
+    gap: 0.25rem;
+    margin-bottom: 1.25rem;
+    border-bottom: 2px solid var(--cfg-border);
+}
+
+.cfg-tab {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: -2px;
+    padding: 0.7rem 1.1rem;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    font: inherit;
+    font-size: 0.92rem;
+    font-weight: 500;
+    color: var(--cfg-text-mid);
+    cursor: pointer;
+}
+
+.cfg-tab:hover { color: var(--cfg-navy); }
+
+.cfg-tab--active {
+    color: var(--cfg-navy);
+    font-weight: 600;
+    border-bottom-color: var(--cfg-gold);
+}
+
+.cfg-tab__badge {
+    min-width: 1.3rem;
+    padding: 0.05rem 0.4rem;
+    border-radius: 999px;
+    background: var(--cfg-error);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-align: center;
+}
+
+/* ── Avisos ─────────────────────────────────────────────── */
+.cfg-aviso {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+    padding: 0.7rem 1rem;
+    border-radius: 8px;
+    font-size: 0.88rem;
+}
+
+.cfg-aviso--ok    { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+.cfg-aviso--error { background: var(--cfg-error-bg); color: var(--cfg-error); border: 1px solid #f5c6c2; }
+
+.cfg-aviso__cerrar {
+    margin-left: auto;
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    line-height: 1;
+    color: inherit;
+    cursor: pointer;
+}
+
+.cfg-alert {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+    padding: 0.7rem 1rem;
+    border-radius: 8px;
+    font-size: 0.88rem;
+}
+
+.cfg-alert--error { background: var(--cfg-error-bg); color: var(--cfg-error); border: 1px solid #f5c6c2; }
+
+.cfg-alert__retry {
+    margin-left: auto;
+    background: none;
+    border: 1px solid currentColor;
+    border-radius: 6px;
+    padding: 0.25rem 0.7rem;
+    font: inherit;
+    font-size: 0.8rem;
+    color: inherit;
+    cursor: pointer;
+}
+
+/* ── Chips de resumen ───────────────────────────────────── */
+.cfg-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.cfg-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.85rem;
+    background: var(--cfg-white);
+    border: 1px solid var(--cfg-border);
+    border-radius: 999px;
+    font: inherit;
+    font-size: 0.82rem;
+    color: var(--cfg-text-mid);
+    cursor: pointer;
+}
+
+.cfg-chip:hover { border-color: var(--cfg-navy); }
+
+.cfg-chip--active {
+    background: var(--cfg-navy);
+    border-color: var(--cfg-navy);
+    color: #fff;
+}
+
+.cfg-chip--alerta {
+    background: var(--cfg-error-bg);
+    border-color: #f5c6c2;
+    color: var(--cfg-error);
+}
+
+.cfg-chip--alerta.cfg-chip--active {
+    background: var(--cfg-error);
+    border-color: var(--cfg-error);
+    color: #fff;
+}
+
+/* ── Filtros ────────────────────────────────────────────── */
+.cfg-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+}
+
+.cfg-filters__input,
+.cfg-filters__select {
+    padding: 0.55rem 0.8rem;
+    background: var(--cfg-white);
+    border: 1px solid var(--cfg-border);
+    border-radius: 8px;
+    font: inherit;
+    font-size: 0.88rem;
+    color: var(--cfg-text);
+}
+
+.cfg-filters__input { flex: 1 1 260px; min-width: 0; }
+
+.cfg-filters__input:focus-visible,
+.cfg-filters__select:focus-visible,
+.cfg-rol-select:focus-visible,
+.cfg-chip:focus-visible,
+.cfg-tab:focus-visible,
+.cfg-btn:focus-visible,
+.cfg-topbar__back:focus-visible {
+    outline: 2px solid var(--cfg-gold);
+    outline-offset: 2px;
+}
+
+/* ── Botones ────────────────────────────────────────────── */
+.cfg-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.55rem 1.1rem;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    font: inherit;
+    font-size: 0.88rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.cfg-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.cfg-btn--sm { padding: 0.35rem 0.75rem; font-size: 0.8rem; }
+
+.cfg-btn--primary {
+    background: var(--cfg-navy);
+    color: #fff;
+    box-shadow: 0 1px 3px rgba(13, 31, 53, 0.2);
+}
+
+.cfg-btn--primary:hover:not(:disabled) {
+    background: var(--cfg-navy-hover);
+    box-shadow: 0 4px 14px rgba(13, 31, 53, 0.25);
+}
+
+.cfg-btn--ghost {
+    background: var(--cfg-white);
+    border-color: var(--cfg-border);
+    color: var(--cfg-navy);
+}
+
+.cfg-btn--ghost:hover:not(:disabled) { background: var(--cfg-bg); }
+
+.cfg-btn--danger-ghost {
+    background: var(--cfg-white);
+    border-color: #f5c6c2;
+    color: var(--cfg-error);
+}
+
+.cfg-btn--danger-ghost:hover:not(:disabled) { background: var(--cfg-error-bg); }
+
+/* ── Tabla ──────────────────────────────────────────────── */
+.cfg-table-wrap {
+    overflow-x: auto;
+    background: var(--cfg-white);
+    border: 1px solid var(--cfg-border);
+    border-radius: 12px;
+}
+
+.cfg-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+}
+
+.cfg-table th,
+.cfg-table td {
+    padding: 0.8rem 1rem;
+    text-align: left;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--cfg-border);
+}
+
+.cfg-table thead th {
+    background: #fbfaf7;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--cfg-text-mid);
+    white-space: nowrap;
+}
+
+.cfg-table tbody tr:last-child th,
+.cfg-table tbody tr:last-child td { border-bottom: none; }
+
+.cfg-table__acciones { text-align: right; white-space: nowrap; }
+.cfg-table__acciones .cfg-btn + .cfg-btn { margin-left: 0.4rem; }
+.cfg-table__fecha    { color: var(--cfg-text-light); white-space: nowrap; }
+.cfg-table__modulo   { font-weight: 600; color: var(--cfg-navy); white-space: nowrap; }
+
+.cfg-table tbody tr.fila-atencion {
+    background: var(--cfg-error-bg);
+    box-shadow: inset 3px 0 0 var(--cfg-error);
+}
+
+.cfg-table tbody tr.tr-inactive { opacity: 0.55; }
+
+/* ── Celda de usuario ───────────────────────────────────── */
+.cfg-usuario { display: flex; flex-direction: column; gap: 0.1rem; }
+
+.cfg-usuario__nombre {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    color: var(--cfg-text);
+}
+
+.cfg-usuario__email,
+.cfg-usuario__cedula { font-size: 0.8rem; color: var(--cfg-text-light); }
+
+.cfg-tag {
+    padding: 0.05rem 0.5rem;
+    border-radius: 999px;
+    background: rgba(201, 168, 76, 0.2);
+    color: #7a5f12;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+/* ── Selector de rol ────────────────────────────────────── */
+.cfg-rol-select {
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--cfg-border);
+    border-radius: 8px;
+    background: var(--cfg-white);
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--cfg-text);
+    cursor: pointer;
+}
+
+.cfg-rol-select:disabled { cursor: not-allowed; background: #f3f1ec; color: var(--cfg-text-light); }
+
+.cfg-rol-select--admin    { border-color: var(--cfg-gold); }
+.cfg-rol-select--operador { border-color: #90cdf4; }
+.cfg-rol-select--vocero   { border-color: #9ae6b4; }
+.cfg-rol-select--usuario  { border-color: #99e0d6; }
+
+/* ── Badges de estado ───────────────────────────────────── */
+.cfg-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.cfg-badge--activo    { background: #ecfdf5; color: #065f46; }
+.cfg-badge--bloqueado { background: var(--cfg-error-bg); color: var(--cfg-error); }
+.cfg-badge--inactivo  { background: #edf0f4; color: var(--cfg-text-mid); }
+
+/* ── Estados vacío / cargando ───────────────────────────── */
+.cfg-estado {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 3rem 1rem;
+    color: var(--cfg-text-light);
+    font-size: 0.9rem;
+}
+
+.cfg-estado p { margin: 0; }
+
+.cfg-spinner {
+    width: 26px;
+    height: 26px;
+    border: 3px solid var(--cfg-border);
+    border-top-color: var(--cfg-navy);
+    border-radius: 50%;
+    animation: cfg-spin 0.8s linear infinite;
+}
+
+@keyframes cfg-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+    .cfg-spinner { animation-duration: 2.4s; }
+}
+
+/* ── Paginación ─────────────────────────────────────────── */
+.cfg-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.cfg-pagination__info { font-size: 0.82rem; color: var(--cfg-text-mid); }
+
+/* ── Matriz: tarjetas de rol ────────────────────────────── */
+.cfg-roles-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 0.9rem;
+    margin-bottom: 1.25rem;
+}
+
+.cfg-rol-card {
+    padding: 1rem 1.1rem;
+    background: var(--cfg-white);
+    border: 1px solid var(--cfg-border);
+    border-left: 4px solid var(--cfg-border);
+    border-radius: 10px;
+}
+
+.cfg-rol-card--admin    { border-left-color: var(--cfg-gold); }
+.cfg-rol-card--operador { border-left-color: #63b3ed; }
+.cfg-rol-card--vocero   { border-left-color: #68d391; }
+.cfg-rol-card--usuario  { border-left-color: #2dd4bf; }
+
+.cfg-rol-card__header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.4rem;
+}
+
+.cfg-rol-card__titulo {
+    margin: 0;
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: 1.15rem;
+    font-weight: 400;
+    color: var(--cfg-navy);
+}
+
+.cfg-rol-card__conteo { font-size: 0.75rem; color: var(--cfg-text-light); white-space: nowrap; }
+
+.cfg-rol-card__desc {
+    margin: 0;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    color: var(--cfg-text-mid);
+}
+
+/* ── Matriz: celdas de permisos ─────────────────────────── */
+.cfg-table--matriz td { vertical-align: top; }
+
+.cfg-perm-list { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+
+.cfg-perm {
+    display: inline-flex;
+    padding: 0.15rem 0.55rem;
+    border-radius: 6px;
+    font-size: 0.74rem;
+    font-weight: 600;
+}
+
+.cfg-perm--lectura     { background: #e6f0fa; color: #1e4e79; }
+.cfg-perm--escritura   { background: #fdf3d6; color: #7a5f12; }
+.cfg-perm--eliminacion { background: var(--cfg-error-bg); color: var(--cfg-error); }
+.cfg-perm--none        { background: transparent; color: var(--cfg-text-light); font-weight: 400; padding-left: 0; }
+
+.cfg-nota {
+    margin: 1rem 0 0;
+    max-width: 75ch;
+    font-size: 0.8rem;
+    line-height: 1.55;
+    color: var(--cfg-text-light);
+}
+
+.cfg-nota code {
+    padding: 0.05rem 0.35rem;
+    border-radius: 4px;
+    background: rgba(13, 31, 53, 0.06);
+    font-size: 0.78rem;
+}
+
+/* ── Accesibilidad ──────────────────────────────────────── */
+.cfg-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* ── Responsive ─────────────────────────────────────────── */
+@media (max-width: 640px) {
+    .cfg-container { padding: 1.25rem 1rem 2.5rem; }
+    .cfg-topbar    { padding: 0.75rem 1rem; }
+    .cfg-pagination { flex-direction: column; }
+}

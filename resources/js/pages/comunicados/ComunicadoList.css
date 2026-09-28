@@ -31,6 +31,22 @@
     margin: 0;
 }
 
+/* Chip de conteo total — mismo criterio que el resto del sistema
+   (corrección 2: interfaz gráfica / puntos focales), adaptado a la
+   paleta propia de este módulo. */
+.com-list__count {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #0d1f35;
+    background: rgba(13, 31, 53, 0.06);
+    padding: 0.25rem 0.7rem;
+    border-radius: 999px;
+    margin-top: 0.5rem;
+}
+
 .com-list__btn-nuevo {
     background-color: #c9a84c;
     color: #0d1f35;

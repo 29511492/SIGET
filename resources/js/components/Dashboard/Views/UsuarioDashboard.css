@@ -10,6 +10,25 @@
  *   --c-navy, --c-navy-hover, --c-gold, --c-offwhite, --c-white,
  *   --c-text-dark, --c-text-mid, --c-text-light, --c-border,
  *   --ff-display, --ff-body, --radius, --transition
+ *
+ * FIX (sept-2026, corrección 1) — Unificación de clases: el bloque de
+ * tarjetas de acción usa .dashboard-accion-card, compartido con
+ * AdminDashboard.jsx y VoceroDashboard.jsx vía DashboardPage.css.
+ * Es una COPIA INTENCIONAL de ese bloque: como esta vista se renderiza
+ * de forma independiente (sin pasar por DashboardPage.jsx), no se
+ * puede depender de que DashboardPage.css ya esté cargado. Si cambias
+ * el diseño de .dashboard-accion-card, replica el cambio en ambos
+ * archivos.
+ *
+ * FIX (sept-2026, corrección 2 del profesor — "interfaz gráfica /
+ * puntos focales se pierden"):
+ *   - El hero ahora es un layout de dos columnas: saludo/título/píldora
+ *     de estado a la izquierda, tarjeta de identidad (.portal-id-card)
+ *     a la derecha.
+ *   - Se eliminó el sistema de scroll con anclas (.portal-widget-section,
+ *     .portal-divider) y se reemplazó por pestañas reales
+ *     (.portal-tabs*) — solo una sección visible a la vez, dentro de
+ *     un panel con borde propio.
  */
 
 /* ════════════════════════════════════════════════════════════════
@@ -98,6 +117,11 @@
     color: var(--c-white);
 }
 
+.portal-topbar__link--active {
+    background: rgba(201, 168, 76, 0.18);
+    color: var(--c-gold-light, #e0c06e);
+}
+
 .portal-topbar__logout {
     margin-left: auto;
     padding: 0.4rem 1rem;
@@ -125,14 +149,18 @@
 }
 
 /* ════════════════════════════════════════════════════════════════
-   HERO
+   HERO — dos columnas: saludo+píldora | tarjeta de identidad
    ════════════════════════════════════════════════════════════════ */
 .portal-hero {
     position: relative;
     background: var(--c-navy);
-    padding: 3.5rem 2rem 4rem;
+    padding: 3rem 2rem 3.5rem;
     overflow: hidden;
-    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3rem;
+    flex-wrap: wrap;
 }
 
 /* Patrón de fondo decorativo */
@@ -151,8 +179,8 @@
 .portal-hero__content {
     position: relative;
     z-index: 1;
-    max-width: 600px;
-    margin: 0 auto;
+    max-width: 460px;
+    text-align: left;
 }
 
 .portal-hero__saludo {
@@ -169,17 +197,105 @@
 
 .portal-hero__titulo {
     font-family: var(--ff-display);
-    font-size: 2.25rem;
+    font-size: 2.1rem;
     font-weight: 700;
     color: var(--c-white);
-    margin: 0 0 0.6rem;
-    line-height: 1.2;
+    margin: 0 0 0.5rem;
+    line-height: 1.15;
 }
 
 .portal-hero__subtitulo {
-    font-size: 0.9rem;
+    font-size: 0.88rem;
     color: rgba(255, 255, 255, 0.55);
-    letter-spacing: 0.03em;
+    letter-spacing: 0.02em;
+    margin-bottom: 1.1rem;
+}
+
+/* Píldora de estado (pagos pendientes / al día) */
+.portal-hero__pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    font-family: var(--ff-body);
+    font-size: 0.8rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: transform var(--transition), filter var(--transition);
+}
+.portal-hero__pill:hover { transform: translateY(-1px); filter: brightness(1.05); }
+
+.portal-hero__pill--alerta {
+    background: #fef3c7;
+    color: #92400e;
+}
+.portal-hero__pill--ok {
+    background: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* ── Tarjeta de identidad (carnet) ────────────────────────────── */
+.portal-id-card {
+    position: relative;
+    z-index: 1;
+    width: 220px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 16px;
+    padding: 1.5rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.35rem;
+    backdrop-filter: blur(6px);
+    flex-shrink: 0;
+}
+
+.portal-id-card__avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--c-gold);
+    color: var(--c-navy);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--ff-display);
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.4rem;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.portal-id-card__name {
+    font-family: var(--ff-display);
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--c-white);
+    line-height: 1.2;
+}
+
+.portal-id-card__role {
+    display: inline-block;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--c-gold);
+    background: rgba(201, 168, 76, 0.15);
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    margin: 0.15rem 0 0.3rem;
+}
+
+.portal-id-card__email {
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.5);
+    word-break: break-all;
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -193,7 +309,7 @@
     padding: 2.5rem 1.5rem;
     display: flex;
     flex-direction: column;
-    gap: 2.5rem;
+    gap: 2rem;
 }
 
 .portal-section-title {
@@ -205,15 +321,18 @@
 }
 
 /* ════════════════════════════════════════════════════════════════
-   TARJETAS DE ACCIONES CIUDADANAS
+   TARJETAS DE ACCIONES — .dashboard-accion-card (compartido)
+   ───────────────────────────────────────────────────────────────
+   Copia intencional del bloque canónico de DashboardPage.css.
+   Ver nota de unificación al inicio del archivo.
    ════════════════════════════════════════════════════════════════ */
-.portal-acciones__grid {
+.dashboard-acciones__grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 1rem;
 }
 
-.portal-accion-card {
+.dashboard-accion-card {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -230,34 +349,49 @@
     box-shadow: 0 2px 8px rgba(13, 31, 53, 0.08);
 }
 
-.portal-accion-card:hover {
+.dashboard-accion-card:hover {
     transform: translateY(-3px);
     box-shadow: 0 8px 24px rgba(13, 31, 53, 0.14);
 }
 
 /* Variantes de color */
-.portal-accion-card--navy {
+.dashboard-accion-card--navy {
     background: var(--c-navy);
     color: var(--c-white);
 }
 
-.portal-accion-card--gold {
+.dashboard-accion-card--gold {
     background: linear-gradient(135deg, #c9a84c 0%, #e8c96a 100%);
     color: var(--c-navy);
 }
 
-.portal-accion-card--teal {
+.dashboard-accion-card--teal {
     background: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%);
     color: var(--c-white);
 }
 
-.portal-accion-card__icon {
+.dashboard-accion-card--amber {
+    background: linear-gradient(135deg, #b45309 0%, #d97706 100%);
+    color: var(--c-white);
+}
+
+.dashboard-accion-card--red {
+    background: linear-gradient(135deg, #9b1c1c 0%, #c0392b 100%);
+    color: var(--c-white);
+}
+
+.dashboard-accion-card--purple {
+    background: linear-gradient(135deg, #4c1d95 0%, #6d28d9 100%);
+    color: var(--c-white);
+}
+
+.dashboard-accion-card__icon {
     font-size: 1.75rem;
     line-height: 1;
     margin-bottom: 0.25rem;
 }
 
-.portal-accion-card__titulo {
+.dashboard-accion-card__titulo {
     font-family: var(--ff-display);
     font-size: 1rem;
     font-weight: 700;
@@ -265,7 +399,7 @@
     line-height: 1.2;
 }
 
-.portal-accion-card__desc {
+.dashboard-accion-card__desc {
     font-size: 0.8rem;
     opacity: 0.82;
     line-height: 1.4;
@@ -273,66 +407,102 @@
     flex: 1;
 }
 
-.portal-accion-card__arrow {
+.dashboard-accion-card__arrow {
     font-size: 1.1rem;
     margin-top: auto;
     opacity: 0.6;
     align-self: flex-end;
 }
 
-/* ════════════════════════════════════════════════════════════════
-   SECCIONES DE WIDGETS
-   ════════════════════════════════════════════════════════════════ */
-.portal-widget-section {
-    scroll-margin-top: 72px; /* altura del topbar + margen */
-}
-
-/* ════════════════════════════════════════════════════════════════
-   DIVISOR DE SECCIÓN — ancla visual entre bloques del scroll
-   ───────────────────────────────────────────────────────────────
-   Se inserta antes de cada widget (Pagos, Noticias, Sugerencias,
-   Mi Cuenta) para romper la sensación de scroll continuo sin
-   jerarquía. Icono dorado + línea sutil, consistente con la
-   identidad visual del sistema (navy + dorado).
-   ════════════════════════════════════════════════════════════════ */
-.portal-divider {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    margin-bottom: 1.25rem;
-}
-
-.portal-divider__icon {
-    display: flex;
+.dashboard-accion-card__badge {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: var(--c-navy);
-    font-size: 1.05rem;
-    flex-shrink: 0;
-    box-shadow: 0 2px 6px rgba(13, 31, 53, 0.2);
+    min-width: 22px;
+    height: 22px;
+    padding: 0 0.4rem;
+    background: var(--c-white);
+    color: var(--c-error, #c0392b);
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.25);
 }
 
-.portal-divider__line {
-    flex: 1;
-    height: 1px;
-    background: linear-gradient(
-        to right,
-        var(--c-gold) 0%,
-        var(--c-border) 35%,
-        var(--c-border) 100%
-    );
+/* ════════════════════════════════════════════════════════════════
+   PESTAÑAS — reemplazan el scroll continuo con anclas
+   ───────────────────────────────────────────────────────────────
+   Solo una sección (Pagos / Noticias / Sugerencias / Mi Cuenta) es
+   visible a la vez, dentro de un panel con borde propio. Así el
+   punto focal de la página siempre es claro.
+   ════════════════════════════════════════════════════════════════ */
+.portal-tabs {
+    scroll-margin-top: 72px; /* altura del topbar + margen, para el scrollIntoView */
+}
+
+.portal-tabs__bar {
+    display: flex;
+    gap: 0.4rem;
+    margin-bottom: 1.25rem;
+    border-bottom: 1px solid var(--c-border);
+    overflow-x: auto;
+}
+
+.portal-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.7rem 1.1rem;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    font-family: var(--ff-body);
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--c-text-light);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color var(--transition), border-color var(--transition);
+}
+
+.portal-tab:hover { color: var(--c-navy); }
+
+.portal-tab--active {
+    color: var(--c-navy);
+    font-weight: 700;
+    border-bottom-color: var(--c-gold);
+}
+
+.portal-tab__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 0.35rem;
+    background: var(--c-error, #c0392b);
+    color: var(--c-white);
+    border-radius: 999px;
+    font-size: 0.65rem;
+    font-weight: 800;
+}
+
+.portal-tabs__panel {
+    background: var(--c-white);
+    border: 1px solid var(--c-border);
+    border-radius: 14px;
+    padding: 1.75rem;
+    box-shadow: 0 2px 10px rgba(13, 31, 53, 0.05);
+    min-height: 220px;
 }
 
 /* ════════════════════════════════════════════════════════════════
    MI CUENTA — clases heredadas de PerfilPage.jsx (Datos + Permisos)
    ───────────────────────────────────────────────────────────────
-   FIX: estas clases existían en el JSX pero nunca se definieron en
-   este archivo CSS — UsuarioDashboard.css no importa PerfilPage.css,
-   así que el badge de rol y las tarjetas de Mi Cuenta se renderizaban
-   sin ningún estilo (invisibles / sin formato).
+   Ahora viven dentro de .portal-tabs__panel (pestaña "Mi Cuenta").
    ════════════════════════════════════════════════════════════════ */
 
 /* ── Encabezado: avatar + nombre + badge de rol ──────────────── */
@@ -426,7 +596,59 @@
     font-size: 1rem;
     font-weight: 600;
     color: var(--c-text-dark);
+    flex: 1;
 }
+
+/* Botón "Ocultar" — aparece en el header solo cuando los datos
+   sensibles ya están visibles */
+.perfil-card__toggle {
+    background: none;
+    border: 1px solid var(--c-border);
+    border-radius: 999px;
+    padding: 0.3rem 0.75rem;
+    font-family: var(--ff-body);
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--c-text-mid);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color var(--transition), color var(--transition);
+}
+.perfil-card__toggle:hover { border-color: var(--c-navy); color: var(--c-navy); }
+
+/* ── Gate de datos sensibles — reemplaza la lista de datos hasta
+   que el usuario pide verla explícitamente ─────────────────────── */
+.perfil-reveal {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 2rem 1.25rem;
+    text-align: center;
+}
+
+.perfil-reveal__icon { font-size: 1.75rem; opacity: 0.6; }
+
+.perfil-reveal__texto {
+    font-size: 0.82rem;
+    color: var(--c-text-light);
+    max-width: 220px;
+}
+
+.perfil-reveal__btn {
+    margin-top: 0.35rem;
+    padding: 0.5rem 1.1rem;
+    background: var(--c-navy);
+    color: var(--c-white);
+    border: none;
+    border-radius: 999px;
+    font-family: var(--ff-body);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background var(--transition), transform var(--transition);
+}
+.perfil-reveal__btn:hover { background: var(--c-navy-hover); transform: translateY(-1px); }
 
 /* ── Lista de datos (Nombre, Correo, Rol, Miembro desde) ─────── */
 .perfil-data-list {
@@ -521,17 +743,24 @@
 /* ════════════════════════════════════════════════════════════════
    RESPONSIVE
    ════════════════════════════════════════════════════════════════ */
+@media (max-width: 900px) {
+    .dashboard-acciones__grid { grid-template-columns: repeat(2, 1fr); }
+}
+
 @media (max-width: 768px) {
-    .portal-hero { padding: 2.5rem 1.25rem 3rem; }
-    .portal-hero__titulo { font-size: 1.75rem; }
-    .portal-acciones__grid { grid-template-columns: 1fr; }
+    .portal-hero { padding: 2.25rem 1.25rem 2.5rem; flex-direction: column; gap: 1.5rem; }
+    .portal-hero__content { text-align: center; max-width: 100%; }
+    .portal-hero__titulo { font-size: 1.65rem; }
     .portal-topbar { padding: 0 1.25rem; }
     .portal-topbar__nav { display: none; }
     .portal-main { padding: 1.5rem 1rem; }
     .perfil-grid { grid-template-columns: 1fr; }
     .perfil-data-list__value { text-align: left; }
+    .portal-tabs__panel { padding: 1.25rem; }
 }
 
 @media (max-width: 480px) {
-    .portal-hero__titulo { font-size: 1.5rem; }
+    .portal-hero__titulo { font-size: 1.45rem; }
+    .dashboard-acciones__grid { grid-template-columns: 1fr; }
+    .portal-id-card { width: 100%; }
 }

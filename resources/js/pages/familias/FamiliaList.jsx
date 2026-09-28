@@ -210,7 +210,11 @@ export default function FamiliaList() {
                     <div>
                         <h1 className="list-heading__title">Familias del Censo</h1>
                         <p className="list-heading__subtitle">
-                            {pagination ? `${pagination.total} familias registradas` : 'Cargando...'}
+                            {pagination ? (
+                                <span className="list-heading__count">
+                                    📋 {pagination.total} familias registradas
+                                </span>
+                            ) : 'Cargando...'}
                         </p>
                     </div>
                     {canWrite && (
@@ -280,7 +284,15 @@ export default function FamiliaList() {
 
                                     return (
                                         <Fragment key={familia.id}>
-                                            <tr className={isExpanded ? 'tr-expanded-parent' : ''}>
+                                            {/* FIX (sept-2026, corrección 2 del profesor — "puntos
+                                                focales se pierden"): las viviendas en condición
+                                                crítica ahora se distinguen con un acento visual
+                                                en la fila (borde + tinte rojo sutil), sin tener
+                                                que leer el badge de la columna Condición. */}
+                                            <tr className={[
+                                                isExpanded ? 'tr-expanded-parent' : '',
+                                                familia.condicion_vivienda === 'critica' ? 'fila-critica' : '',
+                                            ].filter(Boolean).join(' ')}>
                                                 <td className="td-toggle">
                                                     <button
                                                         type="button"

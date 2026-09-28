@@ -1,5 +1,14 @@
 /**
  * resources/js/app.jsx — SIGET
+ *
+ * CAMBIOS (sept-2026, corrección del profesor: gestión de roles):
+ *  · Ruta /configuracion (solo admin) → módulo de usuarios y roles.
+ *    Ya existía el ítem "Configuración" en el sidebar sin ruta: el
+ *    catch-all mandaba al admin a /login.
+ *  · Rutas /cuentas-pago y /cuentas-pago/crear restauradas (faltaban:
+ *    el sidebar y la tarjeta de AdminDashboard terminaban en /login).
+ *  · /familias restringida a admin + operador: el vocero no accede a
+ *    Familias (instrucción del profesor); el backend también lo bloquea.
  */
 
 import './bootstrap';
@@ -33,6 +42,9 @@ import OrganizacionForm from './pages/organizacion/OrganizacionForm';
 import OrganizacionList from './pages/organizacion/OrganizacionList';
 import PagoForm         from './pages/pagos/PagoForm';
 import PagoList         from './pages/pagos/PagoList';
+import CuentaPagoList   from './pages/pagos/CuentaPagoList';
+import CuentaPagoForm   from './pages/pagos/CuentaPagoForm';
+import ConfiguracionPage from './pages/configuracion/ConfiguracionPage';
 import ComunicadoForm   from './pages/comunicados/ComunicadoForm';
 import ComunicadoList   from './pages/comunicados/ComunicadoList';
 import ComunicadoDetail from './pages/comunicados/ComunicadoDetail';
@@ -42,16 +54,25 @@ import MiComunidad      from './pages/voceros/MiComunidad';
 import NoticiaList      from './pages/noticias/NoticiaList';
 import NoticiaForm      from './pages/noticias/NoticiaForm';
 import SugerenciaPanel  from './pages/sugerencias/SugerenciaPanel';
+import UsuarioDashboard from './components/Dashboard/Views/UsuarioDashboard';
 
 // ─────────────────────────────────────────────────────────────
-//  Mapa de redirección por rol — fuente única de verdad.
-//  Usado tanto en PublicRoute como en Login.jsx.
+//  Mapa de redirección por rol — fuente única de verdad "en
+//  intención" (Login.jsx mantiene su propia copia porque
+//  importarla desde aquí crearía un import circular app.jsx ↔
+//  Login.jsx; si cambias un destino aquí, cámbialo también ahí).
 // ─────────────────────────────────────────────────────────────
+// FIX (sept-2026): el rol usuario entraba a /perfil en vez de
+// /dashboard, inconsistente con el resto de los roles. Ver
+// DashboardRouter / PerfilRouter más abajo — ambas rutas ahora
+// renderizan UsuarioDashboard directamente (sin el sidebar de
+// DashboardPage) para el rol usuario, así que el cambio de destino
+// no rompe nada que dependiera de /perfil.
 const REDIRECT_BY_ROL = {
     admin:    '/dashboard',
     operador: '/dashboard',
     vocero:   '/mi-comunidad',
-    usuario:  '/perfil',
+    usuario:  '/dashboard',
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -178,6 +199,29 @@ const PublicRoute = ({ children }) => {
 };
 
 // ─────────────────────────────────────────────────────────────
+//  ✅ FIX (sept-2026) — DashboardRouter / PerfilRouter
+//  El rol "usuario" (Portal Ciudadano) NO debe verse envuelto por
+//  el sidebar/topbar de DashboardPage.jsx — su UsuarioDashboard.jsx
+//  ya trae su propio layout de página completa (topbar propio, hero,
+//  pestañas). Antes /dashboard renderizaba <DashboardPage/> para
+//  TODOS los roles sin distinción, así que si un usuario llegaba ahí
+//  (por ejemplo escribiendo la URL a mano) quedaba mal envuelto por
+//  el sidebar. Estos dos componentes deciden, por rol, si se muestra
+//  UsuarioDashboard "pelado" o la página normal con sidebar.
+// ─────────────────────────────────────────────────────────────
+const DashboardRouter = () => {
+    const { user } = useAuth();
+    if (user?.rol === 'usuario') return <UsuarioDashboard user={user} />;
+    return <DashboardPage />;
+};
+
+const PerfilRouter = () => {
+    const { user } = useAuth();
+    if (user?.rol === 'usuario') return <UsuarioDashboard user={user} />;
+    return <PerfilPage />;
+};
+
+// ─────────────────────────────────────────────────────────────
 //  App
 // ─────────────────────────────────────────────────────────────
 const App = () => (
@@ -210,12 +254,12 @@ const App = () => (
 
                     <Route path="/dashboard" element={
                         <ProtectedRoute>
-                            <DashboardPage />
+                            <DashboardRouter />
                         </ProtectedRoute>
                     } />
 
                     <Route path="/familias" element={
-                        <ProtectedRoute>
+                        <ProtectedRoute allowedRoles={['admin', 'operador']}>
                             <FamiliaList />
                         </ProtectedRoute>
                     } />
@@ -283,6 +327,26 @@ const App = () => (
                     <Route path="/auditoria" element={
                         <ProtectedRoute allowedRoles={['admin']}>
                             <AuditoriaList />
+                        </ProtectedRoute>
+                    } />
+
+                    {/* Configuración — usuarios y roles (solo admin) */}
+                    <Route path="/configuracion" element={
+                        <ProtectedRoute allowedRoles={['admin']}>
+                            <ConfiguracionPage />
+                        </ProtectedRoute>
+                    } />
+
+                    {/* Cuentas de pago — estática /crear ANTES que la lista */}
+                    <Route path="/cuentas-pago/crear" element={
+                        <ProtectedRoute allowedRoles={['admin', 'operador']}>
+                            <CuentaPagoForm />
+                        </ProtectedRoute>
+                    } />
+
+                    <Route path="/cuentas-pago" element={
+                        <ProtectedRoute allowedRoles={['admin', 'operador']}>
+                            <CuentaPagoList />
                         </ProtectedRoute>
                     } />
 
@@ -378,10 +442,13 @@ const App = () => (
                         </ProtectedRoute>
                     } />
 
-                    {/* Rol: usuario → /perfil */}
+                    {/* Perfil — usuario ve UsuarioDashboard (vía PerfilRouter),
+                        el resto de roles ve PerfilPage. Se mantiene accesible
+                        para todos por compatibilidad con enlaces existentes,
+                        aunque el login ahora manda a usuario a /dashboard. */}
                     <Route path="/perfil" element={
                         <ProtectedRoute allowedRoles={['usuario', 'admin', 'operador', 'vocero']}>
-                            <PerfilPage />
+                            <PerfilRouter />
                         </ProtectedRoute>
                     } />
 

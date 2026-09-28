@@ -24,6 +24,15 @@
  *  FamiliaController — ver ese archivo para el detalle. El
  *  import de HabitanteController se elimina porque ya no lo usa
  *  ninguna ruta.
+ *
+ *  CAMBIO (sept-2026, corrección del profesor: roles) —
+ *  1. Módulo de Configuración: rutas de usuarios/roles y matriz de
+ *     permisos en Capa 4 (solo admin). Ver UsuarioController.
+ *  2. FIX RBAC: las rutas de lectura de Familias (index/show)
+ *     estaban en Capa 2 (incluía vocero) y el show devuelve los
+ *     habitantes anidados. Contradecía la instrucción del profesor
+ *     (el vocero no accede a Familias ni Habitantes). Se movieron
+ *     a Capa 3 (admin + operador).
  * ═══════════════════════════════════════════════════════════════
  */
 
@@ -43,6 +52,7 @@ use App\Http\Controllers\Api\V1\ComunicadoController;
 use App\Http\Controllers\Api\V1\NoticiaController;
 use App\Http\Controllers\Api\V1\SugerenciaController;
 use App\Http\Controllers\Api\V1\PasswordResetController;
+use App\Http\Controllers\Api\V1\UsuarioController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -126,12 +136,8 @@ Route::prefix('v1')->group(function () {
             Route::get('dashboard/stats', [DashboardController::class, 'stats'])
                 ->name('api.v1.dashboard.stats');
 
-            // Familias — lectura (incluye habitantes anidados en show())
-            Route::get('familias', [FamiliaController::class, 'index'])
-                ->name('api.v1.familias.index');
-
-            Route::get('familias/{familia}', [FamiliaController::class, 'show'])
-                ->name('api.v1.familias.show');
+            // NOTA (sept-2026): Familias NO va en esta capa — el vocero no
+            // tiene acceso a Familias ni Habitantes. Su lectura vive en Capa 3.
 
             // Sedes y Calles — opciones para selects encadenados
             Route::get('sedes', [CalleController::class, 'listaSedes'])
@@ -212,8 +218,15 @@ Route::prefix('v1')->group(function () {
         // ══════════════════════════════════════════════════════════
         Route::middleware('role:admin,operador')->group(function () {
 
-            // Familias — crear y editar (el payload de ambas incluye
-            // el array `habitantes[]` — ver FamiliaController)
+            // Familias — lectura (incluye habitantes anidados en show()),
+            // crear y editar (el payload de store/update incluye el array
+            // `habitantes[]` — ver FamiliaController). Solo admin + operador.
+            Route::get('familias', [FamiliaController::class, 'index'])
+                ->name('api.v1.familias.index');
+
+            Route::get('familias/{familia}', [FamiliaController::class, 'show'])
+                ->name('api.v1.familias.show');
+
             Route::post('familias', [FamiliaController::class, 'store'])
                 ->name('api.v1.familias.store');
 
@@ -343,6 +356,25 @@ Route::prefix('v1')->group(function () {
             // Auditoría — solo lectura, exclusivo admin
             Route::get('auditorias', [AuditoriaController::class, 'index'])
                 ->name('api.v1.auditorias.index');
+
+            // Configuración — usuarios y roles (solo admin)
+            // Matriz de permisos derivada de las rutas reales.
+            Route::get('configuracion/permisos', [UsuarioController::class, 'matrizPermisos'])
+                ->name('api.v1.configuracion.permisos');
+
+            Route::get('usuarios', [UsuarioController::class, 'index'])
+                ->name('api.v1.usuarios.index');
+
+            Route::patch('usuarios/{usuario}/rol', [UsuarioController::class, 'cambiarRol'])
+                ->name('api.v1.usuarios.rol');
+
+            // withTrashed: permite reactivar cuentas desactivadas (SoftDelete)
+            Route::patch('usuarios/{usuario}/estado', [UsuarioController::class, 'cambiarEstado'])
+                ->withTrashed()
+                ->name('api.v1.usuarios.estado');
+
+            Route::patch('usuarios/{usuario}/desbloquear', [UsuarioController::class, 'desbloquear'])
+                ->name('api.v1.usuarios.desbloquear');
         });
 
     }); // fin auth:sanctum

@@ -124,9 +124,11 @@ export default function ProyectoList() {
                     <div>
                         <h1 className="list-heading__title">Proyectos</h1>
                         <p className="list-heading__subtitle">
-                            {pagination
-                                ? `${pagination.total} proyecto${pagination.total !== 1 ? 's' : ''} registrado${pagination.total !== 1 ? 's' : ''}`
-                                : 'Cargando...'}
+                            {pagination ? (
+                                <span className="list-heading__count">
+                                    📋 {pagination.total} proyecto{pagination.total !== 1 ? 's' : ''} registrado{pagination.total !== 1 ? 's' : ''}
+                                </span>
+                            ) : 'Cargando...'}
                         </p>
                     </div>
                     {canWrite && (
@@ -210,7 +212,10 @@ export default function ProyectoList() {
                                 {proyectos.map(p => {
                                     const badge = BADGE[p.estatus] ?? { cls: 'badge--gray', label: p.estatus };
                                     return (
-                                        <tr key={p.id}>
+                                        <tr
+                                            key={p.id}
+                                            className={p.estatus === 'paralizado' ? 'fila-atencion' : ''}
+                                        >
                                             <td className="td-nombre" title={p.nombre_proyecto}>
                                                 {p.nombre_proyecto}
                                             </td>
