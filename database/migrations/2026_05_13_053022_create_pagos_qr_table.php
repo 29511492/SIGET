@@ -8,18 +8,19 @@ use Illuminate\Support\Facades\Schema;
  * ═══════════════════════════════════════════════════════════════
  *  TABLA: pagos_qr — esquema final
  * ───────────────────────────────────────────────────────────────
- *  Esta migración reemplaza a las que antes parchaban la tabla:
- *  add_soft_deletes_to_pagos_qr, add_user_id_to_pagos_qr_table,
- *  fix_columnas_faltantes_pagos_qr_table,
- *  make_habitante_id_nullable_pagos_qr_table y
- *  add_cuenta_pago_id_to_pagos_qr_table.
- *
  *  Dos flujos conviven en la misma tabla:
  *    - admin/operador: habitante_id poblado, user_id null
  *    - Portal Ciudadano (rol usuario): user_id poblado,
  *      habitante_id null
- *  Por eso `habitante_id` es nullable (con restrict: no se borra
- *  un habitante que tenga pagos vinculados).
+ *
+ *  CAMBIO (sept-2026, corrección 2 del profesor: proceso de pago) —
+ *  Se agrega `metodo_pago` (con qué método se realizó ESTE pago,
+ *  copiado del método de la cuenta al momento de pagar — así el
+ *  histórico no cambia si luego el admin edita la cuenta) y
+ *  `banco_origen` (desde qué banco pagó el ciudadano, para que el
+ *  operador concilie el comprobante contra el extracto). Todos los
+ *  pagos previos quedan como 'pago_movil' (default), que era el
+ *  único método que existía hasta ahora.
  *
  *  DEPENDENCIAS: habitantes, familias, organizaciones, users y
  *  cuentas_pago deben existir antes (por eso cuentas_pago tiene un
@@ -70,6 +71,12 @@ return new class extends Migration
             $table->string('referencia_bancaria', 100)->unique();
             $table->decimal('monto', 12, 2);
             $table->string('concepto_pago', 200);
+
+            // Método usado en ESTE pago (copiado de la cuenta al pagar).
+            $table->string('metodo_pago', 20)->default('pago_movil');
+
+            // Banco desde el que el ciudadano pagó (ayuda a conciliar).
+            $table->string('banco_origen', 100)->nullable();
 
             // Ruta relativa en storage: 'comprobantes/2026/05/abc.jpg'
             $table->string('comprobante_path', 500)->nullable();

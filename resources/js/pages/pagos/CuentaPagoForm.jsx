@@ -10,6 +10,11 @@
  *
  * Solo se usa para CREAR. La edición de cuentas existentes se hace
  * inline en CuentaPagoList.jsx (mismo patrón que OrganizacionForm/List).
+ *
+ * CAMBIO (sept-2026, corrección 2 del profesor: proceso de pago) —
+ * se agrega el selector de método (pago móvil / transferencia). El
+ * campo bancario que se pide cambia según el método: teléfono para
+ * pago móvil, número de cuenta para transferencia.
  */
 
 import { useState }              from 'react';
@@ -19,8 +24,10 @@ import './CuentaPagoForm.css';
 
 const FORM_INICIAL = {
     nombre_servicio: '',
+    metodo:          'pago_movil',
     banco:           '',
     telefono:        '',
+    numero_cuenta:   '',
     cedula_rif:      '',
     titular:         '',
     descripcion:     '',
@@ -156,6 +163,26 @@ export default function CuentaPagoForm() {
                             )}
                         </div>
 
+                        {/* ── Método de pago ─────────────────── */}
+                        <div className="cpform-field">
+                            <label className="cpform-label" htmlFor="metodo">
+                                Método de pago <span className="cpform-required">*</span>
+                            </label>
+                            <select
+                                id="metodo"
+                                name="metodo"
+                                value={form.metodo}
+                                onChange={handleChange}
+                                className={`cpform-select ${fieldErr('metodo') ? 'cpform-input--error' : ''}`}
+                            >
+                                <option value="pago_movil">Pago móvil</option>
+                                <option value="transferencia">Transferencia</option>
+                            </select>
+                            {fieldErr('metodo') && (
+                                <span className="cpform-field__error">{fieldErr('metodo')}</span>
+                            )}
+                        </div>
+
                         {/* ── Banco ──────────────────────────── */}
                         <div className="cpform-field">
                             <label className="cpform-label" htmlFor="banco">
@@ -176,26 +203,47 @@ export default function CuentaPagoForm() {
                             )}
                         </div>
 
-                        {/* ── Teléfono y Cédula/RIF en fila ──── */}
+                        {/* ── Dato bancario según el método + Cédula/RIF ──── */}
                         <div className="cpform-row">
-                            <div className="cpform-field">
-                                <label className="cpform-label" htmlFor="telefono">
-                                    Teléfono (Pago Móvil) <span className="cpform-required">*</span>
-                                </label>
-                                <input
-                                    id="telefono"
-                                    name="telefono"
-                                    type="text"
-                                    value={form.telefono}
-                                    onChange={handleChange}
-                                    maxLength={20}
-                                    placeholder="0412-1234567"
-                                    className={`cpform-input ${fieldErr('telefono') ? 'cpform-input--error' : ''}`}
-                                />
-                                {fieldErr('telefono') && (
-                                    <span className="cpform-field__error">{fieldErr('telefono')}</span>
-                                )}
-                            </div>
+                            {form.metodo === 'transferencia' ? (
+                                <div className="cpform-field">
+                                    <label className="cpform-label" htmlFor="numero_cuenta">
+                                        Número de cuenta <span className="cpform-required">*</span>
+                                    </label>
+                                    <input
+                                        id="numero_cuenta"
+                                        name="numero_cuenta"
+                                        type="text"
+                                        value={form.numero_cuenta}
+                                        onChange={handleChange}
+                                        maxLength={20}
+                                        placeholder="0102-1234-56-1234567890"
+                                        className={`cpform-input ${fieldErr('numero_cuenta') ? 'cpform-input--error' : ''}`}
+                                    />
+                                    {fieldErr('numero_cuenta') && (
+                                        <span className="cpform-field__error">{fieldErr('numero_cuenta')}</span>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="cpform-field">
+                                    <label className="cpform-label" htmlFor="telefono">
+                                        Teléfono (Pago Móvil) <span className="cpform-required">*</span>
+                                    </label>
+                                    <input
+                                        id="telefono"
+                                        name="telefono"
+                                        type="text"
+                                        value={form.telefono}
+                                        onChange={handleChange}
+                                        maxLength={20}
+                                        placeholder="0412-1234567"
+                                        className={`cpform-input ${fieldErr('telefono') ? 'cpform-input--error' : ''}`}
+                                    />
+                                    {fieldErr('telefono') && (
+                                        <span className="cpform-field__error">{fieldErr('telefono')}</span>
+                                    )}
+                                </div>
+                            )}
 
                             <div className="cpform-field">
                                 <label className="cpform-label" htmlFor="cedula_rif">

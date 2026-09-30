@@ -1,3 +1,9 @@
+/**
+ * CAMBIO (sept-2026, corrección 2 del profesor: proceso de pago) —
+ * el modal de revisión ahora muestra el método de pago y, cuando es
+ * transferencia, el banco de origen que declaró el ciudadano — datos
+ * que el operador necesita para conciliar el comprobante.
+ */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth }     from '../../hooks/useAuth';
@@ -333,6 +339,18 @@ export default function PagoList() {
                                         {modalPago.organizacion_nombre || modalPago.concepto_pago || '—'}
                                     </span>
                                 </div>
+                                <div className="pago-dato">
+                                    <span className="pago-dato__label">Método de pago</span>
+                                    <span className="pago-dato__value">
+                                        {modalPago.metodo_pago_label || 'Pago móvil'}
+                                    </span>
+                                </div>
+                                {modalPago.metodo_pago === 'transferencia' && (
+                                    <div className="pago-dato">
+                                        <span className="pago-dato__label">Banco de origen</span>
+                                        <span className="pago-dato__value">{modalPago.banco_origen || '—'}</span>
+                                    </div>
+                                )}
                                 <div className="pago-dato">
                                     <span className="pago-dato__label">Monto</span>
                                     <span className="pago-dato__value pago-dato__value--monto">

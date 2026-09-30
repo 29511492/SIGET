@@ -3,27 +3,24 @@
  *
  * Widget de pagos para el Portal Ciudadano (rol usuario).
  *
- * FIX (Fase 3 — junio 2026): Antes los datos bancarios (banco,
- * teléfono, cédula, titular) estaban hardcodeados en una constante
- * DATOS_BANCARIOS fija en este mismo archivo — solo existía UNA
- * cuenta posible y el admin no podía editarla desde el sistema.
+ * CAMBIO (sept-2026, corrección 2 del profesor: "proceso de pago
+ * mejorable, tiene que ser por pasos y validaciones de pasos para
+ * evitar errores, debe existir la opción de múltiples métodos de
+ * pago sea pago móvil, transferencia, etc.") —
  *
- * Ahora el widget consume GET /v1/cuentas-pago (Capa 1, todos los
- * roles) para listar las cuentas ACTIVAS gestionadas por el admin/
- * operador desde el panel /cuentas-pago. El usuario debe elegir una
- * cuenta antes de ver su QR específico y antes de poder enviar el
- * comprobante — la elección es OBLIGATORIA (cuenta_pago_id required
- * en el backend).
+ * El formulario de una sola pantalla se convirtió en un asistente de
+ * 4 pasos. Cada paso valida su propia información antes de dejar
+ * avanzar al siguiente — ya no es posible llegar al final con datos
+ * incompletos o inconsistentes:
  *
- * El QR se regenera dinámicamente cada vez que cambia la cuenta
- * seleccionada, codificando los datos bancarios de ESA cuenta.
+ *   1. Método    → elige método de pago (pago móvil / transferencia)
+ *                  y luego el servicio, filtrado por ese método.
+ *   2. Destino   → ve el QR / datos de la cuenta elegida.
+ *   3. Datos     → referencia, monto, concepto, fecha, banco de
+ *                  origen (si aplica) y comprobante.
+ *   4. Revisión  → resumen completo antes de enviar.
  *
- * FIX (sept-2026): se agregó el prop opcional `onPagoRegistrado`.
- * UsuarioDashboard.jsx lo usa para refrescar su propio contador de
- * "pagos pendientes" (badge del grid, de la pestaña y la píldora del
- * hero) justo después de que el ciudadano suba un comprobante, sin
- * esperar a recargar la página. Es opcional y no rompe a quien use
- * este widget sin pasarlo (queda como no-op).
+ * El histórico de pagos ("Mis pagos enviados") se conserva igual.
  *
  * Consume:
  *   GET  /api/v1/cuentas-pago     → listar cuentas activas
@@ -31,17 +28,31 @@
  *   GET  /api/v1/pagos/mis        → ver los propios
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import QRCode      from 'qrcode';
 import apiClient   from '../../services/axios';
 import './PagoQrWidget.css';
 
+const METODOS = [
+    { value: 'pago_movil',    label: 'Pago móvil',   icon: '📱', desc: 'Pago instantáneo desde tu banco al número del Consejo Comunal.' },
+    { value: 'transferencia', label: 'Transferencia', icon: '🏦', desc: 'Transferencia bancaria a la cuenta del Consejo Comunal.' },
+];
+
+const PASOS = [
+    { id: 1, label: 'Método' },
+    { id: 2, label: 'Destino' },
+    { id: 3, label: 'Datos y comprobante' },
+    { id: 4, label: 'Revisión' },
+];
+
 const FORM_INICIAL = {
-    cuenta_pago_id: '',
-    referencia_bancaria: '',
-    monto: '',
-    concepto_pago: '',
-    fecha_pago: new Date().toISOString().slice(0, 10),
+    metodo_pago:          '',
+    cuenta_pago_id:       '',
+    referencia_bancaria:  '',
+    monto:                '',
+    concepto_pago:        '',
+    fecha_pago:           new Date().toISOString().slice(0, 10),
+    banco_origen:         '',
 };
 
 const ESTADO_CONFIG = {
@@ -50,76 +61,114 @@ const ESTADO_CONFIG = {
     rechazado:  { label: '✗ Rechazado',   cls: 'pqw-estado--rechazado'  },
 };
 
+// Hace hoy - 30 días en formato YYYY-MM-DD, para el límite del campo fecha.
+const fechaMinima = () => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().slice(0, 10);
+};
+
 export default function PagoQrWidget({ onPagoRegistrado } = {}) {
     const canvasRef = useRef(null);
 
-    // ── Estado de cuentas de pago ───────────────────────────────
+    // ── Cuentas de pago ──────────────────────────────────────
     const [cuentas,        setCuentas]        = useState([]);
     const [loadingCuentas, setLoadingCuentas] = useState(true);
     const [errorCuentas,   setErrorCuentas]   = useState('');
 
-    // ── Estado del formulario ──────────────────────────────────
-    const [form,         setForm]         = useState(FORM_INICIAL);
-    const [comprobante,  setComprobante]  = useState(null);
-    const [previewUrl,   setPreviewUrl]   = useState('');
-    const [errors,       setErrors]       = useState({});
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [successMsg,   setSuccessMsg]   = useState('');
-    const [serverError,  setServerError]  = useState('');
+    // ── Asistente ────────────────────────────────────────────
+    const [paso,          setPaso]          = useState(1);
+    const [form,          setForm]          = useState(FORM_INICIAL);
+    const [comprobante,   setComprobante]   = useState(null);
+    const [previewUrl,    setPreviewUrl]    = useState('');
+    const [errors,        setErrors]        = useState({});
+    const [isSubmitting,  setIsSubmitting]  = useState(false);
+    const [successMsg,    setSuccessMsg]    = useState('');
+    const [serverError,   setServerError]   = useState('');
 
-    // ── Estado historial ───────────────────────────────────────
+    // ── Historial ────────────────────────────────────────────
     const [historial,    setHistorial]    = useState([]);
     const [loadingHist,  setLoadingHist]  = useState(true);
     const [verHistorial, setVerHistorial] = useState(false);
     const [copiado,      setCopiado]      = useState('');
 
-    // ── Cuenta actualmente seleccionada (objeto completo) ───────
+    // ── Derivados ────────────────────────────────────────────
+    const cuentasDelMetodo = useMemo(
+        () => cuentas.filter(c => c.metodo === form.metodo_pago),
+        [cuentas, form.metodo_pago]
+    );
+
     const cuentaSeleccionada = cuentas.find(
         c => String(c.id) === String(form.cuenta_pago_id)
     ) ?? null;
 
-    // ── Cargar cuentas de pago activas ──────────────────────────
+    const metodoInfo = METODOS.find(m => m.value === form.metodo_pago) ?? null;
+
+    // ── Cargar cuentas de pago activas ──────────────────────
     const cargarCuentas = useCallback(() => {
         setLoadingCuentas(true);
         setErrorCuentas('');
         apiClient.get('/v1/cuentas-pago')
             .then(({ data }) => {
-                const lista = Array.isArray(data.data) ? data.data : [];
-                setCuentas(lista);
-                // Si solo hay una cuenta activa, la preseleccionamos
-                // para ahorrarle un paso al usuario.
-                if (lista.length === 1) {
-                    setForm(prev => ({ ...prev, cuenta_pago_id: String(lista[0].id) }));
-                }
+                setCuentas(Array.isArray(data.data) ? data.data : []);
             })
             .catch(() => setErrorCuentas('No se pudieron cargar las cuentas de pago disponibles.'))
             .finally(() => setLoadingCuentas(false));
     }, []);
 
-    useEffect(() => {
-        cargarCuentas();
-    }, [cargarCuentas]);
+    useEffect(() => { cargarCuentas(); }, [cargarCuentas]);
 
-    // ── Generar el QR cada vez que cambia la cuenta elegida ─────
-    useEffect(() => {
-        if (!canvasRef.current || !cuentaSeleccionada) return;
+    // Métodos que de verdad tienen al menos una cuenta activa
+    const metodosDisponibles = useMemo(
+        () => METODOS.filter(m => cuentas.some(c => c.metodo === m.value)),
+        [cuentas]
+    );
 
-        const textoQr =
-            `Pago Móvil\n` +
-            `Servicio: ${cuentaSeleccionada.nombre_servicio}\n` +
-            `Banco: ${cuentaSeleccionada.banco}\n` +
-            `Teléfono: ${cuentaSeleccionada.telefono}\n` +
-            `Cédula/RIF: ${cuentaSeleccionada.cedula_rif}\n` +
-            `Titular: ${cuentaSeleccionada.titular}`;
+    // Si solo hay un método disponible, se preselecciona para ahorrar un paso.
+    useEffect(() => {
+        if (metodosDisponibles.length === 1 && !form.metodo_pago) {
+            setForm(prev => ({ ...prev, metodo_pago: metodosDisponibles[0].value }));
+        }
+    }, [metodosDisponibles, form.metodo_pago]);
+
+    // Si dentro de un método solo hay una cuenta, se preselecciona.
+    useEffect(() => {
+        if (form.metodo_pago && cuentasDelMetodo.length === 1 && !form.cuenta_pago_id) {
+            const c = cuentasDelMetodo[0];
+            setForm(prev => ({
+                ...prev,
+                cuenta_pago_id: String(c.id),
+                concepto_pago:  prev.concepto_pago || `Pago de ${c.nombre_servicio}`,
+            }));
+        }
+    }, [form.metodo_pago, cuentasDelMetodo]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // ── Generar el QR cada vez que cambia la cuenta elegida (paso 2) ──
+    useEffect(() => {
+        if (paso !== 2 || !canvasRef.current || !cuentaSeleccionada) return;
+
+        const textoQr = cuentaSeleccionada.metodo === 'transferencia'
+            ? `Transferencia\n` +
+              `Servicio: ${cuentaSeleccionada.nombre_servicio}\n` +
+              `Banco: ${cuentaSeleccionada.banco}\n` +
+              `N° de cuenta: ${cuentaSeleccionada.numero_cuenta}\n` +
+              `Cédula/RIF: ${cuentaSeleccionada.cedula_rif}\n` +
+              `Titular: ${cuentaSeleccionada.titular}`
+            : `Pago Móvil\n` +
+              `Servicio: ${cuentaSeleccionada.nombre_servicio}\n` +
+              `Banco: ${cuentaSeleccionada.banco}\n` +
+              `Teléfono: ${cuentaSeleccionada.telefono}\n` +
+              `Cédula/RIF: ${cuentaSeleccionada.cedula_rif}\n` +
+              `Titular: ${cuentaSeleccionada.titular}`;
 
         QRCode.toCanvas(canvasRef.current, textoQr, {
             width: 180,
             margin: 1,
             color: { dark: '#0d1f35', light: '#ffffff' },
         }).catch(() => {});
-    }, [cuentaSeleccionada]);
+    }, [paso, cuentaSeleccionada]);
 
-    // ── Cargar historial propio ────────────────────────────────
+    // ── Historial ────────────────────────────────────────────
     const cargarHistorial = useCallback(() => {
         setLoadingHist(true);
         apiClient.get('/v1/pagos/mis')
@@ -128,9 +177,7 @@ export default function PagoQrWidget({ onPagoRegistrado } = {}) {
             .finally(() => setLoadingHist(false));
     }, []);
 
-    useEffect(() => {
-        cargarHistorial();
-    }, [cargarHistorial]);
+    useEffect(() => { cargarHistorial(); }, [cargarHistorial]);
 
     const toggleHistorial = () => {
         const abriendo = !verHistorial;
@@ -138,7 +185,6 @@ export default function PagoQrWidget({ onPagoRegistrado } = {}) {
         if (abriendo) cargarHistorial();
     };
 
-    // ── Copiar datos bancarios al portapapeles ─────────────────
     const copiarDato = (texto, campo) => {
         navigator.clipboard.writeText(texto).then(() => {
             setCopiado(campo);
@@ -146,7 +192,7 @@ export default function PagoQrWidget({ onPagoRegistrado } = {}) {
         });
     };
 
-    // ── Handlers de formulario ─────────────────────────────────
+    // ── Handlers de formulario ─────────────────────────────
     const handleChange = (e) => {
         const { name, value } = e.target;
         setForm(prev => ({ ...prev, [name]: value }));
@@ -154,8 +200,15 @@ export default function PagoQrWidget({ onPagoRegistrado } = {}) {
         if (serverError)   setServerError('');
     };
 
-    // Al elegir una cuenta, sugerimos el concepto automáticamente
-    // (el usuario puede seguir editándolo si quiere ser más específico).
+    const elegirMetodo = (metodo) => {
+        setForm(prev => ({
+            ...FORM_INICIAL,
+            metodo_pago: metodo,
+            fecha_pago:  prev.fecha_pago,
+        }));
+        setErrors({});
+    };
+
     const handleCuentaChange = (e) => {
         const id = e.target.value;
         const cuenta = cuentas.find(c => String(c.id) === String(id));
@@ -181,24 +234,62 @@ export default function PagoQrWidget({ onPagoRegistrado } = {}) {
         if (errors.comprobante) setErrors(prev => ({ ...prev, comprobante: '' }));
     };
 
-    const validate = () => {
+    // ── Validación POR PASO — evita llegar al final con datos
+    //    incompletos o inconsistentes (corrección del profesor) ──
+    const validarPaso = (n) => {
         const next = {};
-        if (!form.cuenta_pago_id) next.cuenta_pago_id = 'Debes seleccionar a qué servicio corresponde tu pago.';
-        if (!form.referencia_bancaria.trim()) next.referencia_bancaria = 'La referencia es obligatoria.';
-        if (!form.monto || Number(form.monto) <= 0) next.monto = 'Indica un monto válido.';
-        if (!form.concepto_pago.trim()) next.concepto_pago = 'El concepto es obligatorio.';
-        if (!comprobante) next.comprobante = 'Debes adjuntar el comprobante de pago.';
+
+        if (n === 1) {
+            if (!form.metodo_pago)    next.metodo_pago    = 'Elige un método de pago.';
+            if (!form.cuenta_pago_id) next.cuenta_pago_id = 'Selecciona a qué servicio corresponde tu pago.';
+        }
+
+        if (n === 3) {
+            if (!form.referencia_bancaria.trim()) next.referencia_bancaria = 'La referencia es obligatoria.';
+            if (!form.monto || Number(form.monto) <= 0) next.monto = 'Indica un monto válido.';
+            if (!form.concepto_pago.trim()) next.concepto_pago = 'El concepto es obligatorio.';
+            if (!form.fecha_pago) next.fecha_pago = 'Indica la fecha del pago.';
+            if (form.metodo_pago === 'transferencia' && !form.banco_origen.trim()) {
+                next.banco_origen = 'Indica desde qué banco transferiste.';
+            }
+            if (!comprobante) next.comprobante = 'Debes adjuntar el comprobante de pago.';
+        }
+
         return next;
     };
 
+    const irAPaso = (n) => {
+        if (n < paso) { setPaso(n); return; } // retroceder siempre está permitido
+
+        // Avanzar: cada paso intermedio debe quedar válido primero
+        for (let p = paso; p < n; p++) {
+            const err = validarPaso(p);
+            if (Object.keys(err).length > 0) {
+                setErrors(err);
+                setPaso(p);
+                return;
+            }
+        }
+        setErrors({});
+        setPaso(n);
+    };
+
+    const siguiente = () => irAPaso(paso + 1);
+    const anterior  = () => irAPaso(paso - 1);
+
+    // ── Envío final (paso 4) ────────────────────────────────
     const handleSubmit = async (e) => {
         e.preventDefault();
         setSuccessMsg('');
         setServerError('');
 
-        const validationErrors = validate();
-        if (Object.keys(validationErrors).length > 0) {
-            setErrors(validationErrors);
+        // Revalida todo por si el usuario llegó aquí saltándose algo
+        const erroresPaso1 = validarPaso(1);
+        const erroresPaso3 = validarPaso(3);
+        const todosErrores = { ...erroresPaso1, ...erroresPaso3 };
+        if (Object.keys(todosErrores).length > 0) {
+            setErrors(todosErrores);
+            setPaso(Object.keys(erroresPaso1).length ? 1 : 3);
             return;
         }
 
@@ -206,10 +297,14 @@ export default function PagoQrWidget({ onPagoRegistrado } = {}) {
         try {
             const formData = new FormData();
             formData.append('cuenta_pago_id', form.cuenta_pago_id);
+            formData.append('metodo_pago', form.metodo_pago);
             formData.append('referencia_bancaria', form.referencia_bancaria);
             formData.append('monto', form.monto);
             formData.append('concepto_pago', form.concepto_pago);
             formData.append('fecha_pago', form.fecha_pago);
+            if (form.metodo_pago === 'transferencia') {
+                formData.append('banco_origen', form.banco_origen);
+            }
             formData.append('comprobante', comprobante);
 
             await apiClient.post('/v1/pagos/mio', formData, {
@@ -217,30 +312,31 @@ export default function PagoQrWidget({ onPagoRegistrado } = {}) {
             });
 
             setSuccessMsg('¡Comprobante enviado! El Consejo Comunal verificará tu pago pronto.');
-            // Conservamos la cuenta elegida tras limpiar, para que el
-            // usuario pueda registrar otro pago del mismo servicio
-            // sin tener que volver a elegirla.
-            setForm(prev => ({ ...FORM_INICIAL, cuenta_pago_id: prev.cuenta_pago_id }));
+            setForm(FORM_INICIAL);
             setComprobante(null);
             setPreviewUrl('');
+            setPaso(1);
             cargarHistorial();
             setVerHistorial(true);
 
-            // FIX (sept-2026): avisa al componente padre (si lo pidió)
-            // que se registró un pago nuevo, para que pueda refrescar
-            // sus propios contadores de "pendientes" sin esperar a un
-            // recargo de página. No hace nada si no se pasó el prop.
             onPagoRegistrado?.();
         } catch (err) {
             const { status, data } = err.response ?? {};
             if (status === 422) {
-                setErrors({
+                const nuevos = {
+                    metodo_pago:         data.errors?.metodo_pago?.[0] ?? '',
                     cuenta_pago_id:      data.errors?.cuenta_pago_id?.[0] ?? '',
                     referencia_bancaria: data.errors?.referencia_bancaria?.[0] ?? '',
                     monto:               data.errors?.monto?.[0] ?? '',
                     concepto_pago:       data.errors?.concepto_pago?.[0] ?? '',
+                    banco_origen:        data.errors?.banco_origen?.[0] ?? '',
+                    fecha_pago:          data.errors?.fecha_pago?.[0] ?? '',
                     comprobante:         data.errors?.comprobante?.[0] ?? '',
-                });
+                };
+                setErrors(nuevos);
+                // Si el error viene de método/cuenta, regresa al paso 1
+                if (nuevos.metodo_pago || nuevos.cuenta_pago_id) setPaso(1);
+                else setPaso(3);
             } else {
                 setServerError('No se pudo registrar el pago. Intenta de nuevo.');
             }
@@ -249,7 +345,7 @@ export default function PagoQrWidget({ onPagoRegistrado } = {}) {
         }
     };
 
-    // ── Render ─────────────────────────────────────────────────
+    // ── Render ───────────────────────────────────────────────
     const pendientes = historial.filter(p => p.estado === 'pendiente').length;
 
     return (
@@ -260,14 +356,14 @@ export default function PagoQrWidget({ onPagoRegistrado } = {}) {
                 <div className="pqw-header__left">
                     <h2 className="pqw-header__title">
                         <span aria-hidden="true">📱</span>
-                        Pagos QR
+                        Pagos
                     </h2>
                     <p className="pqw-header__subtitle">
-                        Elige el servicio, escanea el código y sube tu comprobante
+                        Elige el método, el servicio y sube tu comprobante paso a paso
                     </p>
                 </div>
                 {historial.length > 0 && (
-                    <button className="pqw-header__toggle" onClick={toggleHistorial}>
+                    <button className="pqw-header__toggle" onClick={toggleHistorial} type="button">
                         {verHistorial ? 'Ocultar historial' : `Mis pagos (${historial.length})`}
                         {pendientes > 0 && (
                             <span className="pqw-badge pqw-badge--pendiente">{pendientes}</span>
@@ -276,7 +372,6 @@ export default function PagoQrWidget({ onPagoRegistrado } = {}) {
                 )}
             </div>
 
-            {/* Error al cargar cuentas */}
             {errorCuentas && (
                 <div className="pqw-alert pqw-alert--error" role="alert">
                     <span aria-hidden="true">⚠</span>
@@ -284,7 +379,6 @@ export default function PagoQrWidget({ onPagoRegistrado } = {}) {
                 </div>
             )}
 
-            {/* Sin cuentas activas — el admin aún no configuró ninguna */}
             {!loadingCuentas && !errorCuentas && cuentas.length === 0 && (
                 <div className="pqw-alert pqw-alert--info" role="status">
                     <span aria-hidden="true">ℹ️</span>
@@ -295,262 +389,431 @@ export default function PagoQrWidget({ onPagoRegistrado } = {}) {
                 </div>
             )}
 
-            {/* ── Selector de servicio + Tarjeta QR ───────────── */}
             {!loadingCuentas && cuentas.length > 0 && (
-                <div className="pqw-qr-card">
+                <div className="pqw-form-card">
 
-                    {/* Si hay más de una cuenta, mostramos el selector.
-                        Si solo hay una, ya viene preseleccionada y se
-                        muestra como información fija. */}
-                    {cuentas.length > 1 && (
-                        <div className={`pqw-field pqw-cuenta-select ${errors.cuenta_pago_id ? 'pqw-field--error' : ''}`}>
-                            <label htmlFor="pqw-cuenta" className="pqw-field__label">
-                                ¿Qué servicio estás pagando?
-                            </label>
-                            <select
-                                id="pqw-cuenta"
-                                className="pqw-field__input"
-                                value={form.cuenta_pago_id}
-                                onChange={handleCuentaChange}
-                                disabled={isSubmitting}
+                    {/* ── Indicador de pasos ──────────────────────── */}
+                    <ol className="pqw-steps" aria-label="Progreso del pago">
+                        {PASOS.map((p) => (
+                            <li
+                                key={p.id}
+                                className={[
+                                    'pqw-step',
+                                    p.id === paso && 'pqw-step--active',
+                                    p.id < paso && 'pqw-step--done',
+                                ].filter(Boolean).join(' ')}
                             >
-                                <option value="">Selecciona un servicio...</option>
-                                {cuentas.map(c => (
-                                    <option key={c.id} value={c.id}>{c.nombre_servicio}</option>
-                                ))}
-                            </select>
-                            {errors.cuenta_pago_id && (
-                                <span className="pqw-field__error">{errors.cuenta_pago_id}</span>
-                            )}
+                                <button
+                                    type="button"
+                                    className="pqw-step__btn"
+                                    onClick={() => irAPaso(p.id)}
+                                    disabled={isSubmitting}
+                                >
+                                    <span className="pqw-step__num">
+                                        {p.id < paso ? '✓' : p.id}
+                                    </span>
+                                    <span className="pqw-step__label">{p.label}</span>
+                                </button>
+                            </li>
+                        ))}
+                    </ol>
+
+                    {successMsg && (
+                        <div className="pqw-alert pqw-alert--success" role="status">
+                            <span aria-hidden="true">✅</span>
+                            <span>{successMsg}</span>
+                        </div>
+                    )}
+                    {serverError && (
+                        <div className="pqw-alert pqw-alert--error" role="alert">
+                            <span aria-hidden="true">⚠</span>
+                            <span>{serverError}</span>
                         </div>
                     )}
 
-                    {cuentaSeleccionada ? (
-                        <>
-                            <div className="pqw-qr-card__qr">
-                                <canvas ref={canvasRef} />
+                    <form className="pqw-form" onSubmit={handleSubmit} noValidate>
+
+                        {/* ══ PASO 1 — Método y servicio ══════════ */}
+                        {paso === 1 && (
+                            <div className="pqw-paso">
+                                <p className="pqw-paso__titulo">¿Cómo vas a pagar?</p>
+
+                                <div className={`pqw-metodos ${errors.metodo_pago ? 'pqw-field--error' : ''}`}>
+                                    {metodosDisponibles.map((m) => (
+                                        <button
+                                            key={m.value}
+                                            type="button"
+                                            className={`pqw-metodo-card ${form.metodo_pago === m.value ? 'pqw-metodo-card--activo' : ''}`}
+                                            onClick={() => elegirMetodo(m.value)}
+                                        >
+                                            <span className="pqw-metodo-card__icon" aria-hidden="true">{m.icon}</span>
+                                            <span className="pqw-metodo-card__label">{m.label}</span>
+                                            <span className="pqw-metodo-card__desc">{m.desc}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                                {errors.metodo_pago && (
+                                    <span className="pqw-field__error">{errors.metodo_pago}</span>
+                                )}
+
+                                {form.metodo_pago && (
+                                    <div className={`pqw-field ${errors.cuenta_pago_id ? 'pqw-field--error' : ''}`} style={{ marginTop: '1.25rem' }}>
+                                        <label htmlFor="pqw-cuenta" className="pqw-field__label">
+                                            ¿Qué servicio estás pagando?
+                                        </label>
+                                        {cuentasDelMetodo.length === 0 ? (
+                                            <p className="pqw-sin-cuenta">
+                                                No hay servicios disponibles para {metodoInfo?.label.toLowerCase()} en este momento.
+                                            </p>
+                                        ) : (
+                                            <select
+                                                id="pqw-cuenta"
+                                                className="pqw-field__input"
+                                                value={form.cuenta_pago_id}
+                                                onChange={handleCuentaChange}
+                                            >
+                                                <option value="">Selecciona un servicio...</option>
+                                                {cuentasDelMetodo.map(c => (
+                                                    <option key={c.id} value={c.id}>{c.nombre_servicio}</option>
+                                                ))}
+                                            </select>
+                                        )}
+                                        {errors.cuenta_pago_id && (
+                                            <span className="pqw-field__error">{errors.cuenta_pago_id}</span>
+                                        )}
+                                    </div>
+                                )}
                             </div>
-                            <div className="pqw-qr-card__datos">
-                                <p className="pqw-qr-card__titulo">
-                                    Datos para Pago Móvil — {cuentaSeleccionada.nombre_servicio}
+                        )}
+
+                        {/* ══ PASO 2 — Destino (QR + datos) ═══════ */}
+                        {paso === 2 && cuentaSeleccionada && (
+                            <div className="pqw-paso">
+                                <p className="pqw-paso__titulo">
+                                    Datos para {metodoInfo?.label} — {cuentaSeleccionada.nombre_servicio}
                                 </p>
                                 {cuentaSeleccionada.descripcion && (
                                     <p className="pqw-qr-card__nota">{cuentaSeleccionada.descripcion}</p>
                                 )}
-                                <dl className="pqw-datos-list">
-                                    <div className="pqw-datos-list__row">
-                                        <dt>Banco</dt>
-                                        <dd>
-                                            <button
-                                                className={`pqw-copy-btn ${copiado === 'banco' ? 'pqw-copy-btn--copiado' : ''}`}
-                                                onClick={() => copiarDato(cuentaSeleccionada.banco, 'banco')}
-                                            >
-                                                {cuentaSeleccionada.banco}
-                                                <span className="pqw-copy-btn__icon">
-                                                    {copiado === 'banco' ? '✓' : '📋'}
-                                                </span>
-                                            </button>
-                                        </dd>
+
+                                <div className="pqw-qr-card">
+                                    <div className="pqw-qr-card__qr">
+                                        <canvas ref={canvasRef} />
                                     </div>
-                                    <div className="pqw-datos-list__row">
-                                        <dt>Teléfono</dt>
-                                        <dd>
-                                            <button
-                                                className={`pqw-copy-btn ${copiado === 'telefono' ? 'pqw-copy-btn--copiado' : ''}`}
-                                                onClick={() => copiarDato(cuentaSeleccionada.telefono, 'telefono')}
-                                            >
-                                                {cuentaSeleccionada.telefono}
-                                                <span className="pqw-copy-btn__icon">
-                                                    {copiado === 'telefono' ? '✓' : '📋'}
-                                                </span>
-                                            </button>
-                                        </dd>
+                                    <div className="pqw-qr-card__datos">
+                                        <dl className="pqw-datos-list">
+                                            <div className="pqw-datos-list__row">
+                                                <dt>Banco</dt>
+                                                <dd>
+                                                    <button
+                                                        type="button"
+                                                        className={`pqw-copy-btn ${copiado === 'banco' ? 'pqw-copy-btn--copiado' : ''}`}
+                                                        onClick={() => copiarDato(cuentaSeleccionada.banco, 'banco')}
+                                                    >
+                                                        {cuentaSeleccionada.banco}
+                                                        <span className="pqw-copy-btn__icon">
+                                                            {copiado === 'banco' ? '✓' : '📋'}
+                                                        </span>
+                                                    </button>
+                                                </dd>
+                                            </div>
+
+                                            {cuentaSeleccionada.metodo === 'transferencia' ? (
+                                                <div className="pqw-datos-list__row">
+                                                    <dt>N° de cuenta</dt>
+                                                    <dd>
+                                                        <button
+                                                            type="button"
+                                                            className={`pqw-copy-btn ${copiado === 'cuenta' ? 'pqw-copy-btn--copiado' : ''}`}
+                                                            onClick={() => copiarDato(cuentaSeleccionada.numero_cuenta, 'cuenta')}
+                                                        >
+                                                            {cuentaSeleccionada.numero_cuenta}
+                                                            <span className="pqw-copy-btn__icon">
+                                                                {copiado === 'cuenta' ? '✓' : '📋'}
+                                                            </span>
+                                                        </button>
+                                                    </dd>
+                                                </div>
+                                            ) : (
+                                                <div className="pqw-datos-list__row">
+                                                    <dt>Teléfono</dt>
+                                                    <dd>
+                                                        <button
+                                                            type="button"
+                                                            className={`pqw-copy-btn ${copiado === 'telefono' ? 'pqw-copy-btn--copiado' : ''}`}
+                                                            onClick={() => copiarDato(cuentaSeleccionada.telefono, 'telefono')}
+                                                        >
+                                                            {cuentaSeleccionada.telefono}
+                                                            <span className="pqw-copy-btn__icon">
+                                                                {copiado === 'telefono' ? '✓' : '📋'}
+                                                            </span>
+                                                        </button>
+                                                    </dd>
+                                                </div>
+                                            )}
+
+                                            <div className="pqw-datos-list__row">
+                                                <dt>Cédula/RIF</dt>
+                                                <dd>
+                                                    <button
+                                                        type="button"
+                                                        className={`pqw-copy-btn ${copiado === 'cedula' ? 'pqw-copy-btn--copiado' : ''}`}
+                                                        onClick={() => copiarDato(cuentaSeleccionada.cedula_rif, 'cedula')}
+                                                    >
+                                                        {cuentaSeleccionada.cedula_rif}
+                                                        <span className="pqw-copy-btn__icon">
+                                                            {copiado === 'cedula' ? '✓' : '📋'}
+                                                        </span>
+                                                    </button>
+                                                </dd>
+                                            </div>
+                                            <div className="pqw-datos-list__row">
+                                                <dt>Titular</dt>
+                                                <dd className="pqw-datos-list__titular">{cuentaSeleccionada.titular}</dd>
+                                            </div>
+                                        </dl>
                                     </div>
-                                    <div className="pqw-datos-list__row">
-                                        <dt>Cédula/RIF</dt>
-                                        <dd>
-                                            <button
-                                                className={`pqw-copy-btn ${copiado === 'cedula' ? 'pqw-copy-btn--copiado' : ''}`}
-                                                onClick={() => copiarDato(cuentaSeleccionada.cedula_rif, 'cedula')}
-                                            >
-                                                {cuentaSeleccionada.cedula_rif}
-                                                <span className="pqw-copy-btn__icon">
-                                                    {copiado === 'cedula' ? '✓' : '📋'}
-                                                </span>
-                                            </button>
-                                        </dd>
-                                    </div>
-                                    <div className="pqw-datos-list__row">
-                                        <dt>Titular</dt>
-                                        <dd className="pqw-datos-list__titular">{cuentaSeleccionada.titular}</dd>
-                                    </div>
-                                </dl>
+                                </div>
                             </div>
-                        </>
-                    ) : (
-                        <p className="pqw-sin-cuenta">
-                            👆 Selecciona un servicio para ver el código QR y los datos de pago.
-                        </p>
-                    )}
+                        )}
+
+                        {/* ══ PASO 3 — Datos del pago y comprobante ══ */}
+                        {paso === 3 && (
+                            <div className="pqw-paso">
+                                <p className="pqw-paso__titulo">Datos de tu pago</p>
+
+                                <div className="pqw-cuenta-fija">
+                                    Pagando: <strong>{cuentaSeleccionada?.nombre_servicio}</strong> por {metodoInfo?.label.toLowerCase()}
+                                </div>
+
+                                <div className="pqw-form__row">
+                                    <div className={`pqw-field ${errors.referencia_bancaria ? 'pqw-field--error' : ''}`}>
+                                        <label htmlFor="pqw-referencia" className="pqw-field__label">
+                                            Número de referencia
+                                        </label>
+                                        <input
+                                            id="pqw-referencia"
+                                            name="referencia_bancaria"
+                                            type="text"
+                                            className="pqw-field__input"
+                                            placeholder="Ej: 001234567890"
+                                            value={form.referencia_bancaria}
+                                            onChange={handleChange}
+                                            disabled={isSubmitting}
+                                        />
+                                        {errors.referencia_bancaria && (
+                                            <span className="pqw-field__error">{errors.referencia_bancaria}</span>
+                                        )}
+                                    </div>
+
+                                    <div className={`pqw-field ${errors.monto ? 'pqw-field--error' : ''}`}>
+                                        <label htmlFor="pqw-monto" className="pqw-field__label">
+                                            Monto (Bs.)
+                                        </label>
+                                        <input
+                                            id="pqw-monto"
+                                            name="monto"
+                                            type="number"
+                                            step="0.01"
+                                            min="0.01"
+                                            className="pqw-field__input"
+                                            placeholder="0.00"
+                                            value={form.monto}
+                                            onChange={handleChange}
+                                            disabled={isSubmitting}
+                                        />
+                                        {errors.monto && (
+                                            <span className="pqw-field__error">{errors.monto}</span>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="pqw-form__row">
+                                    <div className={`pqw-field ${errors.concepto_pago ? 'pqw-field--error' : ''}`}>
+                                        <label htmlFor="pqw-concepto" className="pqw-field__label">
+                                            Concepto
+                                        </label>
+                                        <input
+                                            id="pqw-concepto"
+                                            name="concepto_pago"
+                                            type="text"
+                                            className="pqw-field__input"
+                                            placeholder="Ej: Pago de gas del mes de junio"
+                                            value={form.concepto_pago}
+                                            onChange={handleChange}
+                                            disabled={isSubmitting}
+                                        />
+                                        {errors.concepto_pago && (
+                                            <span className="pqw-field__error">{errors.concepto_pago}</span>
+                                        )}
+                                    </div>
+
+                                    <div className={`pqw-field ${errors.fecha_pago ? 'pqw-field--error' : ''}`}>
+                                        <label htmlFor="pqw-fecha" className="pqw-field__label">
+                                            Fecha del pago
+                                        </label>
+                                        <input
+                                            id="pqw-fecha"
+                                            name="fecha_pago"
+                                            type="date"
+                                            className="pqw-field__input"
+                                            min={fechaMinima()}
+                                            max={new Date().toISOString().slice(0, 10)}
+                                            value={form.fecha_pago}
+                                            onChange={handleChange}
+                                            disabled={isSubmitting}
+                                        />
+                                        {errors.fecha_pago && (
+                                            <span className="pqw-field__error">{errors.fecha_pago}</span>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Banco de origen — solo transferencia */}
+                                {form.metodo_pago === 'transferencia' && (
+                                    <div className={`pqw-field ${errors.banco_origen ? 'pqw-field--error' : ''}`}>
+                                        <label htmlFor="pqw-banco-origen" className="pqw-field__label">
+                                            ¿Desde qué banco transferiste?
+                                        </label>
+                                        <input
+                                            id="pqw-banco-origen"
+                                            name="banco_origen"
+                                            type="text"
+                                            className="pqw-field__input"
+                                            placeholder="Ej: Banesco"
+                                            value={form.banco_origen}
+                                            onChange={handleChange}
+                                            disabled={isSubmitting}
+                                        />
+                                        {errors.banco_origen && (
+                                            <span className="pqw-field__error">{errors.banco_origen}</span>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Subida de comprobante */}
+                                <div className={`pqw-field ${errors.comprobante ? 'pqw-field--error' : ''}`}>
+                                    <label htmlFor="pqw-comprobante" className="pqw-field__label">
+                                        Comprobante de pago (imagen)
+                                    </label>
+                                    <label htmlFor="pqw-comprobante" className="pqw-upload">
+                                        {previewUrl ? (
+                                            <img src={previewUrl} alt="Vista previa del comprobante" className="pqw-upload__preview" />
+                                        ) : (
+                                            <>
+                                                <span className="pqw-upload__icon" aria-hidden="true">📷</span>
+                                                <span className="pqw-upload__text">
+                                                    Toca para subir una foto o captura del comprobante
+                                                </span>
+                                            </>
+                                        )}
+                                    </label>
+                                    <input
+                                        id="pqw-comprobante"
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/webp"
+                                        onChange={handleFileChange}
+                                        disabled={isSubmitting}
+                                        className="pqw-upload__input"
+                                    />
+                                    {errors.comprobante && (
+                                        <span className="pqw-field__error">{errors.comprobante}</span>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ══ PASO 4 — Revisión ═══════════════════ */}
+                        {paso === 4 && (
+                            <div className="pqw-paso">
+                                <p className="pqw-paso__titulo">Revisa tu pago antes de enviarlo</p>
+
+                                <dl className="pqw-resumen">
+                                    <div className="pqw-resumen__row">
+                                        <dt>Servicio</dt>
+                                        <dd>{cuentaSeleccionada?.nombre_servicio}</dd>
+                                    </div>
+                                    <div className="pqw-resumen__row">
+                                        <dt>Método</dt>
+                                        <dd>{metodoInfo?.label}</dd>
+                                    </div>
+                                    <div className="pqw-resumen__row">
+                                        <dt>Referencia</dt>
+                                        <dd>{form.referencia_bancaria}</dd>
+                                    </div>
+                                    <div className="pqw-resumen__row">
+                                        <dt>Monto</dt>
+                                        <dd>Bs. {form.monto}</dd>
+                                    </div>
+                                    <div className="pqw-resumen__row">
+                                        <dt>Concepto</dt>
+                                        <dd>{form.concepto_pago}</dd>
+                                    </div>
+                                    <div className="pqw-resumen__row">
+                                        <dt>Fecha</dt>
+                                        <dd>{form.fecha_pago}</dd>
+                                    </div>
+                                    {form.metodo_pago === 'transferencia' && (
+                                        <div className="pqw-resumen__row">
+                                            <dt>Banco de origen</dt>
+                                            <dd>{form.banco_origen}</dd>
+                                        </div>
+                                    )}
+                                </dl>
+
+                                {previewUrl && (
+                                    <div className="pqw-resumen__comprobante">
+                                        <img src={previewUrl} alt="Comprobante a enviar" className="pqw-upload__preview" />
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* ── Navegación del asistente ────────────── */}
+                        <div className="pqw-paso-nav">
+                            {paso > 1 && (
+                                <button
+                                    type="button"
+                                    className="pqw-paso-nav__btn pqw-paso-nav__btn--secundario"
+                                    onClick={anterior}
+                                    disabled={isSubmitting}
+                                >
+                                    ← Atrás
+                                </button>
+                            )}
+                            <div className="pqw-paso-nav__spacer" />
+                            {paso < 4 ? (
+                                <button
+                                    type="button"
+                                    className="pqw-submit"
+                                    onClick={siguiente}
+                                    disabled={cuentas.length === 0}
+                                >
+                                    Siguiente →
+                                </button>
+                            ) : (
+                                <button
+                                    type="submit"
+                                    className={`pqw-submit ${isSubmitting ? 'pqw-submit--loading' : ''}`}
+                                    disabled={isSubmitting}
+                                >
+                                    {isSubmitting ? (
+                                        <>
+                                            <span className="pqw-submit__spinner" aria-hidden="true" />
+                                            Enviando...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span aria-hidden="true">📤</span>
+                                            Enviar Comprobante
+                                        </>
+                                    )}
+                                </button>
+                            )}
+                        </div>
+                    </form>
                 </div>
             )}
-
-            {/* ── Formulario de comprobante ────────────────────── */}
-            <div className="pqw-form-card">
-                <p className="pqw-form-card__titulo">Sube tu comprobante de pago</p>
-
-                {successMsg && (
-                    <div className="pqw-alert pqw-alert--success" role="status">
-                        <span aria-hidden="true">✅</span>
-                        <span>{successMsg}</span>
-                    </div>
-                )}
-                {serverError && (
-                    <div className="pqw-alert pqw-alert--error" role="alert">
-                        <span aria-hidden="true">⚠</span>
-                        <span>{serverError}</span>
-                    </div>
-                )}
-
-                <form className="pqw-form" onSubmit={handleSubmit} noValidate>
-
-                    {/* Si solo hay una cuenta, mostramos a cuál servicio
-                        corresponde (de solo lectura) dentro del propio
-                        formulario, para que quede claro sin selector. */}
-                    {cuentas.length === 1 && cuentaSeleccionada && (
-                        <div className="pqw-cuenta-fija">
-                            Pagando: <strong>{cuentaSeleccionada.nombre_servicio}</strong>
-                        </div>
-                    )}
-
-                    <div className="pqw-form__row">
-                        <div className={`pqw-field ${errors.referencia_bancaria ? 'pqw-field--error' : ''}`}>
-                            <label htmlFor="pqw-referencia" className="pqw-field__label">
-                                Número de referencia
-                            </label>
-                            <input
-                                id="pqw-referencia"
-                                name="referencia_bancaria"
-                                type="text"
-                                className="pqw-field__input"
-                                placeholder="Ej: 001234567890"
-                                value={form.referencia_bancaria}
-                                onChange={handleChange}
-                                disabled={isSubmitting}
-                            />
-                            {errors.referencia_bancaria && (
-                                <span className="pqw-field__error">{errors.referencia_bancaria}</span>
-                            )}
-                        </div>
-
-                        <div className={`pqw-field ${errors.monto ? 'pqw-field--error' : ''}`}>
-                            <label htmlFor="pqw-monto" className="pqw-field__label">
-                                Monto (Bs.)
-                            </label>
-                            <input
-                                id="pqw-monto"
-                                name="monto"
-                                type="number"
-                                step="0.01"
-                                min="0.01"
-                                className="pqw-field__input"
-                                placeholder="0.00"
-                                value={form.monto}
-                                onChange={handleChange}
-                                disabled={isSubmitting}
-                            />
-                            {errors.monto && (
-                                <span className="pqw-field__error">{errors.monto}</span>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="pqw-form__row">
-                        <div className={`pqw-field ${errors.concepto_pago ? 'pqw-field--error' : ''}`}>
-                            <label htmlFor="pqw-concepto" className="pqw-field__label">
-                                Concepto
-                            </label>
-                            <input
-                                id="pqw-concepto"
-                                name="concepto_pago"
-                                type="text"
-                                className="pqw-field__input"
-                                placeholder="Ej: Pago de gas del mes de junio"
-                                value={form.concepto_pago}
-                                onChange={handleChange}
-                                disabled={isSubmitting}
-                            />
-                            {errors.concepto_pago && (
-                                <span className="pqw-field__error">{errors.concepto_pago}</span>
-                            )}
-                        </div>
-
-                        <div className="pqw-field">
-                            <label htmlFor="pqw-fecha" className="pqw-field__label">
-                                Fecha del pago
-                            </label>
-                            <input
-                                id="pqw-fecha"
-                                name="fecha_pago"
-                                type="date"
-                                className="pqw-field__input"
-                                max={new Date().toISOString().slice(0, 10)}
-                                value={form.fecha_pago}
-                                onChange={handleChange}
-                                disabled={isSubmitting}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Subida de comprobante */}
-                    <div className={`pqw-field ${errors.comprobante ? 'pqw-field--error' : ''}`}>
-                        <label htmlFor="pqw-comprobante" className="pqw-field__label">
-                            Comprobante de pago (imagen)
-                        </label>
-                        <label htmlFor="pqw-comprobante" className="pqw-upload">
-                            {previewUrl ? (
-                                <img src={previewUrl} alt="Vista previa del comprobante" className="pqw-upload__preview" />
-                            ) : (
-                                <>
-                                    <span className="pqw-upload__icon" aria-hidden="true">📷</span>
-                                    <span className="pqw-upload__text">
-                                        Toca para subir una foto o captura del comprobante
-                                    </span>
-                                </>
-                            )}
-                        </label>
-                        <input
-                            id="pqw-comprobante"
-                            type="file"
-                            accept="image/jpeg,image/png,image/webp"
-                            onChange={handleFileChange}
-                            disabled={isSubmitting}
-                            className="pqw-upload__input"
-                        />
-                        {errors.comprobante && (
-                            <span className="pqw-field__error">{errors.comprobante}</span>
-                        )}
-                    </div>
-
-                    <button
-                        type="submit"
-                        className={`pqw-submit ${isSubmitting ? 'pqw-submit--loading' : ''}`}
-                        disabled={isSubmitting || cuentas.length === 0}
-                    >
-                        {isSubmitting ? (
-                            <>
-                                <span className="pqw-submit__spinner" aria-hidden="true" />
-                                Enviando...
-                            </>
-                        ) : (
-                            <>
-                                <span aria-hidden="true">📤</span>
-                                Enviar Comprobante
-                            </>
-                        )}
-                    </button>
-                </form>
-            </div>
 
             {/* Historial */}
             {verHistorial && (
@@ -562,6 +825,7 @@ export default function PagoQrWidget({ onPagoRegistrado } = {}) {
                             onClick={cargarHistorial}
                             disabled={loadingHist}
                             title="Actualizar historial"
+                            type="button"
                         >
                             {loadingHist ? '⏳' : '🔄'}
                         </button>
@@ -588,6 +852,7 @@ export default function PagoQrWidget({ onPagoRegistrado } = {}) {
                                             <span className={`pqw-estado ${estado.cls}`}>{estado.label}</span>
                                         </div>
                                         <div className="pqw-item__detalles">
+                                            <span>{pago.metodo_pago_label ?? 'Pago móvil'}</span>
                                             <span>Ref: {pago.referencia_bancaria}</span>
                                             <span>Bs. {pago.monto}</span>
                                             <span>{pago.fecha_pago}</span>

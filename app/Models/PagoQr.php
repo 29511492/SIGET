@@ -20,6 +20,11 @@ use Illuminate\Support\Facades\Cache;
  *   - admin/operador: habitante_id poblado, user_id null
  *   - Portal Ciudadano: user_id poblado, habitante_id null
  *
+ * CAMBIO (sept-2026, corrección 2 del profesor): se agregan
+ * `metodo_pago` (copiado de la cuenta elegida al momento de pagar —
+ * así el histórico no cambia si el admin edita la cuenta después) y
+ * `banco_origen` (desde qué banco pagó el ciudadano).
+ *
  * Todas las relaciones usan withTrashed(): un pago es un registro
  * histórico y debe conservar a quien lo hizo aunque ese habitante,
  * usuario, familia, etc. haya sido dado de baja.
@@ -42,6 +47,8 @@ class PagoQr extends Model
         'referencia_bancaria',
         'monto',
         'concepto_pago',
+        'metodo_pago',
+        'banco_origen',
         'comprobante_path',
         'estado',
         'motivo_rechazo',

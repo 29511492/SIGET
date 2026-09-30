@@ -13,6 +13,13 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Storage;
 
+/**
+ * CAMBIO (sept-2026, corrección 2 del profesor: proceso de pago) —
+ * storeUsuario() ahora guarda `metodo_pago` y `banco_origen`
+ * (StorePagoUsuarioRequest ya validó que metodo_pago coincida con
+ * el método real de la cuenta elegida).
+ */
+
 class PagoQrController extends Controller
 {
     // ─── GET /v1/pagos ───────────────────────────────────────────
@@ -115,6 +122,8 @@ class PagoQrController extends Controller
             'referencia_bancaria' => $validated['referencia_bancaria'],
             'monto'               => $validated['monto'],
             'concepto_pago'       => $validated['concepto_pago'],
+            'metodo_pago'         => $validated['metodo_pago'],
+            'banco_origen'        => $validated['banco_origen'] ?? null,
             'fecha_pago'          => $validated['fecha_pago'],
             'comprobante_path'    => $path,
             'estado'              => 'pendiente',

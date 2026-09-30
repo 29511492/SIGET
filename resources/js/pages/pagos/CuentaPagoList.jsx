@@ -13,6 +13,11 @@
  * Ciudadano. Solo admin puede crear/editar/eliminar (mismo patrón
  * de OrganizacionList: edición inline en la tabla, sin Form aparte
  * para editar — CuentaPagoForm.jsx se usa solo para CREAR).
+ *
+ * CAMBIO (sept-2026, corrección 2 del profesor: proceso de pago) —
+ * se agrega la columna Método y su edición inline (select), con el
+ * campo bancario condicional: teléfono para pago móvil, número de
+ * cuenta para transferencia.
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -88,8 +93,10 @@ export default function CuentaPagoList() {
         setEditingId(cuenta.id);
         setEditForm({
             nombre_servicio: cuenta.nombre_servicio ?? '',
+            metodo:          cuenta.metodo           ?? 'pago_movil',
             banco:           cuenta.banco           ?? '',
             telefono:        cuenta.telefono         ?? '',
+            numero_cuenta:   cuenta.numero_cuenta     ?? '',
             cedula_rif:      cuenta.cedula_rif        ?? '',
             titular:         cuenta.titular           ?? '',
             descripcion:     cuenta.descripcion       ?? '',
@@ -257,8 +264,9 @@ export default function CuentaPagoList() {
                             <thead>
                                 <tr>
                                     <th>Servicio</th>
+                                    <th>Método</th>
                                     <th>Banco</th>
-                                    <th>Teléfono</th>
+                                    <th>Teléfono / Cuenta</th>
                                     <th>Cédula/RIF</th>
                                     <th>Titular</th>
                                     <th className="td-center">Estatus</th>
@@ -284,6 +292,17 @@ export default function CuentaPagoList() {
                                                 )}
                                             </td>
                                             <td>
+                                                <select
+                                                    name="metodo"
+                                                    value={editForm.metodo}
+                                                    onChange={handleEditChange}
+                                                    className={`edit-select ${fieldErr('metodo') ? 'edit-input--error' : ''}`}
+                                                >
+                                                    <option value="pago_movil">Pago móvil</option>
+                                                    <option value="transferencia">Transferencia</option>
+                                                </select>
+                                            </td>
+                                            <td>
                                                 <input
                                                     name="banco"
                                                     value={editForm.banco}
@@ -293,14 +312,25 @@ export default function CuentaPagoList() {
                                                 />
                                             </td>
                                             <td>
-                                                <input
-                                                    name="telefono"
-                                                    value={editForm.telefono}
-                                                    onChange={handleEditChange}
-                                                    className="edit-input"
-                                                    placeholder="0412-1234567"
-                                                    maxLength={20}
-                                                />
+                                                {editForm.metodo === 'transferencia' ? (
+                                                    <input
+                                                        name="numero_cuenta"
+                                                        value={editForm.numero_cuenta}
+                                                        onChange={handleEditChange}
+                                                        className={`edit-input ${fieldErr('numero_cuenta') ? 'edit-input--error' : ''}`}
+                                                        placeholder="N° de cuenta"
+                                                        maxLength={20}
+                                                    />
+                                                ) : (
+                                                    <input
+                                                        name="telefono"
+                                                        value={editForm.telefono}
+                                                        onChange={handleEditChange}
+                                                        className={`edit-input ${fieldErr('telefono') ? 'edit-input--error' : ''}`}
+                                                        placeholder="0412-1234567"
+                                                        maxLength={20}
+                                                    />
+                                                )}
                                             </td>
                                             <td>
                                                 <input
@@ -359,8 +389,9 @@ export default function CuentaPagoList() {
                                         /* ── Fila lectura — todos los roles ───── */
                                         <tr key={cuenta.id} className={!cuenta.activa ? 'tr-inactive' : ''}>
                                             <td className="td-code">{cuenta.nombre_servicio || '—'}</td>
+                                            <td className="td-meta">{cuenta.metodo_label || (cuenta.metodo === 'transferencia' ? 'Transferencia' : 'Pago móvil')}</td>
                                             <td className="td-meta">{cuenta.banco || '—'}</td>
-                                            <td className="td-meta">{cuenta.telefono || '—'}</td>
+                                            <td className="td-meta">{cuenta.metodo === 'transferencia' ? (cuenta.numero_cuenta || '—') : (cuenta.telefono || '—')}</td>
                                             <td className="td-meta">{cuenta.cedula_rif || '—'}</td>
                                             <td className="td-meta">{cuenta.titular || '—'}</td>
 

@@ -477,3 +477,183 @@
     .pqw-submit { width: 100%; }
     .pqw-item__header { flex-direction: column; align-items: flex-start; }
 }
+
+
+/* ═══════════════════════════════════════════════════════════════
+ *  Asistente por pasos — sept-2026 (corrección 2 del profesor:
+ *  "proceso de pago mejorable, tiene que ser por pasos y
+ *  validaciones de pasos para evitar errores")
+ * ═══════════════════════════════════════════════════════════════ */
+
+/* ── Indicador de pasos ─────────────────────────────────────── */
+.pqw-steps {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    list-style: none;
+    margin: 0 0 1.5rem;
+    padding: 0;
+}
+
+.pqw-step { flex: 1; min-width: 0; }
+
+.pqw-step__btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    width: 100%;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+}
+
+.pqw-step__btn:disabled { cursor: not-allowed; }
+
+.pqw-step__num {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--c-offwhite);
+    border: 1.5px solid var(--c-border);
+    color: var(--c-text-light);
+    font-size: 0.8rem;
+    font-weight: 700;
+    transition: background var(--transition), border-color var(--transition), color var(--transition);
+}
+
+.pqw-step--active .pqw-step__num {
+    background: var(--c-navy);
+    border-color: var(--c-navy);
+    color: #fff;
+}
+
+.pqw-step--done .pqw-step__num {
+    background: #dcfce7;
+    border-color: #86efac;
+    color: #166534;
+}
+
+.pqw-step__label {
+    font-size: 0.72rem;
+    color: var(--c-text-light);
+    text-align: center;
+    line-height: 1.2;
+}
+
+.pqw-step--active .pqw-step__label { color: var(--c-navy); font-weight: 600; }
+
+/* ── Paso individual ────────────────────────────────────────── */
+.pqw-paso { display: flex; flex-direction: column; gap: 1rem; }
+
+.pqw-paso__titulo {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--c-navy);
+}
+
+/* ── Tarjetas de método (paso 1) ────────────────────────────── */
+.pqw-metodos {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.75rem;
+}
+
+.pqw-metodo-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.3rem;
+    padding: 1rem 1.1rem;
+    background: var(--c-white);
+    border: 1.5px solid var(--c-border);
+    border-radius: var(--radius);
+    text-align: left;
+    cursor: pointer;
+    transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+}
+
+.pqw-metodo-card:hover { border-color: var(--c-navy-hover); }
+
+.pqw-metodo-card--activo {
+    border-color: var(--c-navy);
+    background: rgba(13, 31, 53, 0.04);
+    box-shadow: 0 0 0 1px var(--c-navy);
+}
+
+.pqw-metodo-card__icon { font-size: 1.4rem; }
+
+.pqw-metodo-card__label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--c-text-dark);
+}
+
+.pqw-metodo-card__desc {
+    font-size: 0.78rem;
+    color: var(--c-text-light);
+    line-height: 1.4;
+}
+
+/* ── Resumen (paso 4) ───────────────────────────────────────── */
+.pqw-resumen {
+    display: flex;
+    flex-direction: column;
+    background: var(--c-offwhite);
+    border: 1px solid var(--c-border);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+
+.pqw-resumen__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.55rem 1rem;
+    border-bottom: 1px solid var(--c-border);
+    font-size: 0.85rem;
+}
+
+.pqw-resumen__row:last-child { border-bottom: none; }
+
+.pqw-resumen__row dt { color: var(--c-text-light); }
+.pqw-resumen__row dd { font-weight: 600; color: var(--c-text-dark); text-align: right; }
+
+.pqw-resumen__comprobante { margin-top: 0.75rem; text-align: center; }
+
+/* ── Navegación del asistente ───────────────────────────────── */
+.pqw-paso-nav {
+    display: flex;
+    align-items: center;
+    margin-top: 0.5rem;
+}
+
+.pqw-paso-nav__spacer { flex: 1; }
+
+.pqw-paso-nav__btn {
+    padding: 0.65rem 1.25rem;
+    border-radius: var(--radius);
+    font-family: var(--ff-body);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1.5px solid var(--c-border);
+    background: var(--c-white);
+    color: var(--c-text-mid);
+    transition: border-color var(--transition), color var(--transition);
+}
+
+.pqw-paso-nav__btn:hover:not(:disabled) { border-color: var(--c-navy); color: var(--c-navy); }
+.pqw-paso-nav__btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 640px) {
+    .pqw-steps       { gap: 0.25rem; }
+    .pqw-step__label { font-size: 0.65rem; }
+    .pqw-metodos     { grid-template-columns: 1fr; }
+}

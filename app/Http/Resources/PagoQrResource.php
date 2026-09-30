@@ -31,6 +31,13 @@ class PagoQrResource extends JsonResource
             'referencia_bancaria'  => $this->referencia_bancaria,
             'monto'                => $this->monto,
             'concepto_pago'        => $this->concepto_pago,
+            'metodo_pago'          => $this->metodo_pago,
+            'metodo_pago_label'    => match($this->metodo_pago) {
+                'pago_movil'    => 'Pago móvil',
+                'transferencia' => 'Transferencia',
+                default         => $this->metodo_pago,
+            },
+            'banco_origen'         => $this->banco_origen,
             'motivo_rechazo'       => $this->motivo_rechazo,
             'fecha_pago'           => $this->fecha_pago?->toDateString(),
             'fecha_verificacion'   => $this->fecha_verificacion?->toDateTimeString(),
