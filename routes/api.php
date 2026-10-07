@@ -55,6 +55,12 @@ use App\Http\Controllers\Api\V1\PasswordResetController;
 use App\Http\Controllers\Api\V1\UsuarioController;
 use Illuminate\Support\Facades\Route;
 
+/**
+ * CAMBIO (sept-2026, corrección 3 del profesor: seguridad de roles) —
+ * PATCH pagos/{pago}/validar se movió de Capa 2 a un grupo propio
+ * role:admin,vocero. Ver el bloque "VALIDACIÓN DE PAGOS" más abajo.
+ */
+
 Route::prefix('v1')->group(function () {
 
     // ══════════════════════════════════════════════════════════════
@@ -197,8 +203,8 @@ Route::prefix('v1')->group(function () {
             Route::get('pagos/{pago}', [PagoQrController::class, 'show'])
                 ->name('api.v1.pagos.show');
 
-            Route::patch('pagos/{pago}/validar', [PagoQrController::class, 'validar'])
-                ->name('api.v1.pagos.validar');
+            // NOTA (sept-2026): validar pago YA NO va en esta capa —
+            // ver el grupo dedicado role:admin,vocero más abajo.
 
             // Reportes PDF — al vuelo, sin persistencia en BD
             Route::get('reportes/constancia-residencia/{habitante}', [ReporteController::class, 'constanciaResidencia'])
@@ -210,6 +216,24 @@ Route::prefix('v1')->group(function () {
             // Sugerencias — lectura para admin, operador y vocero
             Route::get('sugerencias', [SugerenciaController::class, 'index'])
                 ->name('api.v1.sugerencias.index');
+        });
+
+
+        // ══════════════════════════════════════════════════════════
+        //  VALIDACIÓN DE PAGOS — solo admin y vocero
+        //  (sept-2026, corrección 3 del profesor: seguridad de roles)
+        //
+        //  Antes vivía en Capa 2 (admin,operador,vocero), lo que
+        //  contradecía la tabla de roles del documento (el operador
+        //  no debía tener esta escritura). El operador se eliminará
+        //  más adelante, así que no se le agrega esta responsabilidad
+        //  ahora: queda fuera desde ya. El vocero SÍ puede validar
+        //  (decisión del estudiante); mantiene su lectura de pagos en
+        //  Capa 2 sin cambios.
+        // ══════════════════════════════════════════════════════════
+        Route::middleware('role:admin,vocero')->group(function () {
+            Route::patch('pagos/{pago}/validar', [PagoQrController::class, 'validar'])
+                ->name('api.v1.pagos.validar');
         });
 
 

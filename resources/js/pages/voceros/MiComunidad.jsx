@@ -11,7 +11,17 @@
  *   GET /api/v1/voceros          → para encontrar el vocero activo vinculado al usuario
  *
  * El usuario vocero tiene acceso de lectura a:
- * Familias, Habitantes, Voceros, Proyectos, Beneficios, Organizaciones.
+ * Voceros, Proyectos, Beneficios, Organizaciones — y ahora también
+ * puede validar Pagos QR (ver abajo).
+ *
+ * FIX (sept-2026, corrección 3 del profesor: seguridad de roles) —
+ * "Familias" y "Habitantes" se QUITAN de NAV_ITEMS y MODULOS_VOCERO:
+ * eran enlaces muertos para este rol. /familias está restringida a
+ * admin+operador en el backend (403 para el vocero, instrucción del
+ * profesor, documento 5.1) y /habitantes ni siquiera existe como
+ * ruta — ese módulo se fusionó en Familias (documento 7.4). Se
+ * agrega "Pagos QR": el vocero ahora puede validar pagos
+ * (PATCH pagos/{pago}/validar, role:admin,vocero).
  */
 
 import { useState, useEffect }            from 'react';
@@ -23,14 +33,13 @@ import SugerenciaWidget                   from '../../components/sugerencias/Sug
 import '../DashboardPage.css';
 import './MiComunidad.css';
 
-// Módulos de consulta disponibles para el rol vocero
+// Módulos disponibles para el rol vocero (consulta + validación de pagos)
 const MODULOS_VOCERO = [
-    { label: 'Familias',       icon: '🏠', href: '/familias',       descripcion: 'Ver familias del sector'        },
-    { label: 'Habitantes',     icon: '👥', href: '/habitantes',     descripcion: 'Consultar habitantes registrados' },
     { label: 'Voceros',        icon: '🎙', href: '/voceros',        descripcion: 'Directorio de voceros activos'   },
     { label: 'Proyectos',      icon: '📋', href: '/proyectos',      descripcion: 'Estado de proyectos comunitarios' },
     { label: 'Beneficios',     icon: '🎁', href: '/beneficios',     descripcion: 'Registro de beneficios entregados' },
     { label: 'Organizaciones', icon: '🏛️', href: '/organizaciones', descripcion: 'Organizaciones comunitarias'     },
+    { label: 'Pagos QR',       icon: '💳', href: '/pagos',          descripcion: 'Verificar o rechazar pagos pendientes' },
 ];
 
 export default function MiComunidad() {
@@ -56,12 +65,11 @@ export default function MiComunidad() {
     // así que se ocultan los ítems de escritura y admin.
     const NAV_ITEMS = [
         { label: 'Mi Comunidad',   icon: '🏘️', href: '/mi-comunidad'  },
-        { label: 'Familias',       icon: '🏠', href: '/familias'       },
-        { label: 'Habitantes',     icon: '👥', href: '/habitantes'     },
         { label: 'Voceros',        icon: '🎙', href: '/voceros'        },
         { label: 'Proyectos',      icon: '📋', href: '/proyectos'      },
         { label: 'Beneficios',     icon: '🎁', href: '/beneficios'     },
         { label: 'Organizaciones', icon: '🏛️', href: '/organizaciones' },
+        { label: 'Pagos QR',       icon: '💳', href: '/pagos'          },
         { label: 'Sugerencias',    icon: '💬', href: '/sugerencias'    },
     ];
 

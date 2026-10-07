@@ -23,6 +23,16 @@ import './DashboardPage.css';
  *    Esta página ahora se limita a la navegación (sidebar + topbar)
  *    y delega todo el contenido de "qué hacer" a la vista de cada rol.
  *
+ * ─────────────────────────────────────────────────────────────────
+ * FIX (sept-2026) — Corrección 3 del profesor: seguridad de roles
+ * ─────────────────────────────────────────────────────────────────
+ * El ítem "Pagos QR" del sidebar usaba el permiso 'puede_escribir'
+ * (admin+operador), así que el vocero no lo veía aunque el backend
+ * ya le permitía leer pagos (Capa 2) y ahora también validarlos
+ * (PATCH pagos/{pago}/validar, role:admin,vocero). Se agrega el
+ * permiso 'puede_validar_pagos' (admin+vocero, ver UserResource) y
+ * el ítem usa ese permiso en vez de 'puede_escribir'.
+ *
  * 3. El botón "+ Registrar Familia" del topbar apuntaba a
  *    '/familias/crear', ruta que ya no existe (el registro de
  *    familias ahora es por modal sobre '/familias'). Corregido.
@@ -38,6 +48,10 @@ export default function DashboardPage() {
     // ── Booleanos defensivos ───────────────────────────────────
     const adminBool = Boolean(isAdmin  ?? (user?.rol === 'admin'));
     const writeBool = Boolean(canWrite ?? (user?.rol === 'admin' || user?.rol === 'operador'));
+    // Corrección 3 (sept-2026): admin y vocero validan pagos.
+    const validaPagosBool = Boolean(
+        user?.permisos?.puede_validar_pagos ?? (user?.rol === 'admin' || user?.rol === 'vocero')
+    );
 
     // ── Navegación del sidebar ─────────────────────────────────
     const NAV_ITEMS = [
@@ -47,7 +61,7 @@ export default function DashboardPage() {
         { label: 'Proyectos',       icon: '📋', href: '/proyectos',     permiso: null              },
         { label: 'Beneficios',      icon: '🎁', href: '/beneficios',    permiso: null              },
         { label: 'Organizaciones',  icon: '🏛️', href: '/organizaciones', permiso: null            },
-        { label: 'Pagos QR',        icon: '💳', href: '/pagos',         permiso: 'puede_escribir'  },
+        { label: 'Pagos QR',        icon: '💳', href: '/pagos',         permiso: 'puede_validar_pagos' },
         { label: 'Cuentas de Pago', icon: '🏦', href: '/cuentas-pago',  permiso: 'puede_escribir'  },
         { label: 'Noticias',        icon: '📰', href: '/noticias',      permiso: 'puede_escribir'  },
         { label: 'Sugerencias',     icon: '💬', href: '/sugerencias',   permiso: null              },
@@ -92,8 +106,9 @@ export default function DashboardPage() {
     // ── Visibilidad del sidebar por permiso ────────────────────
     const itemVisible = (permiso) => {
         if (!permiso)                     return true;
-        if (permiso === 'puede_escribir') return writeBool;
-        if (permiso === 'es_admin')       return adminBool;
+        if (permiso === 'puede_escribir')      return writeBool;
+        if (permiso === 'es_admin')            return adminBool;
+        if (permiso === 'puede_validar_pagos') return validaPagosBool || writeBool;
         return false;
     };
 

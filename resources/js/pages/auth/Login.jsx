@@ -37,21 +37,14 @@ import { useNavigate, useLocation, Link }    from 'react-router-dom';
 import { useTranslation }              from 'react-i18next';
 import { useAuth }                     from '../../hooks/useAuth';
 import apiClient                       from '../../services/axios';
+import { REDIRECT_BY_ROL }             from '../../constants/roles';
 import './Login.css';
 
-// ── Constantes ─────────────────────────────────────────────────
-// FIX (sept-2026): el rol usuario entraba a /perfil en vez de
-// /dashboard, inconsistente con el resto de los roles (todos entran
-// a /dashboard salvo vocero, que tiene su propia vista /mi-comunidad).
-// Ver también app.jsx — DashboardRouter/PerfilRouter ahora renderizan
-// UsuarioDashboard en ambas rutas para el rol usuario, así que este
-// cambio no rompe nada que dependiera de /perfil.
-const REDIRECT_BY_ROL = {
-    admin:    '/dashboard',
-    operador: '/dashboard',
-    vocero:   '/mi-comunidad',
-    usuario:  '/dashboard',
-};
+// FIX (sept-2026, backlog 11.2/14.6): REDIRECT_BY_ROL vivía duplicado
+// aquí y en app.jsx. Ahora se importa de constants/roles.js — un
+// archivo neutral que ninguno de los dos importa del otro, así que
+// no hay import circular. Si cambias un destino, se cambia en un
+// solo lugar.
 
 const PASOS = {
     REGISTRO:        0,   // ← NUEVO: formulario de crear cuenta

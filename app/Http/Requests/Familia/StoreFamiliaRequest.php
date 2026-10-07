@@ -5,6 +5,7 @@ namespace App\Http\Requests\Familia;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Validation\Rule;
 
 /**
  * ═══════════════════════════════════════════════════════════════
@@ -109,8 +110,17 @@ class StoreFamiliaRequest extends FormRequest
                 'nullable',
                 'string',
                 'max:15',
-                'distinct',                 // Sin cédulas repetidas en el mismo envío
-                'unique:habitantes,cedula',  // Único contra la BD (NULL se ignora)
+                'distinct', // Sin cédulas repetidas en el mismo envío
+                // Corrección 3 (sept-2026, backlog 11.2): antes era
+                // 'unique:habitantes,cedula' a secas, que compara contra
+                // TODA la tabla incluidos los habitantes dados de baja —
+                // por eso una cédula que ya estuvo registrada (y luego se
+                // dio de baja) rechazaba el registro nuevo. Con
+                // whereNull('deleted_at') solo se compara contra
+                // habitantes activos; si la cédula pertenece a alguien
+                // dado de baja, FamiliaController::crearHabitante()
+                // restaura ese registro en vez de crear uno nuevo.
+                Rule::unique('habitantes', 'cedula')->whereNull('deleted_at'),
             ],
             'habitantes.*.nombres' => [
                 'required_with:habitantes',

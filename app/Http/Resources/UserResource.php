@@ -31,10 +31,13 @@ class UserResource extends JsonResource
             // Permisos derivados — el frontend usa estos booleans
             // en lugar de comparar strings de rol directamente.
             'permisos' => [
-                'puede_leer'     => true,
-                'puede_escribir' => in_array($this->rol, ['admin', 'operador'], true),
-                'puede_eliminar' => $this->rol === 'admin',
-                'es_admin'       => $this->rol === 'admin',
+                'puede_leer'           => true,
+                'puede_escribir'       => in_array($this->rol, ['admin', 'operador'], true),
+                'puede_eliminar'       => $this->rol === 'admin',
+                'es_admin'             => $this->rol === 'admin',
+                // Corrección 3 (sept-2026): admin y vocero validan pagos;
+                // el operador se eliminará más adelante y no la gana.
+                'puede_validar_pagos'  => in_array($this->rol, ['admin', 'vocero'], true),
             ],
 
             // Habitante vinculado (si fue cargado con load('habitante'))

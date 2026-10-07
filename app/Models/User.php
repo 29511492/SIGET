@@ -207,4 +207,16 @@ class User extends Authenticatable
     {
         return $this->rol === 'admin';
     }
+
+    /**
+     * Quién puede validar (verificar/rechazar) pagos QR.
+     * Corrección 3 del profesor (sept-2026): antes cualquier rol de
+     * Capa 2 (admin, operador, vocero) podía validar — contradecía
+     * la tabla de roles del documento. Ahora solo admin y vocero; el
+     * operador se eliminará más adelante y no gana esta capacidad.
+     */
+    public function puedeValidarPagos(): bool
+    {
+        return in_array($this->rol, ['admin', 'vocero'], true);
+    }
 }

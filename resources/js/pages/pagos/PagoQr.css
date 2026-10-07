@@ -427,3 +427,26 @@
     .pago-toast           { top: auto; bottom: 1rem; right: 1rem; left: 1rem; max-width: none; }
     .page-info            { display: none; }
 }
+
+
+/* ═══════════════════════════════════════════════════════════════
+ *  Aviso "no puedes validar" — sept-2026 (corrección 3 del profesor:
+ *  seguridad de roles). Se muestra a un rol con lectura del pago
+ *  (ej. operador) pero sin permiso para verificar/rechazar.
+ * ═══════════════════════════════════════════════════════════════ */
+.pago-alert {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.875rem 1.25rem;
+    margin: 1.25rem 1.5rem;
+    border-radius: var(--radius, 8px);
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+
+.pago-alert--info {
+    background: #eff6ff;
+    border: 1px solid #93c5fd;
+    color: #1e40af;
+}

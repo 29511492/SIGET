@@ -26,6 +26,7 @@ import {
 
 import { AuthProvider } from './context/AuthContext';
 import { useAuth }      from './hooks/useAuth';
+import { REDIRECT_BY_ROL } from './constants/roles';
 
 // Páginas
 import Login            from './pages/auth/Login';
@@ -57,23 +58,12 @@ import SugerenciaPanel  from './pages/sugerencias/SugerenciaPanel';
 import UsuarioDashboard from './components/Dashboard/Views/UsuarioDashboard';
 
 // ─────────────────────────────────────────────────────────────
-//  Mapa de redirección por rol — fuente única de verdad "en
-//  intención" (Login.jsx mantiene su propia copia porque
-//  importarla desde aquí crearía un import circular app.jsx ↔
-//  Login.jsx; si cambias un destino aquí, cámbialo también ahí).
+//  Mapa de redirección por rol — FIX (sept-2026, backlog 11.2/14.6):
+//  antes vivía duplicado aquí y en Login.jsx. Ahora es un único
+//  archivo neutral (constants/roles.js) que ninguno de los dos
+//  importa del otro, así que no hay riesgo de import circular.
+//  Si cambias un destino, se cambia en un solo lugar.
 // ─────────────────────────────────────────────────────────────
-// FIX (sept-2026): el rol usuario entraba a /perfil en vez de
-// /dashboard, inconsistente con el resto de los roles. Ver
-// DashboardRouter / PerfilRouter más abajo — ambas rutas ahora
-// renderizan UsuarioDashboard directamente (sin el sidebar de
-// DashboardPage) para el rol usuario, así que el cambio de destino
-// no rompe nada que dependiera de /perfil.
-const REDIRECT_BY_ROL = {
-    admin:    '/dashboard',
-    operador: '/dashboard',
-    vocero:   '/mi-comunidad',
-    usuario:  '/dashboard',
-};
 
 // ─────────────────────────────────────────────────────────────
 //  ErrorBoundary — captura crashes de render y muestra un mensaje

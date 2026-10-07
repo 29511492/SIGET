@@ -74,8 +74,13 @@ class FamiliaController extends Controller
             );
         }
 
+        // Corrección 3 (sept-2026): tope de per_page — sin esto,
+        // ?per_page=999999 permite extraer todo el censo en una sola
+        // petición (persistencia/robustez, backlog 11.2).
+        $porPagina = min(max((int) ($request->per_page ?? 20), 1), 50);
+
         return FamiliaResource::collection(
-            $query->paginate($request->per_page ?? 20)
+            $query->paginate($porPagina)
         );
     }
 
@@ -95,8 +100,7 @@ class FamiliaController extends Controller
                 if (empty($h['es_discapacitado'])) {
                     $h['tipo_discapacidad'] = null;
                 }
-                $h['familia_id'] = $familia->id;
-                Habitante::create($h);
+                $this->crearHabitante($h, $familia->id);
             }
 
             return $familia;
@@ -173,8 +177,7 @@ class FamiliaController extends Controller
                             ->update(collect($h)->except('id')->all());
                     } else {
                         // Habitante nuevo agregado durante la edición
-                        $h['familia_id'] = $familia->id;
-                        Habitante::create($h);
+                        $this->crearHabitante($h, $familia->id);
                     }
                 }
             });
@@ -188,9 +191,13 @@ class FamiliaController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
+            // Corrección 3 (sept-2026): el log ya NO guarda 'datos' —
+            // antes incluía validated() completo (nombres, cédulas de
+            // toda la familia) en texto plano en laravel.log. El
+            // family_id ya es suficiente para ubicar el registro en la
+            // BD si hace falta investigar el error.
             Log::error('Error al actualizar familia', [
                 'familia_id' => $familia->id,
-                'datos'      => $request->validated(),
                 'error'      => $e->getMessage(),
                 'trace'      => $e->getTraceAsString(),
             ]);
@@ -200,6 +207,49 @@ class FamiliaController extends Controller
                 'errors'  => [],
             ], 500);
         }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  Helper — crear un habitante nuevo dentro de una familia
+    // ─────────────────────────────────────────────────────────────
+    /**
+     * Corrección 3 (sept-2026, backlog 11.2: "cédula duplicada tras
+     * dar de baja a un habitante"): antes, dar de baja a un habitante
+     * y luego intentar registrar a otro (o al mismo) con esa cédula
+     * chocaba contra el índice único de la BD, porque el soft delete
+     * no libera la cédula.
+     *
+     * Ahora: si existe un habitante DADO DE BAJA con esa misma
+     * cédula, se restaura ese registro con los datos nuevos en vez
+     * de crear uno nuevo — incluyendo reasignarlo a esta familia
+     * (la persona pudo haberse mudado a otro núcleo familiar). Si no
+     * hay ningún habitante de baja con esa cédula, se crea uno nuevo
+     * como antes.
+     *
+     * StoreFamiliaRequest y UpdateFamiliaRequest ya validan la
+     * cédula ignorando los registros dados de baja (whereNull
+     * deleted_at), así que esta cédula puede llegar aquí sin haber
+     * sido rechazada por la validación.
+     */
+    private function crearHabitante(array $datos, int $familiaId): Habitante
+    {
+        $datos['familia_id'] = $familiaId;
+        $cedula = $datos['cedula'] ?? null;
+
+        if ($cedula) {
+            $habitanteDeBaja = Habitante::onlyTrashed()
+                ->where('cedula', $cedula)
+                ->first();
+
+            if ($habitanteDeBaja) {
+                $habitanteDeBaja->restore();
+                $habitanteDeBaja->update($datos);
+
+                return $habitanteDeBaja->fresh();
+            }
+        }
+
+        return Habitante::create($datos);
     }
 
     // ─────────────────────────────────────────────────────────────

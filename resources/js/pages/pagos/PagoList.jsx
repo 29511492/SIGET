@@ -3,6 +3,13 @@
  * el modal de revisión ahora muestra el método de pago y, cuando es
  * transferencia, el banco de origen que declaró el ciudadano — datos
  * que el operador necesita para conciliar el comprobante.
+ *
+ * CAMBIO (sept-2026, corrección 3 del profesor: seguridad de roles) —
+ * los botones Verificar/Rechazar ahora solo se muestran a admin y
+ * vocero (backend: PATCH pagos/{pago}/validar en role:admin,vocero).
+ * El operador conserva la lectura del listado pero ya no ve estos
+ * botones — antes se le mostraban aunque el backend terminara
+ * rechazando la acción.
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -27,6 +34,8 @@ const ESTADO_OPTIONS = [
 export default function PagoList() {
     const navigate         = useNavigate();
     const { isAdmin, user } = useAuth();
+    // Corrección 3 (sept-2026): solo admin y vocero validan pagos.
+    const puedeValidar = user?.permisos?.puede_validar_pagos ?? (user?.rol === 'admin' || user?.rol === 'vocero');
 
     // ── Estado listado ─────────────────────────────────────────
     const [pagos,       setPagos]       = useState([]);
@@ -401,8 +410,10 @@ export default function PagoList() {
                             </div>
                         </div>
 
-                        {/* Sección de validación — solo si está pendiente */}
-                        {modalPago.estado === 'pendiente' && (
+                        {/* Sección de validación — solo si está pendiente Y
+                            el rol puede validar (admin o vocero). El operador
+                            ve el resto del modal, pero no estos controles. */}
+                        {modalPago.estado === 'pendiente' && puedeValidar && (
                             <div className="pago-modal__validacion">
                                 <div className="pago-campo">
                                     <label className="pago-campo__label" htmlFor="motivo_rechazo">
@@ -441,6 +452,13 @@ export default function PagoList() {
                                         {validando ? '⏳' : '✅'} Verificar pago
                                     </button>
                                 </div>
+                            </div>
+                        )}
+
+                        {/* Pendiente, pero este rol no puede validar (ej. operador) */}
+                        {modalPago.estado === 'pendiente' && !puedeValidar && (
+                            <div className="pago-alert pago-alert--info" role="status">
+                                Solo un administrador o un vocero pueden verificar o rechazar este pago.
                             </div>
                         )}
 

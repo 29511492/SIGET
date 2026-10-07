@@ -277,6 +277,20 @@ export default function PagoQrWidget({ onPagoRegistrado } = {}) {
     const siguiente = () => irAPaso(paso + 1);
     const anterior  = () => irAPaso(paso - 1);
 
+    // FIX: la tecla Enter dentro de un <input> de texto dispara el envío
+    // NATIVO del formulario aunque el botón visible sea "Siguiente" (type
+    // button). Eso hacía que, al escribir en el paso 3 y presionar Enter
+    // por costumbre, el pago se enviara de inmediato saltándose la
+    // revisión del paso 4 — daba la sensación de que el resumen "aparecía
+    // y desaparecía" sin darle tiempo al ciudadano de revisarlo. Bloqueamos
+    // Enter solo en <input>; el botón de envío sigue funcionando con
+    // Enter/Espacio cuando tiene el foco (comportamiento normal del navegador).
+    const bloquearEnterEnInputs = (e) => {
+        if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
+            e.preventDefault();
+        }
+    };
+
     // ── Envío final (paso 4) ────────────────────────────────
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -431,7 +445,7 @@ export default function PagoQrWidget({ onPagoRegistrado } = {}) {
                         </div>
                     )}
 
-                    <form className="pqw-form" onSubmit={handleSubmit} noValidate>
+                    <form className="pqw-form" onSubmit={handleSubmit} onKeyDown={bloquearEnterEnInputs} noValidate>
 
                         {/* ══ PASO 1 — Método y servicio ══════════ */}
                         {paso === 1 && (
