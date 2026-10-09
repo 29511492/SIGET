@@ -33,6 +33,16 @@
  *     habitantes anidados. Contradecía la instrucción del profesor
  *     (el vocero no accede a Familias ni Habitantes). Se movieron
  *     a Capa 3 (admin + operador).
+ *
+ *  CAMBIO (oct-2026) — Módulo de georreferenciación (encuestas +
+ *  mapa de calor), integrado desde el trabajo de la compañera:
+ *  1. Encuestas (lectura de la lista) y mapa de calor: admin + vocero
+ *     (grupo propio, igual que la validación de pagos). El operador
+ *     NO recibe permisos nuevos porque el rol se eliminará.
+ *  2. Crear/editar/eliminar encuestas, registrar entregas y asignar
+ *     coordenadas a las calles: solo admin (Capa 4).
+ *  3. vocero/resumen y vocero/tareas: las consume VoceroDashboard.jsx
+ *     y no existían en api.php (el dashboard daba 404).
  * ═══════════════════════════════════════════════════════════════
  */
 
@@ -53,6 +63,9 @@ use App\Http\Controllers\Api\V1\NoticiaController;
 use App\Http\Controllers\Api\V1\SugerenciaController;
 use App\Http\Controllers\Api\V1\PasswordResetController;
 use App\Http\Controllers\Api\V1\UsuarioController;
+use App\Http\Controllers\Api\V1\EncuestaController;
+use App\Http\Controllers\Api\V1\EncuestaRespuestaController;
+use App\Http\Controllers\Api\V1\MapaCalorController;
 use Illuminate\Support\Facades\Route;
 
 /**
@@ -238,6 +251,40 @@ Route::prefix('v1')->group(function () {
 
 
         // ══════════════════════════════════════════════════════════
+        //  ENCUESTAS (solo la lista) Y MAPA DE CALOR — admin y vocero
+        //  (oct-2026, módulo de georreferenciación)
+        //
+        //  El vocero solo ve las calles de las sedes donde tiene un
+        //  mandato activo y únicamente conteos agregados (sin nombres
+        //  de familias): lo valida MapaCalorController. Las estáticas
+        //  van antes que las dinámicas.
+        // ══════════════════════════════════════════════════════════
+        Route::middleware('role:admin,vocero')->group(function () {
+            Route::get('encuestas', [EncuestaController::class, 'index'])
+                ->name('api.v1.encuestas.index');
+
+            Route::get('mapa-calor', [MapaCalorController::class, 'index'])
+                ->name('api.v1.mapa-calor.index');
+
+            Route::get('mapa-calor/calle/{calle}', [MapaCalorController::class, 'detalleCalle'])
+                ->name('api.v1.mapa-calor.calle');
+        });
+
+
+        // ══════════════════════════════════════════════════════════
+        //  DASHBOARD DEL VOCERO — resumen y tareas (solo vocero)
+        //  Las consume VoceroDashboard.jsx; antes no existían (404).
+        // ══════════════════════════════════════════════════════════
+        Route::middleware('role:vocero')->group(function () {
+            Route::get('vocero/resumen', [VoceroController::class, 'resumen'])
+                ->name('api.v1.vocero.resumen');
+
+            Route::get('vocero/tareas', [VoceroController::class, 'tareas'])
+                ->name('api.v1.vocero.tareas');
+        });
+
+
+        // ══════════════════════════════════════════════════════════
         //  CAPA 3 — ESCRITURA (admin + operador)
         // ══════════════════════════════════════════════════════════
         Route::middleware('role:admin,operador')->group(function () {
@@ -399,6 +446,36 @@ Route::prefix('v1')->group(function () {
 
             Route::patch('usuarios/{usuario}/desbloquear', [UsuarioController::class, 'desbloquear'])
                 ->name('api.v1.usuarios.desbloquear');
+
+            // ── Encuestas y entregas (oct-2026, georreferenciación) ──
+            // La lista (GET encuestas) vive en el grupo admin+vocero.
+            Route::post('encuestas', [EncuestaController::class, 'store'])
+                ->name('api.v1.encuestas.store');
+
+            Route::get('encuestas/{encuesta}', [EncuestaController::class, 'show'])
+                ->name('api.v1.encuestas.show');
+
+            Route::put('encuestas/{encuesta}', [EncuestaController::class, 'update'])
+                ->name('api.v1.encuestas.update');
+
+            Route::delete('encuestas/{encuesta}', [EncuestaController::class, 'destroy'])
+                ->name('api.v1.encuestas.destroy');
+
+            Route::get('encuestas/{encuesta}/respuestas', [EncuestaRespuestaController::class, 'index'])
+                ->name('api.v1.encuestas.respuestas.index');
+
+            Route::post('encuestas/{encuesta}/respuestas', [EncuestaRespuestaController::class, 'store'])
+                ->name('api.v1.encuestas.respuestas.store');
+
+            Route::put('encuesta-respuestas/{encuestaRespuesta}', [EncuestaRespuestaController::class, 'update'])
+                ->name('api.v1.encuesta-respuestas.update');
+
+            Route::delete('encuesta-respuestas/{encuestaRespuesta}', [EncuestaRespuestaController::class, 'destroy'])
+                ->name('api.v1.encuesta-respuestas.destroy');
+
+            // ── Coordenadas de una calle (mapa de calor) ──
+            Route::patch('calles/{calle}/coordenadas', [CalleController::class, 'actualizarCoordenadas'])
+                ->name('api.v1.calles.coordenadas');
         });
 
     }); // fin auth:sanctum

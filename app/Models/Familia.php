@@ -73,4 +73,10 @@ class Familia extends Model
     {
         return $this->hasMany(PagoQr::class);
     }
+
+    /** Entregas registradas en las encuestas (mapa de calor, oct-2026). */
+    public function encuestaRespuestas(): HasMany
+    {
+        return $this->hasMany(EncuestaRespuesta::class);
+    }
 }

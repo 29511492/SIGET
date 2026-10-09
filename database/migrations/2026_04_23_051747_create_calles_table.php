@@ -31,6 +31,12 @@ return new class extends Migration
                 ->constrained('sedes')
                 ->onDelete('cascade');
             $table->string('nombre', 150);
+
+            // Oct-2026 (georreferenciación): punto de la calle/sector en el
+            // mapa de calor. Nullable hasta que el admin lo asigne en el mapa.
+            $table->decimal('latitud', 10, 7)->nullable();
+            $table->decimal('longitud', 10, 7)->nullable();
+
             $table->timestamps();
         });
     }

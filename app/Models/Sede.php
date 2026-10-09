@@ -15,6 +15,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  *  tipo_sede: administrativa|salud|educativa|deportiva|cultural|otra
  *  estado_infraestructura: optima|regular|critica
  *
+ *  limites (oct-2026, georreferenciación): polígono del territorio
+ *  como array de coordenadas [lng, lat] (columna json, nullable).
+ *  Se castea a 'array'; el mapa de calor lo dibuja si existe.
+ *
  *  Al crear los modelos de Cartografía (cartografia.sede_id),
  *  agregar aquí su relación hasMany.
  * ═══════════════════════════════════════════════════════════════
@@ -31,6 +35,11 @@ class Sede extends Model
         'tipo_sede',
         'estado_infraestructura',
         'observaciones',
+        'limites',
+    ];
+
+    protected $casts = [
+        'limites' => 'array',
     ];
 
     // ── Relaciones ────────────────────────────────────────────────

@@ -60,7 +60,7 @@ class UsuarioController extends Controller
         ],
         'vocero' => [
             'etiqueta'    => 'Vocero',
-            'descripcion' => 'Consulta los módulos comunales; sin acceso a familias ni habitantes (instrucción del profesor).',
+            'descripcion' => 'Consulta los módulos comunales y el mapa de calor (solo conteos de sus sedes); sin acceso a familias ni habitantes (instrucción del profesor).',
         ],
         'usuario' => [
             'etiqueta'    => 'Ciudadano',
@@ -87,11 +87,17 @@ class UsuarioController extends Controller
         'dashboard'      => 'Estadísticas del dashboard',
         'auditorias'     => 'Auditoría',
         'usuarios'       => 'Usuarios y roles',
+        // Oct-2026: módulo de georreferenciación
+        'encuestas'      => 'Encuestas y entregas',
+        'mapa-calor'     => 'Mapa de calor',
     ];
 
     /** Segmentos de URI que se agrupan bajo otro módulo. */
     private const ALIAS_MODULO = [
-        'configuracion' => 'usuarios',
+        'configuracion'       => 'usuarios',
+        // Oct-2026: estos segmentos de URI pertenecen a módulos del mapa de calor
+        'encuesta-respuestas' => 'encuestas',
+        'calles'              => 'mapa-calor',
     ];
 
     // ─────────────────────────────────────────────────────────────

@@ -7,9 +7,14 @@ use App\Http\Requests\Vocero\StoreVoceroRequest;
 use App\Http\Requests\Vocero\UpdateVoceroRequest;
 use App\Http\Resources\VoceroResource;
 use App\Models\Comite;
+use App\Models\Encuesta;
+use App\Models\EncuestaRespuesta;
+use App\Models\Familia;
 use App\Models\Habitante;
+use App\Models\PagoQr;
 use App\Models\Sede;
 use App\Models\Vocero;
+use App\Services\EstimadorConsumoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -26,6 +31,8 @@ use Illuminate\Support\Facades\Log;
  *  GET    /api/v1/voceros/{id}       → show()         [lectura]
  *  PUT    /api/v1/voceros/{id}       → update()       [admin+operador]
  *  DELETE /api/v1/voceros/{id}       → destroy()      [solo admin]
+ *  GET    /api/v1/vocero/resumen     → resumen()      [solo vocero]
+ *  GET    /api/v1/vocero/tareas      → tareas()       [solo vocero]
  *
  *  NOTA SOBRE ORDEN DE RUTAS:
  *  La ruta GET voceros/form-data DEBE registrarse ANTES que
@@ -197,5 +204,130 @@ class VoceroController extends Controller
         return response()->json([
             'message' => "{$nombre} fue dado de baja como vocero activo.",
         ], 200);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  Dashboard del vocero (oct-2026) — resumen() y tareas()
+    // ─────────────────────────────────────────────────────────────
+    /**
+     * VoceroDashboard.jsx llama a GET /v1/vocero/resumen y /v1/vocero/tareas,
+     * pero ninguna de las dos existía (404). El contrato de respuesta sale
+     * de lo que ese componente consume:
+     *   resumen → { nombre_sede, familias_sector, habitantes_sector, pagos_pendientes }
+     *   tareas  → [ { id, titulo, descripcion, estado, fecha_limite } ]
+     *
+     * Solo devuelve CONTEOS agregados de las sedes donde el usuario tiene
+     * un mandato activo: nunca nombres ni datos de familias (restricción del
+     * profesor: el vocero no accede al censo).
+     */
+    public function resumen(Request $request): JsonResponse
+    {
+        $sedes = $this->sedesDelVocero($request);
+
+        $familiasDelSector = Familia::whereIn('sede_id', $sedes);
+
+        return response()->json([
+            'data' => [
+                'nombre_sede'       => Sede::whereIn('id', $sedes)->orderBy('nombre')->pluck('nombre')->implode(', '),
+                'familias_sector'   => (clone $familiasDelSector)->count(),
+                // Subconsulta sobre familias vigentes: una familia dada de baja
+                // no aporta habitantes al conteo.
+                'habitantes_sector' => Habitante::whereIn('familia_id', (clone $familiasDelSector)->select('id'))->count(),
+                // Mismo universo que ve el vocero en el módulo Pagos QR
+                'pagos_pendientes'  => PagoQr::where('estado', 'pendiente')->count(),
+            ],
+        ], 200);
+    }
+
+    /**
+     * Tareas de censo pendientes: una por cada encuesta ACTIVA que todavía
+     * tiene familias por atender en las sedes del vocero. Las encuestas
+     * ya completadas no se listan (la UI muestra "no tienes tareas").
+     *
+     * Estados (los que entiende ESTADO_CONFIG en VoceroDashboard.jsx):
+     *  - Encuesta de gas: critico (hay gas vencido) · en_progreso (hay por
+     *    vencer) · pendiente (solo falta historial para estimar).
+     *  - Otras encuestas: critico (≥ 50 % de familias sin entrega) ·
+     *    en_progreso (menos del 50 %).
+     */
+    public function tareas(Request $request, EstimadorConsumoService $estimador): JsonResponse
+    {
+        $sedes      = $this->sedesDelVocero($request);
+        $familiaIds = Familia::whereIn('sede_id', $sedes)->pluck('id');
+        $total      = $familiaIds->count();
+
+        if ($total === 0) {
+            return response()->json(['data' => []], 200);
+        }
+
+        $tareas = [];
+
+        foreach (Encuesta::activas()->orderBy('fecha_cierre')->orderBy('id')->get() as $encuesta) {
+            if ($encuesta->esDeGas()) {
+                $conteo   = $estimador->estimarPorFamilias($familiaIds, $encuesta->tipo)->countBy('estado');
+                $vencidas = (int) ($conteo['vencido'] ?? 0);
+                $proximas = (int) ($conteo['proximo'] ?? 0);
+                $sinDatos = (int) ($conteo['sin_datos'] ?? 0);
+
+                if ($vencidas + $proximas + $sinDatos === 0) {
+                    continue; // todas al día
+                }
+
+                $estado = match (true) {
+                    $vencidas > 0 => 'critico',
+                    $proximas > 0 => 'en_progreso',
+                    default       => 'pendiente',
+                };
+
+                $descripcion = "{$vencidas} familia(s) con gas vencido, {$proximas} por vencer y {$sinDatos} sin historial suficiente (de {$total}).";
+            } else {
+                $conRespuesta = EncuestaRespuesta::where('encuesta_id', $encuesta->id)
+                    ->whereIn('familia_id', $familiaIds)
+                    ->distinct()
+                    ->count('familia_id');
+
+                $pendientes = $total - $conRespuesta;
+
+                if ($pendientes <= 0) {
+                    continue; // cobertura completa
+                }
+
+                $estado      = ($pendientes / $total) >= 0.5 ? 'critico' : 'en_progreso';
+                $descripcion = "{$pendientes} de {$total} familias todavía sin entrega registrada.";
+            }
+
+            $tareas[] = [
+                'id'           => $encuesta->id,
+                'titulo'       => $encuesta->nombre,
+                'descripcion'  => $descripcion,
+                'estado'       => $estado,
+                'fecha_limite' => $encuesta->fecha_cierre?->toDateString(),
+            ];
+        }
+
+        return response()->json(['data' => $tareas], 200);
+    }
+
+    /**
+     * Sedes donde el usuario autenticado tiene un mandato de vocero ACTIVO.
+     * Un habitante puede tener varios registros (uno por mandato), por eso
+     * se usa el scope activos() y se devuelven todas sus sedes, no solo la
+     * primera. Sin mandato activo (o sin habitante vinculado) → 403.
+     *
+     * @return array<int, int>
+     */
+    private function sedesDelVocero(Request $request): array
+    {
+        $habitanteId = $request->user()->habitante_id;
+
+        $sedes = $habitanteId
+            ? Vocero::activos()->where('habitante_id', $habitanteId)->pluck('sede_id')->unique()->values()->all()
+            : [];
+
+        if ($sedes === []) {
+            abort(403, 'No se encontró un registro de vocero activo asociado a este usuario.');
+        }
+
+        return array_map('intval', $sedes);
     }
 }

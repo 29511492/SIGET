@@ -12,8 +12,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  *  Migración: 2026_04_23_051747_create_calles_table.php
  *
  *  Campos:
- *  - sede_id:  foreignId → sedes (CASCADE)
- *  - nombre:   string(150)
+ *  - sede_id:   foreignId → sedes (CASCADE)
+ *  - nombre:    string(150)
+ *  - latitud:   decimal(10,7) nullable  (oct-2026, mapa de calor)
+ *  - longitud:  decimal(10,7) nullable  (oct-2026, mapa de calor)
+ *
+ *  latitud/longitud se castean a float: PostgreSQL devuelve los
+ *  decimal como string y Leaflet necesita números.
  *
  *  RELACIONES:
  *  - Una Calle pertenece a una Sede    (belongsTo, withTrashed)
@@ -31,10 +36,14 @@ class Calle extends Model
     protected $fillable = [
         'sede_id',
         'nombre',
+        'latitud',
+        'longitud',
     ];
 
     protected $casts = [
-        'sede_id' => 'integer',
+        'sede_id'  => 'integer',
+        'latitud'  => 'float',
+        'longitud' => 'float',
     ];
 
     // ── Relaciones ────────────────────────────────────────────────

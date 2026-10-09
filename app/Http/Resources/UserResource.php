@@ -38,6 +38,11 @@ class UserResource extends JsonResource
                 // Corrección 3 (sept-2026): admin y vocero validan pagos;
                 // el operador se eliminará más adelante y no la gana.
                 'puede_validar_pagos'  => in_array($this->rol, ['admin', 'vocero'], true),
+                // Oct-2026 (georreferenciación): el mapa de calor lo ven admin y
+                // vocero; crear encuestas, registrar entregas y asignar
+                // coordenadas es solo del admin. El operador no recibe nada nuevo.
+                'puede_ver_mapa'            => in_array($this->rol, ['admin', 'vocero'], true),
+                'puede_gestionar_encuestas' => $this->rol === 'admin',
             ],
 
             // Habitante vinculado (si fue cargado con load('habitante'))

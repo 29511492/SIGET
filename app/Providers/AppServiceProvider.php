@@ -3,6 +3,9 @@
 namespace App\Providers;
 
 use App\Models\Beneficio;
+use App\Models\Calle;
+use App\Models\Encuesta;
+use App\Models\EncuestaRespuesta;
 use App\Models\Familia;
 use App\Models\Habitante;
 use App\Models\Proyecto;
@@ -49,5 +52,10 @@ class AppServiceProvider extends ServiceProvider
         // Sept-2026: cambios de rol / estado de cuentas quedan auditados.
         // El Observer descarta password y otp_code antes de guardar.
         User::observe(AdminAuditoriaObserver::class);
+        // Oct-2026 (georreferenciación): campañas, entregas y coordenadas
+        // de calles quedan auditadas (solo acciones de admin, ver Observer).
+        Encuesta::observe(AdminAuditoriaObserver::class);
+        EncuestaRespuesta::observe(AdminAuditoriaObserver::class);
+        Calle::observe(AdminAuditoriaObserver::class);
     }
 }

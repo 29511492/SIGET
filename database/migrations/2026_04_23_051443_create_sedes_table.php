@@ -43,6 +43,12 @@ return new class extends Migration
                 ->default('optima');
 
             $table->text('observaciones')->nullable();
+
+            // Oct-2026 (georreferenciación): polígono del territorio de la sede
+            // (array de coordenadas [lng, lat]) para dibujar su contorno en el
+            // mapa de calor. Nullable: no todas las sedes lo tendrán trazado.
+            $table->json('limites')->nullable();
+
             $table->softDeletes();
             $table->timestamps();
         });
