@@ -11,8 +11,18 @@ use Illuminate\Database\Seeder;
  *  ComunaSeeder — Consejos Comunales de "Ana Karina Rote 2019"
  * ───────────────────────────────────────────────────────────────
  *  Fuente: documento "Composición Comuna Ana Karina Rote 2019".
- *  Usa firstOrCreate() por 'nombre' para no duplicar sedes/calles
- *  ya registradas. Seguro de correr varias veces (idempotente).
+ *  Idempotente: seguro de correr varias veces.
+ *
+ *  CORRECCIÓN (oct-2026): Sede usa SoftDeletes y firstOrCreate()
+ *  no ve las sedes dadas de baja, así que una sede eliminada se
+ *  habría duplicado al volver a correr el seeder. Ahora la búsqueda
+ *  incluye las dadas de baja (withTrashed). Una sede existente se
+ *  deja TAL CUAL: no se restaura, no se modifica, y si está dada de
+ *  baja tampoco se le crean calles.
+ *
+ *  Calle no usa SoftDeletes: firstOrCreate() es suficiente. La clave
+ *  incluye sede_id, por eso "Calle Los Mangos" puede existir en dos
+ *  sedes sin conflicto.
  *
  *  Uso: php artisan db:seed --class=ComunaSeeder
  * ═══════════════════════════════════════════════════════════════
@@ -70,15 +80,19 @@ class ComunaSeeder extends Seeder
         ];
 
         foreach ($consejosComunales as $cc) {
-            $sede = Sede::firstOrCreate(
-                ['nombre' => $cc['nombre']],
-                [
+            $sede = Sede::withTrashed()->where('nombre', $cc['nombre'])->first()
+                ?? Sede::create([
+                    'nombre'                 => $cc['nombre'],
                     'direccion'              => $cc['direccion'],
                     'tipo_sede'              => 'administrativa',
                     'estado_infraestructura' => 'regular',
                     'observaciones'          => 'Consejo Comunal integrante de la Comuna Ana Karina Rote 2019.',
-                ]
-            );
+                ]);
+
+            // Una sede dada de baja se respeta: no se le agregan calles.
+            if ($sede->trashed()) {
+                continue;
+            }
 
             foreach ($cc['calles'] as $nombreCalle) {
                 Calle::firstOrCreate([
@@ -88,6 +102,6 @@ class ComunaSeeder extends Seeder
             }
         }
 
-        $this->command->info('Comuna Ana Karina Rote 2019: 9 Consejos Comunales y sus calles registrados.');
+        $this->command?->info('Comuna Ana Karina Rote 2019: 9 Consejos Comunales y sus calles registrados.');
     }
 }
