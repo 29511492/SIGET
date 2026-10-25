@@ -14,12 +14,20 @@
  *      campos que devuelve el backend (respuesta, revisada, revisada_en,
  *      revisor) sin sobreescribir 'autor', que el Resource devuelve con
  *      whenLoaded y puede llegar vacío si no se cargó en esa petición.
+ *
+ * CAMBIOS (oct-2026, unificación de la pantalla de inicio del vocero):
+ *  · /mi-comunidad se retiró: el botón de volver va siempre a /dashboard.
+ *  · El formulario de envío (SugerenciaWidget) vivía en MiComunidad. Para
+ *    que el vocero siga pudiendo enviar sugerencias (POST /sugerencias está
+ *    permitido a todos los roles), se muestra aquí, arriba del listado,
+ *    solo cuando el usuario es vocero.
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate }                       from 'react-router-dom';
 import { useAuth }                           from '../../hooks/useAuth';
 import apiClient                             from '../../services/axios';
+import SugerenciaWidget                      from '../../components/sugerencias/SugerenciaWidget';
 import './SugerenciaPanel.css';
 
 const CATEGORIAS = [
@@ -144,9 +152,9 @@ export default function SugerenciaPanel() {
             <div className="list-topbar">
                 <button
                     className="list-topbar__back"
-                    onClick={() => navigate(user?.rol === 'vocero' ? '/mi-comunidad' : '/dashboard')}
+                    onClick={() => navigate('/dashboard')}
                 >
-                    ← {user?.rol === 'vocero' ? 'Mi Comunidad' : 'Dashboard'}
+                    ← Dashboard
                 </button>
                 <div className="list-topbar__breadcrumb">
                     <span>SIGET</span>
@@ -169,6 +177,9 @@ export default function SugerenciaPanel() {
                         </p>
                     </div>
                 </div>
+
+                {/* Formulario de envío — solo vocero (vivía en MiComunidad) */}
+                {user?.rol === 'vocero' && <SugerenciaWidget />}
 
                 {/* Filtros */}
                 <div className="list-toolbar sp-toolbar">

@@ -12,10 +12,14 @@
  * Mantener un solo punto de verdad evita que un cambio de destino se
  * actualice en un archivo y se olvide en el otro (como pasó con el
  * fix de 'usuario': /perfil → /dashboard, sept-2026).
+ *
+ * CAMBIO (oct-2026): el vocero ahora entra directo a /dashboard
+ * (antes /mi-comunidad). La pantalla /mi-comunidad se retiró y su ruta
+ * quedó como redirección a /dashboard (ver app.jsx).
  */
 export const REDIRECT_BY_ROL = {
     admin:    '/dashboard',
     operador: '/dashboard',
-    vocero:   '/mi-comunidad',
+    vocero:   '/dashboard',
     usuario:  '/dashboard',
 };

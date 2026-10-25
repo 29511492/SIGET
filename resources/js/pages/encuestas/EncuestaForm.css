@@ -1,0 +1,117 @@
+/**
+ * EncuestaForm.css — el formulario vive dentro de FormModal, que ya
+ * aporta el panel blanco, el título y el padding; aquí solo se
+ * estiliza el contenido del formulario.
+ */
+
+.encform-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    font-family: var(--ff-body, 'DM Sans', system-ui, sans-serif);
+}
+
+.encform-alert {
+    margin: 0;
+    padding: 0.6rem 0.8rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    color: var(--c-error, #c0392b);
+    background: var(--c-error-bg, #fdf2f2);
+    border: 1px solid rgba(192, 57, 43, 0.25);
+}
+
+.encform-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.encform-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.encform-field label {
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--c-text-mid, #4a5568);
+}
+
+.encform-field input,
+.encform-field select,
+.encform-field textarea {
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    font-family: inherit;
+    font-size: 0.9rem;
+    color: var(--c-text-dark, #1a1a2e);
+    background: #ffffff;
+    border: 1.5px solid var(--c-border, #e8e3db);
+    border-radius: 8px;
+    transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.encform-field textarea {
+    resize: vertical;
+}
+
+.encform-field input:focus,
+.encform-field select:focus,
+.encform-field textarea:focus {
+    outline: none;
+    border-color: var(--c-navy-hover, #1e3a56);
+    box-shadow: 0 0 0 3px rgba(30, 58, 86, 0.08);
+}
+
+.encform-field__error {
+    font-size: 0.78rem;
+    color: var(--c-error, #c0392b);
+}
+
+.encform-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+.encform-btn {
+    padding: 0.65rem 1.25rem;
+    border: none;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 200ms ease, box-shadow 200ms ease;
+}
+
+.encform-btn--cancel {
+    color: var(--c-text-mid, #4a5568);
+    background: var(--c-offwhite, #f8f6f1);
+    border: 1.5px solid var(--c-border, #e8e3db);
+}
+
+.encform-btn--submit {
+    color: #ffffff;
+    background: var(--c-navy, #0d1f35);
+    box-shadow: 0 1px 3px rgba(13, 31, 53, 0.2);
+}
+
+.encform-btn--submit:hover:not(:disabled) {
+    background: var(--c-navy-hover, #1e3a56);
+    box-shadow: 0 4px 14px rgba(13, 31, 53, 0.25);
+}
+
+.encform-btn:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+@media (max-width: 520px) {
+    .encform-row {
+        grid-template-columns: 1fr;
+    }
+}

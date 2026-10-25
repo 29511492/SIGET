@@ -24,11 +24,23 @@
  *
  * La antigua sección "Mis Acciones" al final del componente se eliminó
  * — quedaba duplicada con el nuevo grid del hero.
+ *
+ * CAMBIOS (oct-2026, unificación de la pantalla de inicio del vocero):
+ * El vocero entra directo a este dashboard (antes iba a /mi-comunidad).
+ *  · Se quitó la tarjeta "Ver Noticias": /noticias es solo admin+operador,
+ *    así que el vocero rebotaba a su inicio sin ver nada.
+ *  · En su lugar se muestra el widget de últimas noticias (NoticiaWidget,
+ *    las 3 más recientes) al final del dashboard.
+ *  · La tarjeta "Cargar Pago QR" (/pagos/nuevo) se cambió por "Validar
+ *    Pagos" (/pagos): el vocero valida pagos (Corrección 3 del profesor),
+ *    pero /pagos/nuevo usa POST /pagos (flujo admin/operador) y su
+ *    formulario exige un habitante_id que el usuario no recibe.
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import apiClient from '../../../services/axios'; // ← 3 niveles arriba
+import NoticiaWidget from '../../noticias/NoticiaWidget';
 
 const ESTADO_CONFIG = {
     completado:  { label: 'Completado',  cls: 'badge--green' },
@@ -48,11 +60,11 @@ const getSaludo = () => {
 // Acciones que el rol vocero SÍ puede realizar (sin Familias/Habitantes)
 const ACCIONES_VOCERO = [
     {
-        titulo: 'Cargar Pago QR',
-        desc:   'Registra un comprobante de pago para tu sector',
-        icon:   '📱',
+        titulo: 'Validar Pagos',
+        desc:   'Verifica o rechaza los comprobantes de pago pendientes',
+        icon:   '💳',
         color:  'navy',
-        href:   '/pagos/nuevo',
+        href:   '/pagos',
     },
     {
         titulo: 'Ver Voceros',
@@ -68,12 +80,13 @@ const ACCIONES_VOCERO = [
         color:  'teal',
         href:   '/sugerencias',
     },
+    // Oct-2026 (georreferenciación)
     {
-        titulo: 'Ver Noticias',
-        desc:   'Consulta los comunicados y noticias publicadas',
-        icon:   '📰',
-        color:  'amber',
-        href:   '/noticias',
+        titulo: 'Mapa de Calor',
+        desc:   'Consulta el estado de las encuestas en las calles de tu sector',
+        icon:   '🗺️',
+        color:  'purple',
+        href:   '/mapa-calor',
     },
 ];
 
@@ -230,6 +243,9 @@ export default function VoceroDashboard({ user }) {
                     </ul>
                 )}
             </section>
+
+            {/* ══ ÚLTIMAS NOTICIAS ═══════════════════════════════ */}
+            <NoticiaWidget />
         </section>
     );
 }

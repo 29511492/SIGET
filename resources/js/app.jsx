@@ -9,6 +9,17 @@
  *    el sidebar y la tarjeta de AdminDashboard terminaban en /login).
  *  · /familias restringida a admin + operador: el vocero no accede a
  *    Familias (instrucción del profesor); el backend también lo bloquea.
+ *
+ * CAMBIOS (oct-2026, módulo de georreferenciación):
+ *  · Rutas /encuestas y /encuestas/:id/respuestas (solo admin).
+ *  · Ruta /mapa-calor (admin + vocero) y /mapa-calor/coordenadas (solo
+ *    admin). El rol 'operador' NO recibe acceso: se eliminará.
+ *
+ * CAMBIOS (oct-2026, unificación de la pantalla de inicio del vocero):
+ *  · El vocero entra directo a /dashboard (ver constants/roles.js).
+ *  · /mi-comunidad ya no renderiza MiComunidad: redirige a /dashboard
+ *    para que enlaces o favoritos viejos sigan funcionando. Se quitó
+ *    el import de MiComunidad (el archivo puede borrarse del proyecto).
  */
 
 import './bootstrap';
@@ -51,10 +62,13 @@ import ComunicadoList   from './pages/comunicados/ComunicadoList';
 import ComunicadoDetail from './pages/comunicados/ComunicadoDetail';
 import ComunicadoEdit   from './pages/comunicados/ComunicadoEdit';
 import PerfilPage       from './pages/perfil/PerfilPage';
-import MiComunidad      from './pages/voceros/MiComunidad';
 import NoticiaList      from './pages/noticias/NoticiaList';
 import NoticiaForm      from './pages/noticias/NoticiaForm';
 import SugerenciaPanel  from './pages/sugerencias/SugerenciaPanel';
+import EncuestaList     from './pages/encuestas/EncuestaList';
+import RegistrarEntregaForm from './pages/encuestas/RegistrarEntregaForm';
+import MapaCalorPage    from './pages/mapa-calor/MapaCalorPage';
+import EditarCoordenadasCalle from './pages/mapa-calor/EditarCoordenadasCalle';
 import UsuarioDashboard from './components/Dashboard/Views/UsuarioDashboard';
 
 // ─────────────────────────────────────────────────────────────
@@ -314,6 +328,32 @@ const App = () => (
                         </ProtectedRoute>
                     } />
 
+                    {/* Georreferenciación (oct-2026) — estáticas ANTES que dinámicas.
+                        Encuestas y coordenadas: solo admin. Mapa: admin + vocero. */}
+                    <Route path="/encuestas/:id/respuestas" element={
+                        <ProtectedRoute allowedRoles={['admin']}>
+                            <RegistrarEntregaForm />
+                        </ProtectedRoute>
+                    } />
+
+                    <Route path="/encuestas" element={
+                        <ProtectedRoute allowedRoles={['admin']}>
+                            <EncuestaList />
+                        </ProtectedRoute>
+                    } />
+
+                    <Route path="/mapa-calor/coordenadas" element={
+                        <ProtectedRoute allowedRoles={['admin']}>
+                            <EditarCoordenadasCalle />
+                        </ProtectedRoute>
+                    } />
+
+                    <Route path="/mapa-calor" element={
+                        <ProtectedRoute allowedRoles={['admin', 'vocero']}>
+                            <MapaCalorPage />
+                        </ProtectedRoute>
+                    } />
+
                     <Route path="/auditoria" element={
                         <ProtectedRoute allowedRoles={['admin']}>
                             <AuditoriaList />
@@ -413,7 +453,8 @@ const App = () => (
 
                     {/* ══ SUGERENCIAS ═════════════════════════════════════════
                         Panel accesible para admin, operador y vocero.
-                        El widget de envío vive en PerfilPage y MiComunidad.  */}
+                        El widget de envío vive en PerfilPage y, para el vocero,
+                        en la parte superior de SugerenciaPanel.              */}
                     <Route path="/sugerencias" element={
                         <ProtectedRoute allowedRoles={['admin', 'operador', 'vocero']}>
                             <SugerenciaPanel />
@@ -425,11 +466,11 @@ const App = () => (
                         Estaban ausentes. El catch-all las enviaba a /login,
                         recreando el bucle para esos dos roles.               */}
 
-                    {/* Rol: vocero → /mi-comunidad */}
+                    {/* /mi-comunidad ya no es una pantalla: el vocero entra directo
+                        a /dashboard. La ruta se conserva solo como redirección para
+                        que enlaces o favoritos viejos sigan funcionando. */}
                     <Route path="/mi-comunidad" element={
-                        <ProtectedRoute allowedRoles={['vocero']}>
-                            <MiComunidad />
-                        </ProtectedRoute>
+                        <Navigate to="/dashboard" replace />
                     } />
 
                     {/* Perfil — usuario ve UsuarioDashboard (vía PerfilRouter),

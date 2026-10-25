@@ -41,7 +41,9 @@
  *     NO recibe permisos nuevos porque el rol se eliminará.
  *  2. Crear/editar/eliminar encuestas, registrar entregas y asignar
  *     coordenadas a las calles: solo admin (Capa 4).
- *  3. vocero/resumen y vocero/tareas: las consume VoceroDashboard.jsx
+ *  3. POST encuestas/{encuesta}/respuestas/masivo: registro de una misma
+ *     entrega para varias familias (solo admin).
+ *  4. vocero/resumen y vocero/tareas: las consume VoceroDashboard.jsx
  *     y no existían en api.php (el dashboard daba 404).
  * ═══════════════════════════════════════════════════════════════
  */
@@ -466,6 +468,10 @@ Route::prefix('v1')->group(function () {
 
             Route::post('encuestas/{encuesta}/respuestas', [EncuestaRespuestaController::class, 'store'])
                 ->name('api.v1.encuestas.respuestas.store');
+
+            // Registro masivo: la misma entrega para varias familias a la vez
+            Route::post('encuestas/{encuesta}/respuestas/masivo', [EncuestaRespuestaController::class, 'storeMasivo'])
+                ->name('api.v1.encuestas.respuestas.masivo');
 
             Route::put('encuesta-respuestas/{encuestaRespuesta}', [EncuestaRespuestaController::class, 'update'])
                 ->name('api.v1.encuesta-respuestas.update');

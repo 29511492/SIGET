@@ -258,6 +258,21 @@ export default function AdminDashboard({ user }) {
             href:   '/configuracion',
             badge:  cuentasBloqueadas,
         },
+        // Oct-2026 (georreferenciación)
+        {
+            titulo: 'Encuestas',
+            desc:   'Crea campañas de censo y registra entregas por familia',
+            icon:   '📝',
+            color:  'purple',
+            href:   '/encuestas',
+        },
+        {
+            titulo: 'Mapa de Calor',
+            desc:   'Mira en el mapa qué calles necesitan atención',
+            icon:   '🗺️',
+            color:  'teal',
+            href:   '/mapa-calor',
+        },
     ];
 
     return (

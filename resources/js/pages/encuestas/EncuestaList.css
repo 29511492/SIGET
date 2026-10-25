@@ -1,0 +1,75 @@
+/**
+ * EncuestaList.css — estilos propios de la lista de encuestas.
+ * El sistema base de listas (.list-*, .badge, .action-btn, paginación)
+ * viene de ../familias/FamiliaList.css, que EncuestaList.jsx importa.
+ *
+ * NOTA: la versión original de este archivo empezaba con una línea de
+ * texto suelta ("Encuestalist · CSS") que invalidaba la primera regla
+ * en silencio (regla inviolable #28). Aquí no está.
+ */
+
+/* Encuesta cerrada: se atenúa para que las activas sean el punto focal */
+.list-table tbody tr.tr-inactive {
+    opacity: 0.55;
+}
+
+.enc-nombre {
+    display: block;
+    font-weight: 600;
+    color: var(--c-text-dark, #1a1a2e);
+}
+
+.enc-desc {
+    display: block;
+    margin-top: 0.15rem;
+    font-size: 0.78rem;
+    color: var(--c-text-light, #718096);
+    max-width: 320px;
+}
+
+/* Badge de estado clicable (activa / cerrada) */
+.enc-estado {
+    border: 1px solid transparent;
+    border-radius: 999px;
+    padding: 0.25rem 0.75rem;
+    font-family: var(--ff-body, 'DM Sans', sans-serif);
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: filter 200ms ease, transform 200ms ease;
+}
+
+.enc-estado:hover:not(:disabled) {
+    filter: brightness(0.96);
+    transform: translateY(-1px);
+}
+
+.enc-estado:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+.enc-estado--activa {
+    background: #dcfce7;
+    color: #166534;
+    border-color: #86efac;
+}
+
+.enc-estado--cerrada {
+    background: #f1f5f9;
+    color: #64748b;
+    border-color: #e2e8f0;
+}
+
+/* Los enlaces de acción se ven igual que los botones .action-btn */
+.td-actions a.enc-link {
+    display: inline-block;
+    text-decoration: none;
+    color: var(--c-text-dark, #1a1a2e);
+    white-space: nowrap;
+}
+
+.td-actions a.enc-link:hover {
+    background: var(--c-offwhite, #f8f6f1);
+    border-color: var(--c-navy, #0d1f35);
+}

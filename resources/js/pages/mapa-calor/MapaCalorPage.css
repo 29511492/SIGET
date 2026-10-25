@@ -1,0 +1,291 @@
+/**
+ * MapaCalorPage.css — controles, tarjetas, leyenda y detalle del mapa de calor.
+ * El chrome de página y las tablas (.list-*) vienen de
+ * ../familias/FamiliaList.css, que el componente importa.
+ *
+ * Estados (clave del modificador): 0 = bien · 1 = atención · 2 = crítico ·
+ * sin_datos = no hay base para medir. Los colores son los mismos que usa
+ * Leaflet en MapaCalorPage.jsx (COLORES).
+ */
+
+/* ── Controles ────────────────────────────────────────────── */
+.mapa-controles {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.mapa-controles__campo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.mapa-controles__campo label {
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--c-text-mid, #4a5568);
+}
+
+.mapa-select {
+    min-width: 260px;
+    padding: 0.55rem 0.75rem;
+    font-family: var(--ff-body, 'DM Sans', sans-serif);
+    font-size: 0.875rem;
+    color: var(--c-text-dark, #1a1a2e);
+    background: #ffffff;
+    border: 1.5px solid var(--c-border, #e8e3db);
+    border-radius: 8px;
+}
+
+.mapa-select:focus {
+    outline: none;
+    border-color: var(--c-navy-hover, #1e3a56);
+    box-shadow: 0 0 0 3px rgba(30, 58, 86, 0.08);
+}
+
+.mapa-toggle {
+    display: flex;
+    overflow: hidden;
+    border: 1.5px solid var(--c-border, #e8e3db);
+    border-radius: 8px;
+}
+
+.mapa-toggle__btn {
+    padding: 0.55rem 0.95rem;
+    font-family: var(--ff-body, 'DM Sans', sans-serif);
+    font-size: 0.85rem;
+    color: var(--c-text-mid, #4a5568);
+    background: #ffffff;
+    border: none;
+    cursor: pointer;
+}
+
+.mapa-toggle__btn--activo {
+    color: #ffffff;
+    background: var(--c-navy, #0d1f35);
+}
+
+.mapa-btn-coordenadas,
+.mapa-link-btn {
+    display: inline-block;
+    text-decoration: none;
+}
+
+.mapa-btn-coordenadas {
+    padding: 0.55rem 0.95rem;
+    font-size: 0.82rem;
+    font-weight: 500;
+    white-space: nowrap;
+    color: #8a6d1f;
+    background: #f0e9d8;
+    border: 1px solid #d9c789;
+    border-radius: 8px;
+}
+
+.mapa-btn-coordenadas:hover {
+    background: #e9dfc2;
+}
+
+/* ── Chips de resumen y leyenda ───────────────────────────── */
+.mapa-resumen {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.mapa-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.75rem;
+    font-size: 0.8rem;
+    border: 1px solid transparent;
+    border-radius: 999px;
+}
+
+.mapa-chip--0         { color: #3b5c14; background: #eef6df; border-color: #c5dd96; }
+.mapa-chip--1         { color: #8a5a07; background: #fdf1d6; border-color: #f4cf84; }
+.mapa-chip--2         { color: #9a2b2a; background: #fbe4e3; border-color: #f2a9a8; }
+.mapa-chip--sin_datos { color: #4b5563; background: #eef0f3; border-color: #cfd4db; }
+
+.mapa-swatch {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+}
+
+.mapa-swatch--0         { background: #639922; }
+.mapa-swatch--1         { background: #ef9f27; }
+.mapa-swatch--2         { background: #e24b4a; }
+.mapa-swatch--sin_datos { background: #9aa3af; }
+
+.mapa-leyenda {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin: 0 0 1.5rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--c-border, #e8e3db);
+}
+
+.mapa-leyenda__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    color: var(--c-text-mid, #4a5568);
+}
+
+/* ── Tarjetas por calle ───────────────────────────────────── */
+.mapa-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+}
+
+.mapa-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.85rem;
+    text-align: left;
+    font-family: var(--ff-body, 'DM Sans', sans-serif);
+    background: #ffffff;
+    border: 1.5px solid var(--c-border, #e8e3db);
+    border-left-width: 5px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: transform 150ms ease, box-shadow 150ms ease;
+}
+
+.mapa-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(13, 31, 53, 0.1);
+}
+
+.mapa-card--0         { background: #f7fbef; border-color: #639922; }
+.mapa-card--1         { background: #fffaf0; border-color: #ef9f27; }
+.mapa-card--2         { background: #fef5f5; border-color: #e24b4a; }
+.mapa-card--sin_datos { background: #f6f7f9; border-color: #9aa3af; }
+
+.mapa-card--seleccionada {
+    box-shadow: 0 0 0 3px rgba(13, 31, 53, 0.18);
+}
+
+.mapa-card__estado {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--c-text-mid, #4a5568);
+}
+
+.mapa-card__calle {
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--c-text-dark, #1a1a2e);
+}
+
+.mapa-card__sede {
+    font-size: 0.75rem;
+    color: var(--c-text-light, #718096);
+}
+
+.mapa-card__familias {
+    margin-top: 0.3rem;
+    font-size: 0.78rem;
+    color: var(--c-text-mid, #4a5568);
+}
+
+/* ── Detalle de la calle ──────────────────────────────────── */
+.mapa-detalle {
+    margin-top: 1rem;
+    padding: 1.25rem;
+    background: #ffffff;
+    border: 1px solid var(--c-border, #e8e3db);
+    border-radius: 12px;
+}
+
+.mapa-detalle__cabecera {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.mapa-detalle__titulo {
+    margin: 0;
+    font-family: var(--ff-display, 'DM Serif Display', Georgia, serif);
+    font-size: 1.25rem;
+    font-weight: 400;
+    color: var(--c-navy, #0d1f35);
+}
+
+.mapa-detalle__sede {
+    margin: 0.1rem 0 0;
+    font-size: 0.8rem;
+    color: var(--c-text-light, #718096);
+}
+
+.mapa-detalle__cerrar {
+    padding: 0.35rem 0.7rem;
+    font-family: var(--ff-body, 'DM Sans', sans-serif);
+    font-size: 0.8rem;
+    color: var(--c-text-mid, #4a5568);
+    background: #ffffff;
+    border: 1px solid var(--c-border, #e8e3db);
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.mapa-detalle__cerrar:hover {
+    border-color: var(--c-navy, #0d1f35);
+    color: var(--c-navy, #0d1f35);
+}
+
+.mapa-detalle__total {
+    margin: 0 0 0.6rem;
+    font-size: 0.85rem;
+    color: var(--c-text-mid, #4a5568);
+}
+
+.mapa-detalle__nota {
+    margin: 0.5rem 0 0;
+    padding: 0.65rem 0.85rem;
+    font-size: 0.82rem;
+    color: var(--c-text-mid, #4a5568);
+    background: var(--c-offwhite, #f8f6f1);
+    border-radius: 8px;
+}
+
+/* Estado de cada familia en la tabla de detalle */
+.mapa-estado {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border-radius: 999px;
+}
+
+.mapa-estado--al_dia    { color: #3b5c14; background: #eef6df; }
+.mapa-estado--proximo   { color: #8a5a07; background: #fdf1d6; }
+.mapa-estado--vencido   { color: #9a2b2a; background: #fbe4e3; }
+.mapa-estado--sin_datos { color: #4b5563; background: #eef0f3; }
+
+@media (max-width: 640px) {
+    .mapa-select {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .mapa-controles__campo {
+        width: 100%;
+    }
+}
