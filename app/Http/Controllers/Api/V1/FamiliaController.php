@@ -37,6 +37,14 @@ use Illuminate\Support\Facades\Log;
  *  una única transacción de base de datos (DB::transaction): o se
  *  guarda todo, o no se guarda nada. Evita familias con
  *  habitantes a medio registrar si algo falla a mitad de camino.
+ *
+ *  MANDATOS DE VOCERO (oct-2026, pendiente 14.8-I.2):
+ *  Dar de baja a un habitante cierra sus mandatos de vocero
+ *  activos. La regla vive en Habitante::cerrarMandatosActivos(),
+ *  disparada por el evento `deleted` del modelo, así que update()
+ *  la aplica sola (usa $h->delete() por modelo). destroy() la
+ *  refuerza de forma explícita porque no depende de cómo cascadee
+ *  Familia::booted().
  * ═══════════════════════════════════════════════════════════════
  */
 
@@ -159,6 +167,10 @@ class FamiliaController extends Controller
                 // Nota: whereNotIn con array vacío no excluye nada (todos
                 // los habitantes actuales se dan de baja), que es lo
                 // correcto si el usuario quitó a todos.
+                //
+                // Oct-2026: cada $h->delete() dispara el evento `deleted`
+                // de Habitante, que cierra sus mandatos de vocero activos
+                // dentro de esta misma transacción.
                 $familia->habitantes()
                     ->whereNotIn('id', $idsEnviados)
                     ->get()
@@ -226,6 +238,10 @@ class FamiliaController extends Controller
      * hay ningún habitante de baja con esa cédula, se crea uno nuevo
      * como antes.
      *
+     * Restaurar al habitante NO reactiva sus mandatos de vocero
+     * cerrados al darlo de baja (oct-2026): si vuelve a ser vocero,
+     * se registra un mandato nuevo desde el módulo de Voceros.
+     *
      * StoreFamiliaRequest y UpdateFamiliaRequest ya validan la
      * cédula ignorando los registros dados de baja (whereNull
      * deleted_at), así que esta cédula puede llegar aquí sin haber
@@ -255,9 +271,28 @@ class FamiliaController extends Controller
     // ─────────────────────────────────────────────────────────────
     //  DELETE /api/v1/familias/{familia}
     // ─────────────────────────────────────────────────────────────
+    /**
+     * Da de baja la familia (soft delete). Oct-2026: además, cierra
+     * los mandatos de vocero activos de TODOS sus habitantes.
+     *
+     * Se hace de forma explícita y no solo por el evento `deleted`
+     * de Habitante, porque la cascada Familia → habitantes puede
+     * ejecutarse como UPDATE/DELETE masivo (que no dispara eventos
+     * de modelo). cerrarMandatosActivos() es idempotente: si el
+     * evento ya los cerró, aquí no encuentra nada que cerrar.
+     * withTrashed() incluye a los habitantes recién dados de baja
+     * por la cascada.
+     */
     public function destroy(Familia $familia): JsonResponse
     {
-        $familia->delete();
+        DB::transaction(function () use ($familia) {
+            $familia->delete();
+
+            Habitante::withTrashed()
+                ->where('familia_id', $familia->id)
+                ->get()
+                ->each(fn (Habitante $h) => $h->cerrarMandatosActivos());
+        });
 
         return response()->json([
             'message' => 'Familia eliminada correctamente.',
