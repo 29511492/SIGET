@@ -1,5 +1,5 @@
 /**
- * PagoForm.jsx — Registro de pago por admin/operador — SIGET
+ * PagoForm.jsx — Registro de pago por el admin — SIGET
  * Ruta física: resources/js/pages/pagos/PagoForm.jsx
  *
  * REESCRITO (oct-2026, pendiente 14.9-D / corrección 2 del profesor:
@@ -9,7 +9,7 @@
  * para todos los roles), usaba un QR fijo y no manejaba cuenta ni
  * método de pago.
  *
- * Ahora el admin/operador registra un pago A NOMBRE DE UN HABITANTE
+ * Ahora el admin registra un pago A NOMBRE DE UN HABITANTE
  * (vecino sin usuario en el Portal, o que pagó en persona) con un
  * asistente de 4 pasos, cada uno validado antes de avanzar:
  *
@@ -21,16 +21,16 @@
  *   4. Revisión           → resumen completo antes de enviar.
  *
  * Consume (sin endpoints nuevos):
- *   GET  /v1/familias?search=…   → buscar familia (admin+operador)
+ *   GET  /v1/familias?search=…   → buscar familia (solo admin)
  *   GET  /v1/familias/{id}       → habitantes de la familia elegida
  *   GET  /v1/cuentas-pago        → cuentas activas
  *   POST /v1/pagos               → registrar (queda 'pendiente')
  *
  * El portal del ciudadano (PagoQrWidget.jsx) no se toca.
  *
- * Ruta en app.jsx (solo admin + operador, igual que el backend):
+ * Ruta en app.jsx (solo admin, igual que el backend):
  *   <Route path="/pagos/nuevo" element={
- *       <ProtectedRoute allowedRoles={['admin', 'operador']}>
+ *       <ProtectedRoute allowedRoles={['admin']}>
  *           <PagoForm />
  *       </ProtectedRoute>
  *   } />

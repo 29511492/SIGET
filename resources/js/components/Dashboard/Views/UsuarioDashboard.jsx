@@ -69,7 +69,6 @@ const TABS = [
 // Etiquetas legibles para el rol (igual que en PerfilPage original)
 const ROL_LABELS = {
     admin:    'Administrador',
-    operador: 'Operador',
     vocero:   'Vocero',
     usuario:  'Usuario',
 };

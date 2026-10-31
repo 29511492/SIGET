@@ -72,7 +72,7 @@ export function useAuth() {
     };
 
     return {
-        ...rest,    // user, token, isLoading, isAdmin, isOperador, canWrite, canDelete
+        ...rest,    // user, token, isLoading, isAdmin, canWrite, canDelete
         login,
         logout,
     };

@@ -484,7 +484,7 @@ export default function PagoList() {
                             <div className="pago-modal__procesado">
                                 <span>
                                     {modalPago.estado === 'verificado' ? '✅' : '❌'} Procesado por{' '}
-                                    <strong>{modalPago.verificador_nombre || 'operador'}</strong>
+                                    <strong>{modalPago.verificador_nombre || '—'}</strong>
                                     {modalPago.fecha_verificacion ? ` el ${modalPago.fecha_verificacion}` : ''}
                                 </span>
                             </div>

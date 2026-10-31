@@ -1,8 +1,8 @@
 /**
  * resources/js/pages/sugerencias/SugerenciaPanel.jsx
  *
- * Panel de gestión de sugerencias para admin, operador y vocero.
- * Admin y operador pueden revisar y responder.
+ * Panel de gestión de sugerencias para admin y vocero.
+ * Solo el admin puede revisar y responder (el rol operador se eliminó en oct-2026).
  * Vocero solo puede leer.
  *
  * Consume:
@@ -49,7 +49,7 @@ export default function SugerenciaPanel() {
     const { user, isAdmin, canWrite } = useAuth();
     const navigate    = useNavigate();
     const adminBool   = Boolean(isAdmin  ?? (user?.rol === 'admin'));
-    const writeBool   = Boolean(canWrite ?? (user?.rol === 'admin' || user?.rol === 'operador'));
+    const writeBool   = Boolean(canWrite ?? user?.rol === 'admin');
 
     // ── Estado listado ─────────────────────────────────────────
     const [sugerencias,  setSugerencias]  = useState([]);

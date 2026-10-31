@@ -8,6 +8,14 @@
  *
  * Reutiliza el layout completo de DashboardPage (sidebar + topbar)
  * mediante la importación de DashboardPage.css.
+ *
+ * CAMBIO (oct-2026): el sidebar estaba desactualizado respecto a
+ * DashboardPage. Tenía el enlace muerto "Habitantes" (/habitantes ya no
+ * existe), mostraba "Familias" a todos los roles (el vocero no accede) y
+ * le faltaban Sugerencias, Encuestas, Mapa de Calor y Cuentas de Pago. Ahora
+ * NAV_ITEMS, los booleanos de permiso e itemVisible son los mismos que los de
+ * DashboardPage.jsx. Si cambia uno, hay que cambiar el otro.
+ * También se quitó el rol operador (eliminado en oct-2026).
  */
 
 import { useState }                       from 'react';
@@ -21,7 +29,6 @@ import './PerfilPage.css';
 // Etiquetas legibles para cada rol
 const ROL_LABELS = {
     admin:    'Administrador',
-    operador: 'Operador',
     vocero:   'Vocero',
     usuario:  'Usuario',
 };
@@ -43,27 +50,42 @@ export default function PerfilPage() {
 
     // Booleanos defensivos — misma lógica que DashboardPage
     const adminBool = Boolean(isAdmin  ?? (user?.rol === 'admin'));
-    const writeBool = Boolean(canWrite ?? (user?.rol === 'admin' || user?.rol === 'operador'));
+    const writeBool = Boolean(canWrite ?? user?.rol === 'admin');
+    const validaPagosBool = Boolean(
+        user?.permisos?.puede_validar_pagos ?? (user?.rol === 'admin' || user?.rol === 'vocero')
+    );
+    const verMapaBool = Boolean(
+        user?.permisos?.puede_ver_mapa ?? (user?.rol === 'admin' || user?.rol === 'vocero')
+    );
+    const gestionaEncuestasBool = Boolean(
+        user?.permisos?.puede_gestionar_encuestas ?? (user?.rol === 'admin')
+    );
 
     // ── Navegación del sidebar — idéntica a DashboardPage ─────
     const NAV_ITEMS = [
-        { label: 'Dashboard',      icon: '⊞',  href: '/dashboard',      permiso: null             },
-        { label: 'Familias',       icon: '🏠', href: '/familias',       permiso: null             },
-        { label: 'Habitantes',     icon: '👥', href: '/habitantes',     permiso: null             },
-        { label: 'Voceros',        icon: '🎙', href: '/voceros',        permiso: null             },
-        { label: 'Proyectos',      icon: '📋', href: '/proyectos',      permiso: null             },
-        { label: 'Beneficios',     icon: '🎁', href: '/beneficios',     permiso: null             },
-        { label: 'Organizaciones', icon: '🏛️', href: '/organizaciones', permiso: null             },
-        { label: 'Pagos QR',       icon: '💳', href: '/pagos',          permiso: 'puede_escribir' },
-        { label: 'Noticias',       icon: '📰', href: '/noticias',       permiso: 'puede_escribir' },
-        { label: 'Auditoría',      icon: '🔍', href: '/auditoria',      permiso: 'es_admin'       },
-        { label: 'Configuración',  icon: '⚙️', href: '/configuracion',  permiso: 'es_admin'       },
+        { label: 'Dashboard',       icon: '⊞',  href: '/dashboard',     permiso: null              },
+        { label: 'Familias',        icon: '🏠', href: '/familias',      permiso: 'puede_escribir'  },
+        { label: 'Voceros',         icon: '🎙', href: '/voceros',       permiso: null              },
+        { label: 'Proyectos',       icon: '📋', href: '/proyectos',     permiso: null              },
+        { label: 'Beneficios',      icon: '🎁', href: '/beneficios',    permiso: null              },
+        { label: 'Organizaciones',  icon: '🏛️', href: '/organizaciones', permiso: null            },
+        { label: 'Pagos QR',        icon: '💳', href: '/pagos',         permiso: 'puede_validar_pagos' },
+        { label: 'Cuentas de Pago', icon: '🏦', href: '/cuentas-pago',  permiso: 'puede_escribir'  },
+        { label: 'Noticias',        icon: '📰', href: '/noticias',      permiso: 'puede_escribir'  },
+        { label: 'Sugerencias',     icon: '💬', href: '/sugerencias',   permiso: null              },
+        { label: 'Encuestas',       icon: '📝', href: '/encuestas',     permiso: 'puede_gestionar_encuestas' },
+        { label: 'Mapa de Calor',   icon: '🗺️', href: '/mapa-calor',    permiso: 'puede_ver_mapa'  },
+        { label: 'Auditoría',       icon: '🔍', href: '/auditoria',     permiso: 'es_admin'        },
+        { label: 'Configuración',   icon: '⚙️', href: '/configuracion', permiso: 'es_admin'        },
     ];
 
     const itemVisible = (permiso) => {
         if (!permiso)                     return true;
-        if (permiso === 'puede_escribir') return writeBool;
-        if (permiso === 'es_admin')       return adminBool;
+        if (permiso === 'puede_escribir')      return writeBool;
+        if (permiso === 'es_admin')            return adminBool;
+        if (permiso === 'puede_validar_pagos') return validaPagosBool || writeBool;
+        if (permiso === 'puede_ver_mapa')      return verMapaBool;
+        if (permiso === 'puede_gestionar_encuestas') return gestionaEncuestasBool;
         return false;
     };
 

@@ -119,7 +119,6 @@ export function AuthProvider({ children }) {
     // Estos helpers centralizan la lógica de roles.
     // Ningún componente debería comparar strings de rol directamente.
     const isAdmin    = user?.rol === 'admin';
-    const isOperador = user?.rol === 'operador' || isAdmin;
     const canWrite   = user?.permisos?.puede_escribir ?? false;
     const canDelete  = user?.permisos?.puede_eliminar ?? false;
 
@@ -168,7 +167,6 @@ export function AuthProvider({ children }) {
         token,
         isLoading,
         isAdmin,
-        isOperador,
         canWrite,
         canDelete,
         // Métodos expuestos al resto de la app

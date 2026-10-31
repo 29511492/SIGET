@@ -30,7 +30,7 @@ class StoreVoceroRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return in_array($this->user()?->rol, ['admin', 'operador'], true);
+        return $this->user()?->rol === 'admin'; // oct-2026: el rol operador se eliminó
     }
 
     public function rules(): array
