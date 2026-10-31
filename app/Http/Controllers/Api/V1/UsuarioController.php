@@ -22,7 +22,8 @@ use Illuminate\Validation\Rule;
  *  cambiarse "por base de datos" — debe existir un módulo de
  *  configuración dentro del sistema.
  *
- *  Decisión de diseño (opción A): los 4 roles siguen siendo fijos
+ *  Decisión de diseño (opción A): los 3 roles (admin, vocero y usuario;
+ *  el operador se eliminó en oct-2026) siguen siendo fijos
  *  (enum users.rol). Este controlador gestiona la ASIGNACIÓN de
  *  roles y el estado de las cuentas; no toca el esquema.
  *
@@ -44,7 +45,7 @@ use Illuminate\Validation\Rule;
 class UsuarioController extends Controller
 {
     /** Roles válidos del sistema (fuente única para validación y matriz). */
-    public const ROLES = ['admin', 'operador', 'vocero', 'usuario'];
+    public const ROLES = ['admin', 'vocero', 'usuario'];
 
     private const ESTADOS       = ['activo', 'inactivo', 'bloqueado'];
     private const MAX_PER_PAGE  = 50;
@@ -53,10 +54,6 @@ class UsuarioController extends Controller
         'admin' => [
             'etiqueta'    => 'Administrador',
             'descripcion' => 'Gestión completa del sistema: eliminación de registros, auditoría y configuración de usuarios y roles.',
-        ],
-        'operador' => [
-            'etiqueta'    => 'Operador',
-            'descripcion' => 'Registra y edita el censo y los módulos comunales; no elimina registros ni accede a auditoría o configuración.',
         ],
         'vocero' => [
             'etiqueta'    => 'Vocero',

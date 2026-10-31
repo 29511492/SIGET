@@ -35,7 +35,6 @@ import './ConfiguracionPage.css';
 
 const ROLES = [
     { value: 'admin',    label: 'Administrador' },
-    { value: 'operador', label: 'Operador'      },
     { value: 'vocero',   label: 'Vocero'        },
     { value: 'usuario',  label: 'Ciudadano'     },
 ];

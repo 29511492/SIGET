@@ -32,15 +32,15 @@ class UserResource extends JsonResource
             // en lugar de comparar strings de rol directamente.
             'permisos' => [
                 'puede_leer'           => true,
-                'puede_escribir'       => in_array($this->rol, ['admin', 'operador'], true),
+                'puede_escribir'       => $this->rol === 'admin',
                 'puede_eliminar'       => $this->rol === 'admin',
                 'es_admin'             => $this->rol === 'admin',
                 // Corrección 3 (sept-2026): admin y vocero validan pagos;
-                // el operador se eliminará más adelante y no la gana.
+                // el rol operador se eliminó en oct-2026.
                 'puede_validar_pagos'  => in_array($this->rol, ['admin', 'vocero'], true),
                 // Oct-2026 (georreferenciación): el mapa de calor lo ven admin y
                 // vocero; crear encuestas, registrar entregas y asignar
-                // coordenadas es solo del admin. El operador no recibe nada nuevo.
+                // coordenadas es solo del admin.
                 'puede_ver_mapa'            => in_array($this->rol, ['admin', 'vocero'], true),
                 'puede_gestionar_encuestas' => $this->rol === 'admin',
             ],

@@ -13,7 +13,7 @@ use Illuminate\Validation\Rule;
  * Ruta física: app/Http/Requests/PagoQr/StorePagoQrRequest.php
  *
  * Usado por PagoQrController::store() — POST /v1/pagos, el flujo de
- * admin/operador: registrar un pago A NOMBRE DE UN HABITANTE (el
+ * admin: registrar un pago A NOMBRE DE UN HABITANTE (el
  * ciudadano sin usuario en el Portal, o que pagó en persona).
  *
  * CAMBIO (oct-2026, PagoForm por pasos): este request quedó alineado
@@ -30,13 +30,13 @@ use Illuminate\Validation\Rule;
  *   - habitante_id debe existir y NO estar dado de baja.
  *
  * authorize(): defensa en profundidad además del middleware de la ruta
- * (Capa 3). Al eliminar el rol operador (14.7-E), dejar solo 'admin'.
+ * (Capa 3, solo admin). El rol operador se eliminó en oct-2026 (14.7-E, Fase 1).
  */
 class StorePagoQrRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return in_array($this->user()?->rol, ['admin', 'operador'], true);
+        return $this->user()?->rol === 'admin';
     }
 
     public function rules(): array

@@ -35,9 +35,9 @@ class StoreFamiliaRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        // Solo operadores y admins pueden registrar familias
+        // Solo el admin puede registrar familias (el rol operador se eliminó en oct-2026)
         // (el AdminMiddleware ya protege la ruta — esto es una segunda barrera)
-        return in_array($this->user()?->rol, ['admin', 'operador'], true);
+        return $this->user()?->rol === 'admin';
     }
 
     public function rules(): array

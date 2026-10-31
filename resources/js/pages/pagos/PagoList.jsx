@@ -13,7 +13,7 @@
  *
  * CAMBIO (oct-2026, pendiente 14.9-D): botón "+ Registrar pago" que lleva
  * al asistente por pasos de PagoForm.jsx (solo para quien puede escribir:
- * admin y operador). Antes /pagos/nuevo solo se alcanzaba escribiendo la
+ * solo el admin). Antes /pagos/nuevo solo se alcanzaba escribiendo la
  * URL. La columna/campo Servicio ahora prefiere el nombre de la cuenta de
  * pago (cuenta_pago_nombre) y cae a organización o concepto como antes.
  */
@@ -43,7 +43,7 @@ export default function PagoList() {
     // Corrección 3 (sept-2026): solo admin y vocero validan pagos.
     const puedeValidar = user?.permisos?.puede_validar_pagos ?? (user?.rol === 'admin' || user?.rol === 'vocero');
     // Oct-2026: registrar un pago a nombre de un habitante (POST /pagos, Capa 3).
-    const puedeRegistrar = user?.permisos?.puede_escribir ?? (user?.rol === 'admin' || user?.rol === 'operador');
+    const puedeRegistrar = user?.permisos?.puede_escribir ?? user?.rol === 'admin';
 
     // ── Estado listado ─────────────────────────────────────────
     const [pagos,       setPagos]       = useState([]);

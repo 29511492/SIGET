@@ -44,6 +44,12 @@ import './DashboardPage.css';
  * el backend, instrucción del profesor). Ahora usa 'puede_escribir',
  * igual que Cuentas de Pago y Noticias.
  * ─────────────────────────────────────────────────────────────────
+ * FIX (oct-2026) — eliminación del rol operador (Fase 1)
+ * ─────────────────────────────────────────────────────────────────
+ * 'puede_escribir' (canWrite) ahora es solo admin; el respaldo de
+ * writeBool ya no considera 'operador'. La vista del rol operador
+ * (OperadorDashboard) se retiró del DashboardFactory.
+ * ─────────────────────────────────────────────────────────────────
  */
 export default function DashboardPage() {
     const { user, isLoading, logout, canWrite, isAdmin } = useAuth();
@@ -54,7 +60,7 @@ export default function DashboardPage() {
 
     // ── Booleanos defensivos ───────────────────────────────────
     const adminBool = Boolean(isAdmin  ?? (user?.rol === 'admin'));
-    const writeBool = Boolean(canWrite ?? (user?.rol === 'admin' || user?.rol === 'operador'));
+    const writeBool = Boolean(canWrite ?? user?.rol === 'admin');
     // Corrección 3 (sept-2026): admin y vocero validan pagos.
     const validaPagosBool = Boolean(
         user?.permisos?.puede_validar_pagos ?? (user?.rol === 'admin' || user?.rol === 'vocero')

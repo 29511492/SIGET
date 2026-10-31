@@ -153,7 +153,6 @@ class AuthController extends Controller
     {
         return match ($rol) {
             'admin'    => ['admin:read', 'admin:write', 'admin:delete'],
-            'operador' => ['admin:read', 'admin:write'],
             'vocero'   => ['admin:read'],
             default    => ['admin:read'],
         };

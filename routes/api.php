@@ -45,6 +45,15 @@
  *     entrega para varias familias (solo admin).
  *  4. vocero/resumen y vocero/tareas: las consume VoceroDashboard.jsx
  *     y no existían en api.php (el dashboard daba 404).
+ *
+ *  CAMBIO (oct-2026) — Eliminación del rol operador, Fase 1 (aplicación):
+ *  1. Capa 2 pasa de role:admin,operador,vocero a role:admin,vocero.
+ *  2. Capa 3 pasa de role:admin,operador a role:admin. Queda equivalente
+ *     a la Capa 4; se conserva como grupo separado para respetar la
+ *     estructura de 4 capas documentada (Documento Maestro 5.2).
+ *  3. Se retiró la ruta GET pagos/form-data: apuntaba a un método que
+ *     no existe en PagoQrController (formData) y ningún componente la usaba.
+ *  La Fase 2 (angostar el enum users.rol en la migración) sigue pendiente.
  * ═══════════════════════════════════════════════════════════════
  */
 
@@ -150,9 +159,9 @@ Route::prefix('v1')->group(function () {
 
 
         // ══════════════════════════════════════════════════════════
-        //  CAPA 2 — LECTURA (todos los roles autenticados)
+        //  CAPA 2 — LECTURA (admin + vocero)
         // ══════════════════════════════════════════════════════════
-        Route::middleware('role:admin,operador,vocero')->group(function () {
+        Route::middleware('role:admin,vocero')->group(function () {
 
             Route::get('dashboard/stats', [DashboardController::class, 'stats'])
                 ->name('api.v1.dashboard.stats');
@@ -208,10 +217,7 @@ Route::prefix('v1')->group(function () {
             Route::get('cuentas-pago/{cuenta}', [CuentaPagoController::class, 'show'])
                 ->name('api.v1.cuentas-pago.show');
 
-            // Pagos QR — estática form-data ANTES que la dinámica {pago}
-            Route::get('pagos/form-data', [PagoQrController::class, 'formData'])
-                ->name('api.v1.pagos.form-data');
-
+            // Pagos QR — lectura
             Route::get('pagos', [PagoQrController::class, 'index'])
                 ->name('api.v1.pagos.index');
 
@@ -228,7 +234,7 @@ Route::prefix('v1')->group(function () {
             Route::get('reportes/estadisticas-dashboard', [ReporteController::class, 'estadisticasDashboard'])
                 ->name('api.v1.reportes.estadisticas-dashboard');
 
-            // Sugerencias — lectura para admin, operador y vocero
+            // Sugerencias — lectura para admin y vocero
             Route::get('sugerencias', [SugerenciaController::class, 'index'])
                 ->name('api.v1.sugerencias.index');
         });
@@ -240,9 +246,8 @@ Route::prefix('v1')->group(function () {
         //
         //  Antes vivía en Capa 2 (admin,operador,vocero), lo que
         //  contradecía la tabla de roles del documento (el operador
-        //  no debía tener esta escritura). El operador se eliminará
-        //  más adelante, así que no se le agrega esta responsabilidad
-        //  ahora: queda fuera desde ya. El vocero SÍ puede validar
+        //  no debía tener esta escritura). El rol operador se eliminó
+        //  en oct-2026 (Fase 1 de 14.7-E). El vocero SÍ puede validar
         //  (decisión del estudiante); mantiene su lectura de pagos en
         //  Capa 2 sin cambios.
         // ══════════════════════════════════════════════════════════
@@ -287,13 +292,13 @@ Route::prefix('v1')->group(function () {
 
 
         // ══════════════════════════════════════════════════════════
-        //  CAPA 3 — ESCRITURA (admin + operador)
+        //  CAPA 3 — ESCRITURA (solo admin desde oct-2026; ver nota del encabezado)
         // ══════════════════════════════════════════════════════════
-        Route::middleware('role:admin,operador')->group(function () {
+        Route::middleware('role:admin')->group(function () {
 
             // Familias — lectura (incluye habitantes anidados en show()),
             // crear y editar (el payload de store/update incluye el array
-            // `habitantes[]` — ver FamiliaController). Solo admin + operador.
+            // `habitantes[]` — ver FamiliaController). Solo admin.
             Route::get('familias', [FamiliaController::class, 'index'])
                 ->name('api.v1.familias.index');
 
@@ -334,7 +339,7 @@ Route::prefix('v1')->group(function () {
             Route::put('organizaciones/{org}', [OrganizacionController::class, 'update'])
                 ->name('api.v1.organizaciones.update');
 
-            // Crear y editar cuentas de pago — admin/operador
+            // Crear y editar cuentas de pago — admin
             Route::post('cuentas-pago', [CuentaPagoController::class, 'store'])
                 ->name('api.v1.cuentas-pago.store');
 
@@ -369,7 +374,7 @@ Route::prefix('v1')->group(function () {
             // Estaba duplicada con la de Capa 4. El destroy de comunicados
             // es exclusivo del rol admin y vive únicamente en Capa 4.
 
-            // Noticias — crear, editar y publicar (admin + operador)
+            // Noticias — crear, editar y publicar (admin)
             // REGLA: estática /todas y /publicar ANTES que la dinámica {noticia}
             Route::post('noticias', [NoticiaController::class, 'store'])
                 ->name('api.v1.noticias.store');
@@ -380,7 +385,7 @@ Route::prefix('v1')->group(function () {
             Route::patch('noticias/{noticia}/publicar', [NoticiaController::class, 'publicar'])
                 ->name('api.v1.noticias.publicar');
 
-            // Sugerencias — revisar y responder (admin + operador)
+            // Sugerencias — revisar y responder (admin)
             Route::patch('sugerencias/{sugerencia}/revisar', [SugerenciaController::class, 'revisar'])
                 ->name('api.v1.sugerencias.revisar');
         });

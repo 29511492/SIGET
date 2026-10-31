@@ -7,13 +7,13 @@
  *    catch-all mandaba al admin a /login.
  *  · Rutas /cuentas-pago y /cuentas-pago/crear restauradas (faltaban:
  *    el sidebar y la tarjeta de AdminDashboard terminaban en /login).
- *  · /familias restringida a admin + operador: el vocero no accede a
+ *  · /familias restringida a admin: el vocero no accede a
  *    Familias (instrucción del profesor); el backend también lo bloquea.
  *
  * CAMBIOS (oct-2026, módulo de georreferenciación):
  *  · Rutas /encuestas y /encuestas/:id/respuestas (solo admin).
  *  · Ruta /mapa-calor (admin + vocero) y /mapa-calor/coordenadas (solo
- *    admin). El rol 'operador' NO recibe acceso: se eliminará.
+ *    admin). El rol 'operador' se eliminó en oct-2026.
  *
  * CAMBIOS (oct-2026, unificación de la pantalla de inicio del vocero):
  *  · El vocero entra directo a /dashboard (ver constants/roles.js).
@@ -21,11 +21,15 @@
  *    para que enlaces o favoritos viejos sigan funcionando. Se quitó
  *    el import de MiComunidad (el archivo puede borrarse del proyecto).
  *
- * CAMBIOS (oct-2026, registro de pagos por pasos para admin/operador):
- *  · /pagos/nuevo restringida a admin + operador (antes: cualquier rol
+ * CAMBIOS (oct-2026, registro de pagos por pasos para el admin):
+ *  · /pagos/nuevo restringida a admin (antes: cualquier rol
  *    autenticado; el backend POST /pagos es Capa 3 y devolvía 403).
- *  · /pagos restringida a admin + operador + vocero (GET /pagos es Capa 2;
+ *  · /pagos restringida a admin + vocero (GET /pagos es Capa 2;
  *    el rol usuario pagaba desde su Portal y recibía 403 al entrar).
+ *
+ * CAMBIOS (oct-2026, eliminación del rol operador, Fase 1):
+ *  · Todos los allowedRoles pierden 'operador'. Las rutas que eran de
+ *    admin + operador quedan solo para admin (Capa 3 = admin).
  */
 
 import './bootstrap';
@@ -269,7 +273,7 @@ const App = () => (
                     } />
 
                     <Route path="/familias" element={
-                        <ProtectedRoute allowedRoles={['admin', 'operador']}>
+                        <ProtectedRoute allowedRoles={['admin']}>
                             <FamiliaList />
                         </ProtectedRoute>
                     } />
@@ -299,37 +303,37 @@ const App = () => (
                     } />
 
                     <Route path="/pagos" element={
-                        <ProtectedRoute allowedRoles={['admin', 'operador', 'vocero']}>
+                        <ProtectedRoute allowedRoles={['admin', 'vocero']}>
                             <PagoList />
                         </ProtectedRoute>
                     } />
 
 
-                    {/* ══ PRIVADAS — ADMIN + OPERADOR ═════════════════════════
+                    {/* ══ PRIVADAS — SOLO ADMIN ═════════════════════════
                         NOTA: /familias/crear fue eliminada — el registro de
                         familias ahora es un modal dentro de /familias
                         (FamiliaList.jsx → FormModal → FamiliaForm.jsx).     */}
 
                     <Route path="/voceros/crear" element={
-                        <ProtectedRoute allowedRoles={['admin', 'operador']}>
+                        <ProtectedRoute allowedRoles={['admin']}>
                             <VoceroForm />
                         </ProtectedRoute>
                     } />
 
                     <Route path="/proyectos/crear" element={
-                        <ProtectedRoute allowedRoles={['admin', 'operador']}>
+                        <ProtectedRoute allowedRoles={['admin']}>
                             <ProyectoForm />
                         </ProtectedRoute>
                     } />
 
                     <Route path="/proyectos/editar/:id" element={
-                        <ProtectedRoute allowedRoles={['admin', 'operador']}>
+                        <ProtectedRoute allowedRoles={['admin']}>
                             <ProyectoForm />
                         </ProtectedRoute>
                     } />
 
                     <Route path="/beneficios/nuevo" element={
-                        <ProtectedRoute allowedRoles={['admin', 'operador']}>
+                        <ProtectedRoute allowedRoles={['admin']}>
                             <BeneficioForm />
                         </ProtectedRoute>
                     } />
@@ -375,57 +379,57 @@ const App = () => (
 
                     {/* Cuentas de pago — estática /crear ANTES que la lista */}
                     <Route path="/cuentas-pago/crear" element={
-                        <ProtectedRoute allowedRoles={['admin', 'operador']}>
+                        <ProtectedRoute allowedRoles={['admin']}>
                             <CuentaPagoForm />
                         </ProtectedRoute>
                     } />
 
                     <Route path="/cuentas-pago" element={
-                        <ProtectedRoute allowedRoles={['admin', 'operador']}>
+                        <ProtectedRoute allowedRoles={['admin']}>
                             <CuentaPagoList />
                         </ProtectedRoute>
                     } />
 
                     <Route path="/organizaciones/crear" element={
-                        <ProtectedRoute allowedRoles={['admin', 'operador']}>
+                        <ProtectedRoute allowedRoles={['admin']}>
                             <OrganizacionForm />
                         </ProtectedRoute>
                     } />
 
                     <Route path="/organizaciones/editar/:id" element={
-                        <ProtectedRoute allowedRoles={['admin', 'operador']}>
+                        <ProtectedRoute allowedRoles={['admin']}>
                             <OrganizacionForm />
                         </ProtectedRoute>
                     } />
 
                     <Route path="/pagos/nuevo" element={
-                        <ProtectedRoute allowedRoles={['admin', 'operador']}>
+                        <ProtectedRoute allowedRoles={['admin']}>
                             <PagoForm />
                         </ProtectedRoute>
                     } />
 
                     {/* Comunicados — rutas estáticas ANTES que dinámicas */}
                     <Route path="/comunicados/nuevo" element={
-                        <ProtectedRoute allowedRoles={['admin', 'operador']}>
+                        <ProtectedRoute allowedRoles={['admin']}>
                             <ComunicadoForm />
                         </ProtectedRoute>
                     } />
 
                     <Route path="/comunicados" element={
-                        <ProtectedRoute allowedRoles={['admin', 'operador']}>
+                        <ProtectedRoute allowedRoles={['admin']}>
                             <ComunicadoList />
                         </ProtectedRoute>
                     } />
 
                     {/* /editar ANTES que /:id — regla de rutas estáticas primero */}
                     <Route path="/comunicados/:id/editar" element={
-                        <ProtectedRoute allowedRoles={['admin', 'operador']}>
+                        <ProtectedRoute allowedRoles={['admin']}>
                             <ComunicadoEdit />
                         </ProtectedRoute>
                     } />
 
                     <Route path="/comunicados/:id" element={
-                        <ProtectedRoute allowedRoles={['admin', 'operador']}>
+                        <ProtectedRoute allowedRoles={['admin']}>
                             <ComunicadoDetail />
                         </ProtectedRoute>
                     } />
@@ -435,34 +439,34 @@ const App = () => (
                         REGLA: estáticas (/noticias/nueva) ANTES que
                         dinámicas (/noticias/:id/editar)                      */}
 
-                    {/* Listado — admin y operador */}
+                    {/* Listado — solo admin */}
                     <Route path="/noticias" element={
-                        <ProtectedRoute allowedRoles={['admin', 'operador']}>
+                        <ProtectedRoute allowedRoles={['admin']}>
                             <NoticiaList />
                         </ProtectedRoute>
                     } />
 
-                    {/* Crear — admin y operador */}
+                    {/* Crear — solo admin */}
                     <Route path="/noticias/nueva" element={
-                        <ProtectedRoute allowedRoles={['admin', 'operador']}>
+                        <ProtectedRoute allowedRoles={['admin']}>
                             <NoticiaForm />
                         </ProtectedRoute>
                     } />
 
-                    {/* Editar — admin y operador */}
+                    {/* Editar — solo admin */}
                     <Route path="/noticias/:id/editar" element={
-                        <ProtectedRoute allowedRoles={['admin', 'operador']}>
+                        <ProtectedRoute allowedRoles={['admin']}>
                             <NoticiaForm />
                         </ProtectedRoute>
                     } />
 
 
                     {/* ══ SUGERENCIAS ═════════════════════════════════════════
-                        Panel accesible para admin, operador y vocero.
+                        Panel accesible para admin y vocero.
                         El widget de envío vive en PerfilPage y, para el vocero,
                         en la parte superior de SugerenciaPanel.              */}
                     <Route path="/sugerencias" element={
-                        <ProtectedRoute allowedRoles={['admin', 'operador', 'vocero']}>
+                        <ProtectedRoute allowedRoles={['admin', 'vocero']}>
                             <SugerenciaPanel />
                         </ProtectedRoute>
                     } />
@@ -484,7 +488,7 @@ const App = () => (
                         para todos por compatibilidad con enlaces existentes,
                         aunque el login ahora manda a usuario a /dashboard. */}
                     <Route path="/perfil" element={
-                        <ProtectedRoute allowedRoles={['usuario', 'admin', 'operador', 'vocero']}>
+                        <ProtectedRoute allowedRoles={['usuario', 'admin', 'vocero']}>
                             <PerfilRouter />
                         </ProtectedRoute>
                     } />

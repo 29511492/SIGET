@@ -152,7 +152,7 @@ class User extends Authenticatable
         return $this->hasMany(Sugerencia::class);
     }
 
-    /** Sugerencias que este usuario revisó (admin/operador). */
+    /** Sugerencias que este usuario revisó (admin). */
     public function sugerenciasRevisadas(): HasMany
     {
         return $this->hasMany(Sugerencia::class, 'revisada_por');
@@ -198,11 +198,6 @@ class User extends Authenticatable
         return $this->rol === 'admin';
     }
 
-    public function esOperador(): bool
-    {
-        return in_array($this->rol, ['admin', 'operador'], true);
-    }
-
     public function puedeEliminar(): bool
     {
         return $this->rol === 'admin';
@@ -212,8 +207,8 @@ class User extends Authenticatable
      * Quién puede validar (verificar/rechazar) pagos QR.
      * Corrección 3 del profesor (sept-2026): antes cualquier rol de
      * Capa 2 (admin, operador, vocero) podía validar — contradecía
-     * la tabla de roles del documento. Ahora solo admin y vocero; el
-     * operador se eliminará más adelante y no gana esta capacidad.
+     * la tabla de roles del documento. Ahora solo admin y vocero
+     * (el rol operador se eliminó en oct-2026, Fase 1 de 14.7-E).
      */
     public function puedeValidarPagos(): bool
     {

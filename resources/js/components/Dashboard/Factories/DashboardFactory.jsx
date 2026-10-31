@@ -27,7 +27,7 @@
  *  getDashboardComponent().
  *
  *  BENEFICIOS para la tesis:
- *  - Open/Closed Principle: agregar un nuevo rol (ej: 'operador')
+ *  - Open/Closed Principle: agregar un nuevo rol (ej: 'auditor')
  *    solo requiere agregar una entrada al REGISTRY. Cero cambios
  *    en DashboardPage ni en los componentes existentes.
  *  - Single Responsibility: la lógica de "qué dashboard mostrar"
@@ -50,11 +50,14 @@
  *    - No tiene sidebar de módulos administrativos
  *    - Solo consume endpoints de Capa 1 (auth:sanctum, todos los roles)
  *    - Presenta un diseño visual tipo portal ciudadano
+ *
+ *  FIX (oct-2026) — eliminación del rol operador (Fase 1):
+ *  se retiró 'operador → OperadorDashboard' del REGISTRY. El archivo
+ *  Views/OperadorDashboard.jsx queda huérfano y puede borrarse.
  * ═══════════════════════════════════════════════════════════════
  */
 
 import AdminDashboard    from '../Views/AdminDashboard';
-import OperadorDashboard from '../Views/OperadorDashboard';
 import VoceroDashboard   from '../Views/VoceroDashboard';
 import UsuarioDashboard  from '../Views/UsuarioDashboard';
 import FallbackDashboard from '../Views/FallbackDashboard';
@@ -70,7 +73,6 @@ import FallbackDashboard from '../Views/FallbackDashboard';
  */
 const DASHBOARD_REGISTRY = {
     admin:    AdminDashboard,
-    operador: OperadorDashboard,
     vocero:   VoceroDashboard,
     usuario:  UsuarioDashboard,  // FIX: ya no comparte vista con vocero
 };
