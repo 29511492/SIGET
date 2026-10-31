@@ -10,6 +10,12 @@
  * El operador conserva la lectura del listado pero ya no ve estos
  * botones — antes se le mostraban aunque el backend terminara
  * rechazando la acción.
+ *
+ * CAMBIO (oct-2026, pendiente 14.9-D): botón "+ Registrar pago" que lleva
+ * al asistente por pasos de PagoForm.jsx (solo para quien puede escribir:
+ * admin y operador). Antes /pagos/nuevo solo se alcanzaba escribiendo la
+ * URL. La columna/campo Servicio ahora prefiere el nombre de la cuenta de
+ * pago (cuenta_pago_nombre) y cae a organización o concepto como antes.
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -36,6 +42,8 @@ export default function PagoList() {
     const { isAdmin, user } = useAuth();
     // Corrección 3 (sept-2026): solo admin y vocero validan pagos.
     const puedeValidar = user?.permisos?.puede_validar_pagos ?? (user?.rol === 'admin' || user?.rol === 'vocero');
+    // Oct-2026: registrar un pago a nombre de un habitante (POST /pagos, Capa 3).
+    const puedeRegistrar = user?.permisos?.puede_escribir ?? (user?.rol === 'admin' || user?.rol === 'operador');
 
     // ── Estado listado ─────────────────────────────────────────
     const [pagos,       setPagos]       = useState([]);
@@ -166,6 +174,15 @@ export default function PagoList() {
                             ) : 'Cargando...'}
                         </p>
                     </div>
+                    {puedeRegistrar && (
+                        <button
+                            type="button"
+                            className="list-btn list-btn--primary"
+                            onClick={() => navigate('/pagos/nuevo')}
+                        >
+                            + Registrar pago
+                        </button>
+                    )}
                 </div>
 
                 {/* ── Toolbar ───────────────────────────────── */}
@@ -259,7 +276,7 @@ export default function PagoList() {
                                                 )}
                                             </td>
                                             <td className="td-meta">
-                                                {pago.organizacion_nombre || pago.concepto_pago || '—'}
+                                                {pago.cuenta_pago_nombre || pago.organizacion_nombre || pago.concepto_pago || '—'}
                                             </td>
                                             <td className="td-center pago-monto">
                                                 Bs. {Number(pago.monto).toFixed(2)}
@@ -342,10 +359,10 @@ export default function PagoList() {
                                 </div>
                                 <div className="pago-dato">
                                     <span className="pago-dato__label">
-                                        {modalPago.organizacion_nombre ? 'Servicio' : 'Servicio (indicado por el usuario)'}
+                                        {(modalPago.cuenta_pago_nombre || modalPago.organizacion_nombre) ? 'Servicio' : 'Servicio (indicado por el usuario)'}
                                     </span>
                                     <span className="pago-dato__value">
-                                        {modalPago.organizacion_nombre || modalPago.concepto_pago || '—'}
+                                        {modalPago.cuenta_pago_nombre || modalPago.organizacion_nombre || modalPago.concepto_pago || '—'}
                                     </span>
                                 </div>
                                 <div className="pago-dato">

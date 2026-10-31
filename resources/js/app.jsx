@@ -20,6 +20,12 @@
  *  · /mi-comunidad ya no renderiza MiComunidad: redirige a /dashboard
  *    para que enlaces o favoritos viejos sigan funcionando. Se quitó
  *    el import de MiComunidad (el archivo puede borrarse del proyecto).
+ *
+ * CAMBIOS (oct-2026, registro de pagos por pasos para admin/operador):
+ *  · /pagos/nuevo restringida a admin + operador (antes: cualquier rol
+ *    autenticado; el backend POST /pagos es Capa 3 y devolvía 403).
+ *  · /pagos restringida a admin + operador + vocero (GET /pagos es Capa 2;
+ *    el rol usuario pagaba desde su Portal y recibía 403 al entrar).
  */
 
 import './bootstrap';
@@ -293,7 +299,7 @@ const App = () => (
                     } />
 
                     <Route path="/pagos" element={
-                        <ProtectedRoute>
+                        <ProtectedRoute allowedRoles={['admin', 'operador', 'vocero']}>
                             <PagoList />
                         </ProtectedRoute>
                     } />
@@ -393,7 +399,7 @@ const App = () => (
                     } />
 
                     <Route path="/pagos/nuevo" element={
-                        <ProtectedRoute>
+                        <ProtectedRoute allowedRoles={['admin', 'operador']}>
                             <PagoForm />
                         </ProtectedRoute>
                     } />

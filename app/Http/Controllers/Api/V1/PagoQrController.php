@@ -7,6 +7,7 @@ use App\Http\Requests\PagoQr\StorePagoQrRequest;
 use App\Http\Requests\PagoQr\StorePagoUsuarioRequest;
 use App\Http\Requests\PagoQr\ValidarPagoQrRequest;
 use App\Http\Resources\PagoQrResource;
+use App\Models\Habitante;
 use App\Models\PagoQr;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,6 +19,14 @@ use Illuminate\Support\Facades\Storage;
  * storeUsuario() ahora guarda `metodo_pago` y `banco_origen`
  * (StorePagoUsuarioRequest ya validó que metodo_pago coincida con
  * el método real de la cuenta elegida).
+ *
+ * CAMBIO (oct-2026, PagoForm por pasos para admin/operador) —
+ * store() hace lo mismo para el flujo admin/operador: guarda
+ * `cuenta_pago_id`, `metodo_pago` y `banco_origen` (antes no los
+ * recibía y todo pago quedaba como "pago móvil" por el default de la
+ * columna), exige comprobante y deduce `familia_id` del habitante en
+ * el servidor en vez de confiar en el cliente. Se arma el arreglo
+ * campo por campo (no se pasa $validated completo a create()).
  */
 
 class PagoQrController extends Controller
@@ -69,27 +78,46 @@ class PagoQrController extends Controller
 
     // ─── POST /v1/pagos ──────────────────────────────────────────
     // Flujo admin/operador: registra un pago vinculado a un habitante.
+    // StorePagoQrRequest ya validó: habitante vigente, cuenta activa,
+    // método coincidente con la cuenta, banco de origen (transferencia),
+    // fecha dentro de 30 días y comprobante presente.
     public function store(StorePagoQrRequest $request): JsonResponse
     {
         $validated = $request->validated();
 
+        // La familia se deduce del habitante: no se confía en el cliente.
+        $habitante = Habitante::findOrFail($validated['habitante_id']);
+
         // ── Subida del comprobante ────────────────────────────────
         // Se guarda en storage/app/public/comprobantes/YYYY/MM/
         // Accesible via /storage/comprobantes/... con storage:link
-        if ($request->hasFile('comprobante')) {
-            $path = $request->file('comprobante')->store(
-                'comprobantes/' . now()->format('Y/m'),
-                'public'
-            );
-            $validated['comprobante_path'] = $path;
+        $path = $request->file('comprobante')->store(
+            'comprobantes/' . now()->format('Y/m'),
+            'public'
+        );
+
+        try {
+            $pago = PagoQr::create([
+                'habitante_id'        => $habitante->id,
+                'familia_id'          => $habitante->familia_id,
+                'cuenta_pago_id'      => $validated['cuenta_pago_id'],
+                'referencia_bancaria' => $validated['referencia_bancaria'],
+                'monto'               => $validated['monto'],
+                'concepto_pago'       => $validated['concepto_pago'],
+                'metodo_pago'         => $validated['metodo_pago'],
+                'banco_origen'        => $validated['banco_origen'] ?? null,
+                'fecha_pago'          => $validated['fecha_pago'],
+                'comprobante_path'    => $path,
+                // El estado siempre inicia en 'pendiente' — nunca desde el cliente
+                'estado'              => 'pendiente',
+            ]);
+        } catch (\Throwable $e) {
+            // Si falla el INSERT no dejar el comprobante huérfano en disco
+            Storage::disk('public')->delete($path);
+            throw $e;
         }
 
-        // El estado siempre inicia en 'pendiente' — nunca desde el cliente
-        $validated['estado']     = 'pendiente';
-        $validated['fecha_pago'] = $validated['fecha_pago'] ?? now();
-
-        $pago = PagoQr::create($validated);
-        $pago->load(['habitante', 'familia', 'organizacion']);
+        $pago->load(['habitante', 'familia', 'cuentaPago']);
 
         return response()->json([
             'message' => 'Pago registrado correctamente. Queda pendiente de verificación.',
