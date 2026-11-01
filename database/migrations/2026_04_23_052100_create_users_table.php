@@ -27,6 +27,11 @@ use Illuminate\Support\Facades\Schema;
  *  4. `habitante_id` (nullable, set null): vincula al usuario con
  *     su registro del censo. Es opcional porque un admin técnico
  *     puede no estar en el padrón comunal.
+ *
+ *  5. (oct-2026) El ENUM de `rol` ya no incluye 'operador': el rol se
+ *     eliminó del sistema (Documento Maestro 14.7-E y 14.10). La base
+ *     de datos en uso se alinea con el script SQL de la Fase 2; esta
+ *     migración deja la instalación limpia con el esquema final.
  * ═══════════════════════════════════════════════════════════════
  */
 return new class extends Migration
@@ -51,7 +56,7 @@ return new class extends Migration
             $table->timestamp('otp_expires_at')->nullable();
 
             // ENUM estricto: evita valores arbitrarios como 'superAdmin'
-            $table->enum('rol', ['admin', 'operador', 'vocero', 'usuario'])
+            $table->enum('rol', ['admin', 'vocero', 'usuario'])
                 ->default('usuario');
 
             // Vínculo opcional con el censo
