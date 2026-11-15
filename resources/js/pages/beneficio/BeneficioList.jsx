@@ -8,6 +8,13 @@
  *   apiClient    → '../../services/axios'
  *   useAuth      → '../../hooks/useAuth'
  *   ConfirmModal → '../../components/ui/ConfirmModal'
+ *
+ * FIX (nov-2026) — observaciones del profesor al rol admin (#4)
+ * El botón "+ Registrar Beneficio" navegaba a '/beneficios/crear', ruta
+ * que no existe en app.jsx (la real es '/beneficios/nuevo'). El comodín
+ * del router mandaba al usuario a /login y de ahí, ya autenticado, al
+ * dashboard. Corregido para apuntar a '/beneficios/nuevo', la misma ruta
+ * que usa la tarjeta "Entregar Beneficio" de AdminDashboard.jsx.
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -162,7 +169,7 @@ export default function BeneficioList() {
                     {canWrite && (
                         <button
                             className="list-btn list-btn--primary"
-                            onClick={() => navigate('/beneficios/crear')}
+                            onClick={() => navigate('/beneficios/nuevo')}
                         >
                             + Registrar Beneficio
                         </button>
