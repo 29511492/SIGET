@@ -31,7 +31,7 @@ class StoreEncuestaRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'tipo.in'                      => 'El tipo debe ser bombona_gas, bolsa_clap u otro.',
+            'tipo.in'                      => 'El tipo de encuesta no es válido.',
             'fecha_cierre.after_or_equal'  => 'La fecha de cierre no puede ser anterior a la de inicio.',
         ];
     }

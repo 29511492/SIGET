@@ -9,10 +9,14 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * ═══════════════════════════════════════════════════════════════
- *  EncuestaRespuesta — Entrega registrada por familia
+ *  EncuestaRespuesta — Entrega (o estado del servicio) registrada por familia
  * ───────────────────────────────────────────────────────────────
  *  Tabla: encuesta_respuestas
  *  Migración: 2026_09_15_000002_create_encuesta_respuestas_table.php
+ *
+ *  `cantidad` se usa en las encuestas de entrega (gas, CLAP, combo, otro) y
+ *  `estado` en las de agua (llega | intermitente | no_llega); en cada fila
+ *  solo uno de los dos trae valor, por eso ambos son nullable.
  *
  *  SoftDeletes: una corrección no destruye el historial que usa el
  *  EstimadorConsumoService para proyectar el agotamiento.
@@ -32,6 +36,7 @@ class EncuestaRespuesta extends Model
         'encuesta_id',
         'familia_id',
         'cantidad',
+        'estado',
         'fecha_entrega',
         'observaciones',
     ];

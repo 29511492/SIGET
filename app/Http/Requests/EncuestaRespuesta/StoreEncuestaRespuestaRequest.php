@@ -18,6 +18,9 @@ use Illuminate\Validation\Rule;
  *  - la fecha no puede ser futura
  *  - la encuesta debe estar activa
  *  - no se repite la misma familia + encuesta + fecha (ignora bajas)
+ *  - encuesta de entrega → `cantidad` obligatoria y `estado` prohibido;
+ *    encuesta de agua   → `estado` obligatorio y `cantidad` prohibida
+ *  - la encuesta de condición de vivienda sale del censo: no admite registros
  */
 class StoreEncuestaRespuestaRequest extends FormRequest
 {
@@ -28,12 +31,25 @@ class StoreEncuestaRespuestaRequest extends FormRequest
 
     public function rules(): array
     {
+        $esEstado = $this->encuestaDeLaRuta()?->esDeEstado() === true;
+
         return [
             'familia_id'    => ['required', 'integer', Rule::exists('familias', 'id')->whereNull('deleted_at')],
-            'cantidad'      => ['required', 'integer', 'min:1', 'max:99'],
+            // Encuesta de entrega → cantidad; encuesta de agua → estado (nunca los dos)
+            'cantidad'      => $esEstado ? ['prohibited'] : ['required', 'integer', 'min:1', 'max:99'],
+            'estado'        => $esEstado
+                ? ['required', 'string', Rule::in(Encuesta::ESTADOS_AGUA)]
+                : ['prohibited'],
             'fecha_entrega' => ['required', 'date', 'before_or_equal:today'],
             'observaciones' => ['nullable', 'string', 'max:500'],
         ];
+    }
+
+    private function encuestaDeLaRuta(): ?Encuesta
+    {
+        $encuesta = $this->route('encuesta');
+
+        return $encuesta instanceof Encuesta ? $encuesta : null;
     }
 
     public function messages(): array
@@ -41,6 +57,10 @@ class StoreEncuestaRespuestaRequest extends FormRequest
         return [
             'familia_id.exists'            => 'La familia seleccionada no existe o fue dada de baja.',
             'cantidad.min'                 => 'La cantidad debe ser al menos 1.',
+            'cantidad.prohibited'          => 'Esta encuesta registra el estado del servicio, no una cantidad.',
+            'estado.required'              => 'Selecciona el estado del servicio.',
+            'estado.in'                    => 'El estado debe ser: llega, intermitente o no llega.',
+            'estado.prohibited'            => 'Esta encuesta registra cantidades, no un estado.',
             'fecha_entrega.before_or_equal' => 'La fecha de entrega no puede ser futura.',
         ];
     }
@@ -48,12 +68,20 @@ class StoreEncuestaRespuestaRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator) {
+            /** @var Encuesta|null $encuesta */
+            $encuesta = $this->route('encuesta');
+
+            if ($encuesta instanceof Encuesta && ! $encuesta->aceptaRespuestas()) {
+                $validator->errors()->add(
+                    'encuesta',
+                    'Esta encuesta se calcula con el censo de viviendas y no admite registros.'
+                );
+                return;
+            }
+
             if ($validator->errors()->isNotEmpty()) {
                 return; // primero deben pasar las reglas básicas
             }
-
-            /** @var Encuesta|null $encuesta */
-            $encuesta = $this->route('encuesta');
 
             if (! $encuesta instanceof Encuesta) {
                 return;

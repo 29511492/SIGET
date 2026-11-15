@@ -7,6 +7,7 @@ use App\Models\Familia;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Validation\Rule;
 
 /**
  * Registro masivo: una misma entrega (cantidad + fecha) aplicada a varias
@@ -17,6 +18,9 @@ use Illuminate\Http\Exceptions\HttpResponseException;
  *  · solo admin (el rol operador no recibe permisos nuevos);
  *  · cantidad entre 1 y 99 y fecha no futura, igual que el registro individual;
  *  · la encuesta debe estar activa;
+ *  · encuesta de agua: se aplica el mismo `estado` en lugar de la cantidad
+ *    (y la cantidad queda prohibida); la de condición de vivienda no admite
+ *    registros porque sale del censo;
  *  · la existencia de las familias se comprueba con UNA consulta (la versión
  *    original hacía una por cada familia, hasta 500).
  */
@@ -29,10 +33,16 @@ class StoreEncuestaRespuestaMasivaRequest extends FormRequest
 
     public function rules(): array
     {
+        $encuesta = $this->route('encuesta');
+        $esEstado = $encuesta instanceof Encuesta && $encuesta->esDeEstado();
+
         return [
             'familia_ids'   => ['required', 'array', 'min:1', 'max:500'],
             'familia_ids.*' => ['integer', 'distinct'],
-            'cantidad'      => ['required', 'integer', 'min:1', 'max:99'],
+            'cantidad'      => $esEstado ? ['prohibited'] : ['required', 'integer', 'min:1', 'max:99'],
+            'estado'        => $esEstado
+                ? ['required', 'string', Rule::in(Encuesta::ESTADOS_AGUA)]
+                : ['prohibited'],
             'fecha_entrega' => ['required', 'date', 'before_or_equal:today'],
             'observaciones' => ['nullable', 'string', 'max:500'],
         ];
@@ -54,6 +64,10 @@ class StoreEncuestaRespuestaMasivaRequest extends FormRequest
             'familia_ids.min'               => 'Selecciona al menos una familia.',
             'familia_ids.max'               => 'No puedes registrar más de 500 familias a la vez.',
             'cantidad.min'                  => 'La cantidad debe ser al menos 1.',
+            'cantidad.prohibited'           => 'Esta encuesta registra el estado del servicio, no una cantidad.',
+            'estado.required'               => 'Selecciona el estado del servicio.',
+            'estado.in'                     => 'El estado debe ser: llega, intermitente o no llega.',
+            'estado.prohibited'             => 'Esta encuesta registra cantidades, no un estado.',
             'fecha_entrega.before_or_equal' => 'La fecha de entrega no puede ser futura.',
         ];
     }
@@ -61,12 +75,20 @@ class StoreEncuestaRespuestaMasivaRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator) {
+            /** @var Encuesta|null $encuesta */
+            $encuesta = $this->route('encuesta');
+
+            if ($encuesta instanceof Encuesta && ! $encuesta->aceptaRespuestas()) {
+                $validator->errors()->add(
+                    'encuesta',
+                    'Esta encuesta se calcula con el censo de viviendas y no admite registros.'
+                );
+                return;
+            }
+
             if ($validator->errors()->isNotEmpty()) {
                 return; // primero deben pasar las reglas básicas
             }
-
-            /** @var Encuesta|null $encuesta */
-            $encuesta = $this->route('encuesta');
 
             if ($encuesta instanceof Encuesta && ! $encuesta->activa) {
                 $validator->errors()->add('encuesta', 'La encuesta está cerrada: no admite nuevas entregas.');

@@ -2,10 +2,12 @@
 
 namespace App\Http\Requests\EncuestaRespuesta;
 
+use App\Models\Encuesta;
 use App\Models\EncuestaRespuesta;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Validation\Rule;
 
 /**
  * Corregir una entrega ya registrada. Solo admin.
@@ -21,8 +23,15 @@ class UpdateEncuestaRespuestaRequest extends FormRequest
 
     public function rules(): array
     {
+        $respuesta = $this->route('encuestaRespuesta');
+        $esEstado  = $respuesta instanceof EncuestaRespuesta && $respuesta->encuesta?->esDeEstado() === true;
+
         return [
-            'cantidad'      => ['sometimes', 'required', 'integer', 'min:1', 'max:99'],
+            // Encuesta de entrega → cantidad; encuesta de agua → estado (nunca los dos)
+            'cantidad'      => $esEstado ? ['prohibited'] : ['sometimes', 'required', 'integer', 'min:1', 'max:99'],
+            'estado'        => $esEstado
+                ? ['sometimes', 'required', 'string', Rule::in(Encuesta::ESTADOS_AGUA)]
+                : ['prohibited'],
             'fecha_entrega' => ['sometimes', 'required', 'date', 'before_or_equal:today'],
             'observaciones' => ['nullable', 'string', 'max:500'],
         ];
@@ -32,6 +41,9 @@ class UpdateEncuestaRespuestaRequest extends FormRequest
     {
         return [
             'cantidad.min'                  => 'La cantidad debe ser al menos 1.',
+            'cantidad.prohibited'           => 'Esta encuesta registra el estado del servicio, no una cantidad.',
+            'estado.in'                     => 'El estado debe ser: llega, intermitente o no llega.',
+            'estado.prohibited'             => 'Esta encuesta registra cantidades, no un estado.',
             'fecha_entrega.before_or_equal' => 'La fecha de entrega no puede ser futura.',
         ];
     }

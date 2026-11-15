@@ -61,7 +61,8 @@ class EncuestaRespuestaController extends Controller
     }
 
     /**
-     * Registra la MISMA entrega para varias familias a la vez.
+     * Registra la MISMA entrega (o el mismo estado, en las encuestas de agua)
+     * para varias familias a la vez.
      * POST /v1/encuestas/{encuesta}/respuestas/masivo
      *
      * Propuesta de la compañera que diseñó el módulo (el camión de gas reparte
@@ -99,7 +100,8 @@ class EncuestaRespuestaController extends Controller
 
                 $encuesta->respuestas()->create([
                     'familia_id'    => $familiaId,
-                    'cantidad'      => $datos['cantidad'],
+                    'cantidad'      => $datos['cantidad'] ?? null,
+                    'estado'        => $datos['estado'] ?? null,
                     'fecha_entrega' => $datos['fecha_entrega'],
                     'observaciones' => $datos['observaciones'] ?? null,
                 ]);
@@ -108,14 +110,23 @@ class EncuestaRespuestaController extends Controller
             }
         });
 
-        $mensaje = $registradas === 0
-            ? 'No se registró ninguna entrega.'
-            : 'Se ' . ($registradas === 1 ? 'registró 1 entrega.' : "registraron {$registradas} entregas.");
+        // Las encuestas de agua guardan "registros" de estado; las demás, "entregas"
+        $esEstado = $encuesta->esDeEstado();
+
+        $mensaje = match (true) {
+            $registradas === 0 => $esEstado ? 'No se guardó ningún registro.' : 'No se registró ninguna entrega.',
+            $registradas === 1 => $esEstado ? 'Se guardó 1 registro.' : 'Se registró 1 entrega.',
+            default            => $esEstado
+                ? "Se guardaron {$registradas} registros."
+                : "Se registraron {$registradas} entregas.",
+        };
 
         if ($omitidas > 0) {
+            $previo = $esEstado ? 'un registro' : 'una entrega';
+
             $mensaje .= $omitidas === 1
-                ? ' 1 familia se omitió porque ya tenía una entrega ese mismo día.'
-                : " {$omitidas} familias se omitieron porque ya tenían una entrega ese mismo día.";
+                ? " 1 familia se omitió porque ya tenía {$previo} ese mismo día."
+                : " {$omitidas} familias se omitieron porque ya tenían {$previo} ese mismo día.";
         }
 
         return response()->json([

@@ -31,11 +31,27 @@ use Illuminate\Support\Facades\DB;
  *  Las diferencias de días se calculan con timestamps (no con
  *  Carbon::diffInDays) para que el resultado no dependa de la
  *  versión de Carbon (en Carbon 3 devuelve float y con signo).
+ *
+ *  AMPLIACIÓN (nov-2026): además de la predicción de agotamiento (gas) y la
+ *  cobertura (CLAP, combo, otros), el servicio resume por calle el ESTADO del
+ *  servicio de agua (último estado registrado de cada familia) y la CONDICIÓN
+ *  DE VIVIENDA tomada del censo. Todos devuelven el mismo riesgo
+ *  (0 = bien, 1 = atención, 2 = crítico, null = sin datos) para que el mapa
+ *  los pinte igual.
  * ═══════════════════════════════════════════════════════════════
  */
 class EstimadorConsumoService
 {
     public const DIAS_ALERTA_PROXIMO = 7;
+
+    /**
+     * Umbrales del mapa de condición de vivienda (proporción de familias de la calle):
+     *  - crítico (2):  al menos 30 % de viviendas en condición crítica
+     *  - atención (1): alguna vivienda crítica, o al menos la mitad en condición regular
+     *  - bien (0):     el resto
+     */
+    public const UMBRAL_VIVIENDA_CRITICAS  = 0.30;
+    public const UMBRAL_VIVIENDA_REGULARES = 0.50;
 
     private const SEGUNDOS_POR_DIA = 86400;
 
@@ -174,6 +190,157 @@ class EstimadorConsumoService
             ->groupBy('familia_id')
             ->pluck('ultima', 'familia_id')
             ->map(fn ($fecha) => Carbon::parse($fecha)->toDateString());
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  Familias — estado del servicio (agua)
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Último estado registrado de cada familia en una encuesta de estado, con
+     * UNA sola consulta. Si una familia tiene varios registros vale el de fecha
+     * más reciente (a igual fecha, el último creado).
+     *
+     * @param  array<int,int>|Collection  $familiaIds
+     * @return Collection  familia_id => ['estado' => string, 'fecha' => 'Y-m-d'|null]
+     */
+    public function ultimoEstadoPorFamilia(array|Collection $familiaIds, int $encuestaId): Collection
+    {
+        $ids = collect($familiaIds)->map(fn ($id) => (int) $id)->unique()->values()->all();
+
+        if ($ids === []) {
+            return collect();
+        }
+
+        return EncuestaRespuesta::query()
+            ->where('encuesta_id', $encuestaId)
+            ->whereIn('familia_id', $ids)
+            ->whereNotNull('estado')
+            ->orderBy('fecha_entrega')
+            ->orderBy('id')
+            ->get(['familia_id', 'estado', 'fecha_entrega'])
+            ->groupBy('familia_id')
+            ->map(fn (Collection $filas) => [
+                'estado' => $filas->last()->estado,
+                'fecha'  => $filas->last()->fecha_entrega?->toDateString(),
+            ]);
+    }
+
+    /**
+     * Estado del servicio por calle (encuestas de agua). Una consulta de familias
+     * + una de registros. El color de la calle es el de su peor familia.
+     *
+     * @param  array<int,int>  $calleIds
+     * @return array<int,array{total_familias:int,conteo:array<string,int>,riesgo:int|null}>
+     */
+    public function resumenEstadoPorCalles(array $calleIds, int $encuestaId): array
+    {
+        $familiasPorCalle = $this->familiasAgrupadasPorCalle($calleIds);
+        $ultimos          = $this->ultimoEstadoPorFamilia($familiasPorCalle->flatten(), $encuestaId);
+
+        $resultado = [];
+
+        foreach ($calleIds as $calleId) {
+            $ids    = $familiasPorCalle->get($calleId) ?? collect();
+            $conteo = array_fill_keys(Encuesta::ESTADOS_AGUA, 0) + ['sin_datos' => 0];
+
+            foreach ($ids as $familiaId) {
+                $estado = $ultimos->get($familiaId)['estado'] ?? 'sin_datos';
+                $conteo[array_key_exists($estado, $conteo) ? $estado : 'sin_datos']++;
+            }
+
+            $resultado[$calleId] = [
+                'total_familias' => $ids->count(),
+                'conteo'         => $conteo,
+                'riesgo'         => $this->riesgoEstadoServicio($conteo, $ids->count()),
+            ];
+        }
+
+        return $resultado;
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  Familias — condición de vivienda (del censo)
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Condición de vivienda por calle, calculada con las familias vigentes del
+     * censo (no usa respuestas de encuesta). Una sola consulta.
+     *
+     * @param  array<int,int>  $calleIds
+     * @return array<int,array{total_familias:int,conteo:array<string,int>,riesgo:int|null}>
+     */
+    public function resumenViviendaPorCalles(array $calleIds): array
+    {
+        if ($calleIds === []) {
+            return [];
+        }
+
+        $familiasPorCalle = Familia::query()
+            ->whereIn('calle_id', $calleIds)
+            ->get(['id', 'calle_id', 'condicion_vivienda'])
+            ->groupBy('calle_id');
+
+        $resultado = [];
+
+        foreach ($calleIds as $calleId) {
+            $filas  = $familiasPorCalle->get($calleId) ?? collect();
+            $conteo = ['optima' => 0, 'regular' => 0, 'critica' => 0];
+
+            foreach ($filas as $familia) {
+                if (array_key_exists($familia->condicion_vivienda, $conteo)) {
+                    $conteo[$familia->condicion_vivienda]++;
+                }
+            }
+
+            $resultado[$calleId] = [
+                'total_familias' => $filas->count(),
+                'conteo'         => $conteo,
+                'riesgo'         => $this->riesgoVivienda($conteo, $filas->count()),
+            ];
+        }
+
+        return $resultado;
+    }
+
+    /**
+     * Riesgo agregado de una calle para el estado del servicio:
+     *  null = sin familias o ninguna con registro (gris, NO verde)
+     *  2 = alguna familia sin servicio | 1 = alguna con servicio intermitente | 0 = todas con servicio
+     *
+     * @param  array<string,int>  $conteo
+     */
+    private function riesgoEstadoServicio(array $conteo, int $total): ?int
+    {
+        if ($total === 0 || $conteo['sin_datos'] === $total) {
+            return null;
+        }
+
+        return match (true) {
+            $conteo['no_llega'] > 0      => 2,
+            $conteo['intermitente'] > 0  => 1,
+            default                      => 0,
+        };
+    }
+
+    /**
+     * Riesgo agregado de una calle para la condición de vivienda (ver los
+     * umbrales UMBRAL_VIVIENDA_*). null = calle sin familias.
+     *
+     * @param  array<string,int>  $conteo
+     */
+    private function riesgoVivienda(array $conteo, int $total): ?int
+    {
+        if ($total === 0) {
+            return null;
+        }
+
+        return match (true) {
+            ($conteo['critica'] / $total) >= self::UMBRAL_VIVIENDA_CRITICAS => 2,
+            $conteo['critica'] > 0
+                || ($conteo['regular'] / $total) >= self::UMBRAL_VIVIENDA_REGULARES => 1,
+            default => 0,
+        };
     }
 
     // ─────────────────────────────────────────────────────────────

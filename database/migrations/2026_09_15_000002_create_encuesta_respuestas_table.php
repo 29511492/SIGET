@@ -11,6 +11,12 @@ use Illuminate\Support\Facades\Schema;
  *  Una fila = una entrega registrada para una familia dentro de una
  *  encuesta. Depende de `encuestas` y `familias` (timestamps previos).
  *
+ *  `cantidad` y `estado` son nullable: las encuestas de entrega guardan
+ *  la cantidad y las de agua guardan el estado (llega | intermitente |
+ *  no_llega). `estado` es string validado en la app (Encuesta::ESTADOS_AGUA),
+ *  no enum de PostgreSQL. `fecha_entrega` es la fecha de la entrega o del
+ *  registro del estado.
+ *
  *  FK con restrict: ni la encuesta ni la familia se borran
  *  físicamente (ambas usan SoftDeletes), así que el historial que
  *  consume el estimador de consumo no se pierde.
@@ -32,7 +38,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('encuesta_id')->constrained('encuestas')->restrictOnDelete();
             $table->foreignId('familia_id')->constrained('familias')->restrictOnDelete();
-            $table->integer('cantidad');
+            $table->integer('cantidad')->nullable();
+            $table->string('estado', 30)->nullable();
             $table->date('fecha_entrega');
             $table->text('observaciones')->nullable();
 

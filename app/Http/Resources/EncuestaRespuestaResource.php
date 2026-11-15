@@ -16,6 +16,7 @@ class EncuestaRespuestaResource extends JsonResource
             'familia_nombre' => $this->whenLoaded('familia', fn () => $this->familia->nombre_responsable),
             'calle_nombre'   => $this->whenLoaded('familia', fn () => $this->familia->calle?->nombre),
             'cantidad'       => $this->cantidad,
+            'estado'         => $this->estado,
             'fecha_entrega'  => $this->fecha_entrega?->format('Y-m-d'),
             'observaciones'  => $this->observaciones,
             'created_at'     => $this->created_at,

@@ -13,6 +13,10 @@ class EncuestaResource extends JsonResource
             'id'               => $this->id,
             'nombre'           => $this->nombre,
             'tipo'             => $this->tipo,
+            // Cómo se calcula el mapa de esta encuesta, y si admite registrar
+            // entregas/estados (la de condición de vivienda sale del censo).
+            'modo'             => $this->modo(),
+            'acepta_respuestas' => $this->aceptaRespuestas(),
             'descripcion'      => $this->descripcion,
             'fecha_inicio'     => $this->fecha_inicio?->format('Y-m-d'),
             'fecha_cierre'     => $this->fecha_cierre?->format('Y-m-d'),

@@ -11,6 +11,7 @@ use App\Models\Vocero;
 use App\Services\EstimadorConsumoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 
 /**
@@ -27,9 +28,11 @@ use Illuminate\Validation\Rule;
  *            familias (restricción del profesor: el vocero no
  *            accede a los datos del censo).
  *
- *  Modo de cálculo según el tipo de encuesta:
- *  - bombona_gas → predicción de agotamiento (EstimadorConsumoService)
- *  - otros       → cobertura simple (familias con entrega / total)
+ *  Modo de cálculo según el tipo de encuesta (Encuesta::modo()):
+ *  - bombona_gas         → predicción de agotamiento (EstimadorConsumoService)
+ *  - agua                → estado del servicio (último estado registrado por familia)
+ *  - condicion_vivienda  → condición de vivienda tomada del censo (sin respuestas)
+ *  - otros               → cobertura simple (familias con entrega / total)
  *
  *  Sin caché: el mapa refleja siempre el estado real. Los cálculos
  *  se resuelven con un número fijo de consultas (ver el servicio).
@@ -60,9 +63,7 @@ class MapaCalorController extends Controller
 
         $calleIds = $calles->pluck('id')->map(fn ($id) => (int) $id)->all();
 
-        $resumenes = $encuesta->esDeGas()
-            ? $this->estimador->resumenPorCalles($calleIds, $encuesta->tipo)
-            : $this->estimador->resumenCoberturaPorCalles($calleIds, $encuesta->id);
+        $resumenes = $this->resumenesPorCalle($encuesta, $calleIds);
 
         $data = $calles->map(fn (Calle $calle) => array_merge([
             'calle_id' => $calle->id,
@@ -76,7 +77,7 @@ class MapaCalorController extends Controller
             'message' => 'Mapa de calor generado correctamente.',
             'data'    => $data,
             'sedes'   => $this->sedesInvolucradas($calles->pluck('sede_id')->unique()->all()),
-            'modo'    => $encuesta->esDeGas() ? 'prediccion_agotamiento' : 'cobertura',
+            'modo'    => $encuesta->modo(),
         ]);
     }
 
@@ -103,46 +104,16 @@ class MapaCalorController extends Controller
         $familias = Familia::query()
             ->where('calle_id', $calle->id)
             ->orderBy('codigo_vivienda')
-            ->get(['id', 'nombre_responsable', 'codigo_vivienda']);
+            ->get(['id', 'nombre_responsable', 'codigo_vivienda', 'condicion_vivienda']);
 
         $ids = $familias->pluck('id')->map(fn ($id) => (int) $id);
 
-        if ($encuesta->esDeGas()) {
-            $estimaciones = $this->estimador->estimarPorFamilias($ids, $encuesta->tipo);
-            $conteo       = $estimaciones->countBy('estado');
-
-            $resumen = [
-                'sin_datos' => (int) ($conteo['sin_datos'] ?? 0),
-                'al_dia'    => (int) ($conteo['al_dia'] ?? 0),
-                'proximo'   => (int) ($conteo['proximo'] ?? 0),
-                'vencido'   => (int) ($conteo['vencido'] ?? 0),
-            ];
-
-            $detalle = $esAdmin
-                ? $familias->map(fn (Familia $f) => array_merge(
-                    ['responsable' => $f->nombre_responsable, 'codigo_vivienda' => $f->codigo_vivienda],
-                    $estimaciones[(int) $f->id]
-                ))->values()
-                : null;
-        } else {
-            $ultimas    = $this->estimador->ultimaEntregaPorFamilia($ids, $encuesta->id);
-            $conRespuesta = $ids->filter(fn ($id) => $ultimas->has($id))->count();
-
-            $resumen = [
-                'con_respuesta' => $conRespuesta,
-                'pendientes'    => $ids->count() - $conRespuesta,
-            ];
-
-            $detalle = $esAdmin
-                ? $familias->map(fn (Familia $f) => [
-                    'familia_id'      => $f->id,
-                    'responsable'     => $f->nombre_responsable,
-                    'codigo_vivienda' => $f->codigo_vivienda,
-                    'recibio'         => $ultimas->has((int) $f->id),
-                    'ultima_entrega'  => $ultimas->get((int) $f->id),
-                ])->values()
-                : null;
-        }
+        [$resumen, $detalle] = match ($encuesta->modo()) {
+            Encuesta::MODO_AGOTAMIENTO => $this->detalleAgotamiento($encuesta, $familias, $ids, $esAdmin),
+            Encuesta::MODO_ESTADO      => $this->detalleEstado($encuesta, $familias, $ids, $esAdmin),
+            Encuesta::MODO_VIVIENDA    => $this->detalleVivienda($familias, $esAdmin),
+            default                    => $this->detalleCobertura($encuesta, $familias, $ids, $esAdmin),
+        };
 
         return response()->json([
             'message' => 'Detalle de calle obtenido correctamente.',
@@ -153,13 +124,126 @@ class MapaCalorController extends Controller
                 'resumen'        => $resumen,
                 'familias'       => $detalle,
             ],
-            'modo'    => $encuesta->esDeGas() ? 'prediccion_agotamiento' : 'cobertura',
+            'modo'    => $encuesta->modo(),
         ]);
     }
 
     // ─────────────────────────────────────────────────────────────
     //  Helpers privados
     // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Resumen por calle según el modo de la encuesta. Cada modo trae su propio
+     * conteo, pero todos incluyen total_familias y riesgo (0, 1, 2 o null).
+     *
+     * @param  array<int,int>  $calleIds
+     */
+    private function resumenesPorCalle(Encuesta $encuesta, array $calleIds): array
+    {
+        return match ($encuesta->modo()) {
+            Encuesta::MODO_AGOTAMIENTO => $this->estimador->resumenPorCalles($calleIds, $encuesta->tipo),
+            Encuesta::MODO_ESTADO      => $this->estimador->resumenEstadoPorCalles($calleIds, $encuesta->id),
+            Encuesta::MODO_VIVIENDA    => $this->estimador->resumenViviendaPorCalles($calleIds),
+            default                    => $this->estimador->resumenCoberturaPorCalles($calleIds, $encuesta->id),
+        };
+    }
+
+    // Los cuatro detalle*() devuelven [resumen, detalle]. `detalle` (una fila por
+    // familia, con nombres) solo se arma para el admin; el vocero recibe null.
+
+    /** @return array{0:array<string,int>,1:Collection|null} */
+    private function detalleAgotamiento(Encuesta $encuesta, Collection $familias, Collection $ids, bool $esAdmin): array
+    {
+        $estimaciones = $this->estimador->estimarPorFamilias($ids, $encuesta->tipo);
+        $conteo       = $estimaciones->countBy('estado');
+
+        $resumen = [
+            'sin_datos' => (int) ($conteo['sin_datos'] ?? 0),
+            'al_dia'    => (int) ($conteo['al_dia'] ?? 0),
+            'proximo'   => (int) ($conteo['proximo'] ?? 0),
+            'vencido'   => (int) ($conteo['vencido'] ?? 0),
+        ];
+
+        $detalle = $esAdmin
+            ? $familias->map(fn (Familia $f) => array_merge(
+                ['responsable' => $f->nombre_responsable, 'codigo_vivienda' => $f->codigo_vivienda],
+                $estimaciones[(int) $f->id]
+            ))->values()
+            : null;
+
+        return [$resumen, $detalle];
+    }
+
+    /** @return array{0:array<string,int>,1:Collection|null} */
+    private function detalleCobertura(Encuesta $encuesta, Collection $familias, Collection $ids, bool $esAdmin): array
+    {
+        $ultimas      = $this->estimador->ultimaEntregaPorFamilia($ids, $encuesta->id);
+        $conRespuesta = $ids->filter(fn ($id) => $ultimas->has($id))->count();
+
+        $resumen = [
+            'con_respuesta' => $conRespuesta,
+            'pendientes'    => $ids->count() - $conRespuesta,
+        ];
+
+        $detalle = $esAdmin
+            ? $familias->map(fn (Familia $f) => [
+                'familia_id'      => $f->id,
+                'responsable'     => $f->nombre_responsable,
+                'codigo_vivienda' => $f->codigo_vivienda,
+                'recibio'         => $ultimas->has((int) $f->id),
+                'ultima_entrega'  => $ultimas->get((int) $f->id),
+            ])->values()
+            : null;
+
+        return [$resumen, $detalle];
+    }
+
+    /** @return array{0:array<string,int>,1:Collection|null} */
+    private function detalleEstado(Encuesta $encuesta, Collection $familias, Collection $ids, bool $esAdmin): array
+    {
+        $ultimos = $this->estimador->ultimoEstadoPorFamilia($ids, $encuesta->id);
+        $resumen = array_fill_keys(Encuesta::ESTADOS_AGUA, 0) + ['sin_datos' => 0];
+
+        foreach ($ids as $id) {
+            $estado = $ultimos->get($id)['estado'] ?? 'sin_datos';
+            $resumen[array_key_exists($estado, $resumen) ? $estado : 'sin_datos']++;
+        }
+
+        $detalle = $esAdmin
+            ? $familias->map(fn (Familia $f) => [
+                'familia_id'      => $f->id,
+                'responsable'     => $f->nombre_responsable,
+                'codigo_vivienda' => $f->codigo_vivienda,
+                'estado'          => $ultimos->get((int) $f->id)['estado'] ?? 'sin_datos',
+                'ultima_entrega'  => $ultimos->get((int) $f->id)['fecha'] ?? null,
+            ])->values()
+            : null;
+
+        return [$resumen, $detalle];
+    }
+
+    /** @return array{0:array<string,int>,1:Collection|null} */
+    private function detalleVivienda(Collection $familias, bool $esAdmin): array
+    {
+        $conteo = $familias->countBy('condicion_vivienda');
+
+        $resumen = [
+            'optima'  => (int) ($conteo['optima'] ?? 0),
+            'regular' => (int) ($conteo['regular'] ?? 0),
+            'critica' => (int) ($conteo['critica'] ?? 0),
+        ];
+
+        $detalle = $esAdmin
+            ? $familias->map(fn (Familia $f) => [
+                'familia_id'      => $f->id,
+                'responsable'     => $f->nombre_responsable,
+                'codigo_vivienda' => $f->codigo_vivienda,
+                'condicion'       => $f->condicion_vivienda,
+            ])->values()
+            : null;
+
+        return [$resumen, $detalle];
+    }
 
     /** Valida encuesta_id (la encuesta no debe estar dada de baja) y devuelve el modelo. */
     private function encuestaValidada(Request $request): Encuesta
