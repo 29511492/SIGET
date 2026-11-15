@@ -1,7 +1,7 @@
 /**
  * resources/js/pages/mapa-calor/MapaCalorPage.jsx
  *
- * Mapa de calor territorial: estado de una encuesta (gas, CLAP…) por calle.
+ * Mapa de calor territorial: estado de una encuesta (gas, CLAP, agua, vivienda…) por calle.
  * Accesible para admin y vocero (ver routes/api.php y app.jsx).
  *
  * ALCANCE POR ROL (lo impone el backend; aquí solo se refleja):
@@ -18,6 +18,13 @@
  *  · Las peticiones atrasadas se descartan (cambiar rápido de encuesta o de
  *    calle no deja pintado un resultado viejo).
  *  · Ya no depende del rol 'operador', que se eliminará.
+ *
+ * MAPAS POR ENCUESTA (nov-2026):
+ *  · Una pestaña por encuesta en lugar del <select>: al pulsarla se cambia de mapa.
+ *  · Cada modo de cálculo del backend (campo `modo`) define en MODOS sus etiquetas,
+ *    chips de detalle, texto de tarjeta y columnas de la tabla: agotamiento (gas),
+ *    cobertura (CLAP, combo, otros), estado del agua y condición de vivienda
+ *    (esta última sale del censo). Todos pintan con el mismo riesgo 0/1/2/null.
  */
 
 import { useState, useEffect, useMemo, useRef } from 'react';
@@ -41,28 +48,6 @@ const COLORES = {
 const claveRiesgo = (riesgo) => (riesgo === null || riesgo === undefined ? 'sin_datos' : String(riesgo));
 const colorDe     = (riesgo) => COLORES[claveRiesgo(riesgo)];
 
-const ETIQUETAS = {
-    prediccion_agotamiento: {
-        0:         'Al día',
-        1:         'Próximo a agotarse',
-        2:         'Vencido',
-        sin_datos: 'Sin datos suficientes',
-    },
-    cobertura: {
-        0:         'Cobertura completa',
-        1:         'Cobertura parcial',
-        2:         'Sin cobertura',
-        sin_datos: 'Sin familias',
-    },
-};
-
-const ESTADO_FAMILIA = {
-    al_dia:    'Al día',
-    proximo:   'Próximo a agotarse',
-    vencido:   'Vencido',
-    sin_datos: 'Sin datos',
-};
-
 const formatearFecha = (f) => (f ? f.split('-').reverse().join('/') : '—');
 
 const textoDias = (dias) => {
@@ -73,6 +58,133 @@ const textoDias = (dias) => {
 };
 
 const plural = (n, singular, pluralTxt) => `${n} ${n === 1 ? singular : pluralTxt}`;
+
+// Texto de cada estado de una familia en la tabla de detalle
+const ESTADO_FAMILIA = {
+    al_dia:       'Al día',
+    proximo:      'Próximo a agotarse',
+    vencido:      'Vencido',
+    sin_datos:    'Sin datos',
+    llega:        'Llega agua',
+    intermitente: 'Intermitente',
+    no_llega:     'No llega agua',
+    optima:       'Óptima',
+    regular:      'Regular',
+    critica:      'Crítica',
+};
+
+function BadgeEstado({ valor }) {
+    return (
+        <span className={`mapa-estado mapa-estado--${valor}`}>
+            {ESTADO_FAMILIA[valor] ?? valor}
+        </span>
+    );
+}
+
+// Icono de cada tipo de encuesta en su pestaña
+const ICONO_TIPO = {
+    bombona_gas:        '🔥',
+    bolsa_clap:         '🧺',
+    combo_alimenticio:  '🛒',
+    agua:               '💧',
+    condicion_vivienda: '🏠',
+    otro:               '📋',
+};
+
+/**
+ * Configuración por modo de cálculo (campo `modo` que devuelve el backend):
+ *  · etiquetas  → texto de cada color en leyenda, chips y popups
+ *  · textoCalle → línea de resumen de cada tarjeta de calle
+ *  · chips      → totales de familias en el detalle de una calle
+ *  · columnas   → columnas de la tabla de familias (solo la ve el admin)
+ */
+const MODOS = {
+    prediccion_agotamiento: {
+        etiquetas: {
+            0:         'Al día',
+            1:         'Próximo a agotarse',
+            2:         'Vencido',
+            sin_datos: 'Sin datos suficientes',
+        },
+        textoCalle: (c) => `${plural(c.conteo?.vencido ?? 0, 'vencida', 'vencidas')} · ${c.conteo?.proximo ?? 0} por vencer`,
+        chips: (r) => [
+            { clave: 0,           valor: r.al_dia,    texto: 'al día' },
+            { clave: 1,           valor: r.proximo,   texto: 'por vencer' },
+            { clave: 2,           valor: r.vencido,   texto: 'vencidas' },
+            { clave: 'sin_datos', valor: r.sin_datos, texto: 'sin datos' },
+        ],
+        columnas: [
+            { titulo: 'Última entrega', meta: true, celda: (f) => formatearFecha(f.ultima_entrega) },
+            {
+                titulo: 'Agotamiento estimado',
+                meta:   true,
+                celda:  (f) => (
+                    <>
+                        {formatearFecha(f.fecha_estimada_agotamiento)}
+                        {textoDias(f.dias_restantes)}
+                    </>
+                ),
+            },
+            { titulo: 'Estado', celda: (f) => <BadgeEstado valor={f.estado} /> },
+        ],
+    },
+
+    cobertura: {
+        etiquetas: {
+            0:         'Cobertura completa',
+            1:         'Cobertura parcial',
+            2:         'Sin cobertura',
+            sin_datos: 'Sin familias',
+        },
+        textoCalle: (c) => `${c.familias_con_respuesta ?? 0} de ${c.total_familias} con entrega`,
+        chips: (r) => [
+            { clave: 0, valor: r.con_respuesta, texto: 'con entrega' },
+            { clave: 2, valor: r.pendientes,    texto: 'pendientes' },
+        ],
+        columnas: [
+            { titulo: 'Recibió',        celda: (f) => (f.recibio ? 'Sí' : 'No') },
+            { titulo: 'Última entrega', meta: true, celda: (f) => formatearFecha(f.ultima_entrega) },
+        ],
+    },
+
+    estado_agua: {
+        etiquetas: {
+            0:         'Agua continua',
+            1:         'Agua intermitente',
+            2:         'Sin agua',
+            sin_datos: 'Sin registros',
+        },
+        textoCalle: (c) => `${c.conteo?.no_llega ?? 0} sin agua · ${c.conteo?.intermitente ?? 0} intermitente`,
+        chips: (r) => [
+            { clave: 0,           valor: r.llega,        texto: 'con agua continua' },
+            { clave: 1,           valor: r.intermitente, texto: 'intermitente' },
+            { clave: 2,           valor: r.no_llega,     texto: 'sin agua' },
+            { clave: 'sin_datos', valor: r.sin_datos,    texto: 'sin registro' },
+        ],
+        columnas: [
+            { titulo: 'Estado del agua',  celda: (f) => <BadgeEstado valor={f.estado} /> },
+            { titulo: 'Último registro', meta: true, celda: (f) => formatearFecha(f.ultima_entrega) },
+        ],
+    },
+
+    condicion_vivienda: {
+        etiquetas: {
+            0:         'Viviendas en buen estado',
+            1:         'Con viviendas en riesgo',
+            2:         'Zona crítica',
+            sin_datos: 'Sin familias',
+        },
+        textoCalle: (c) => `${c.conteo?.critica ?? 0} críticas · ${c.conteo?.regular ?? 0} regulares`,
+        chips: (r) => [
+            { clave: 0, valor: r.optima,  texto: 'óptimas' },
+            { clave: 1, valor: r.regular, texto: 'regulares' },
+            { clave: 2, valor: r.critica, texto: 'críticas' },
+        ],
+        columnas: [
+            { titulo: 'Condición', celda: (f) => <BadgeEstado valor={f.condicion} /> },
+        ],
+    },
+};
 
 export default function MapaCalorPage() {
     const { user }                           = useAuth();
@@ -95,9 +207,11 @@ export default function MapaCalorPage() {
     const [isLoadingDetalle,  setIsLoadingDetalle]  = useState(false);
     const [errorDetalle,      setErrorDetalle]      = useState(null);
     const detalleReq                                = useRef(0);
+    const detalleRef                                = useRef(null);
 
     const puedeAsignar = Boolean(user?.permisos?.puede_gestionar_encuestas ?? user?.rol === 'admin');
-    const etiquetas    = ETIQUETAS[modo] ?? ETIQUETAS.cobertura;
+    const cfg          = MODOS[modo] ?? MODOS.cobertura;
+    const etiquetas    = cfg.etiquetas;
     const etiquetaDe   = (riesgo) => etiquetas[claveRiesgo(riesgo)];
 
     // ── Lista de encuestas para el selector ───────────────────
@@ -160,6 +274,14 @@ export default function MapaCalorPage() {
         setEncuestaId(valor);
         setSearchParams(valor ? { encuesta_id: valor } : {}, { replace: true });
     };
+
+    // Al elegir una calle, lleva la vista hasta su detalle: queda debajo del mapa
+    // y de la leyenda y, si no, parece que el clic no hizo nada.
+    useEffect(() => {
+        if (isLoadingDetalle) {
+            detalleRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+        }
+    }, [isLoadingDetalle]);
 
     // ── Detalle de una calle ──────────────────────────────────
     const verDetalle = async (calle) => {
@@ -233,29 +355,35 @@ export default function MapaCalorPage() {
                     </div>
                 </div>
 
+                {/* ── Selector de encuestas: una pestaña por mapa ── */}
+                {hayEncuestas && (
+                    <div className="mapa-tabs" role="group" aria-label="Encuesta que se muestra en el mapa">
+                        {encuestas.map((enc) => {
+                            const activa = String(enc.id) === String(encuestaId);
+
+                            return (
+                                <button
+                                    key={enc.id}
+                                    type="button"
+                                    className={`mapa-tab ${activa ? 'mapa-tab--activo' : ''} ${enc.activa ? '' : 'mapa-tab--cerrada'}`}
+                                    onClick={() => cambiarEncuesta(String(enc.id))}
+                                    aria-pressed={activa}
+                                >
+                                    <span className="mapa-tab__icono" aria-hidden="true">{ICONO_TIPO[enc.tipo] ?? '📋'}</span>
+                                    {enc.nombre}
+                                    {!enc.activa && <span className="mapa-tab__cerrada">cerrada</span>}
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
+
+                {encuestaActual?.descripcion && (
+                    <p className="mapa-descripcion">{encuestaActual.descripcion}</p>
+                )}
+
                 {/* ── Controles ─────────────────────────────── */}
                 <div className="mapa-controles">
-                    <div className="mapa-controles__campo">
-                        <label htmlFor="mapa-encuesta">Encuesta</label>
-                        <select
-                            id="mapa-encuesta"
-                            className="mapa-select"
-                            value={encuestaId}
-                            onChange={(e) => cambiarEncuesta(e.target.value)}
-                            disabled={!hayEncuestas}
-                        >
-                            {!hayEncuestas && <option value="">Sin encuestas</option>}
-                            {hayEncuestas && !encuestaActual && encuestaId && (
-                                <option value={encuestaId}>Encuesta #{encuestaId}</option>
-                            )}
-                            {encuestas.map((enc) => (
-                                <option key={enc.id} value={enc.id}>
-                                    {enc.nombre}{enc.activa ? '' : ' (cerrada)'}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
                     <div className="mapa-toggle" role="group" aria-label="Tipo de vista">
                         <button
                             type="button"
@@ -351,9 +479,7 @@ export default function MapaCalorPage() {
                     <div className="mapa-grid">
                         {calles.map((c) => {
                             const clave = claveRiesgo(c.riesgo);
-                            const detalleTexto = modo === 'prediccion_agotamiento'
-                                ? `${plural(c.conteo?.vencido ?? 0, 'vencida', 'vencidas')} · ${c.conteo?.proximo ?? 0} por vencer`
-                                : `${c.familias_con_respuesta ?? 0} de ${c.total_familias} con entrega`;
+                            const detalleTexto = cfg.textoCalle(c);
 
                             return (
                                 <button
@@ -389,7 +515,7 @@ export default function MapaCalorPage() {
 
                 {/* ── Detalle de la calle elegida ───────────── */}
                 {(isLoadingDetalle || detalle || errorDetalle) && (
-                    <section className="mapa-detalle" aria-live="polite">
+                    <section className="mapa-detalle" aria-live="polite" ref={detalleRef}>
                         <div className="mapa-detalle__cabecera">
                             <div>
                                 <h2 className="mapa-detalle__titulo">{detalle?.calle ?? calleSel?.calle}</h2>
@@ -420,31 +546,13 @@ export default function MapaCalorPage() {
                                     {plural(detalle.total_familias, 'familia registrada', 'familias registradas')}
                                 </p>
 
-                                {modo === 'prediccion_agotamiento' ? (
-                                    <div className="mapa-resumen">
-                                        <span className="mapa-chip mapa-chip--0">
-                                            <strong>{detalle.resumen.al_dia}</strong> al día
+                                <div className="mapa-resumen">
+                                    {cfg.chips(detalle.resumen).map((chip) => (
+                                        <span key={chip.clave} className={`mapa-chip mapa-chip--${chip.clave}`}>
+                                            <strong>{chip.valor}</strong> {chip.texto}
                                         </span>
-                                        <span className="mapa-chip mapa-chip--1">
-                                            <strong>{detalle.resumen.proximo}</strong> por vencer
-                                        </span>
-                                        <span className="mapa-chip mapa-chip--2">
-                                            <strong>{detalle.resumen.vencido}</strong> vencidas
-                                        </span>
-                                        <span className="mapa-chip mapa-chip--sin_datos">
-                                            <strong>{detalle.resumen.sin_datos}</strong> sin datos
-                                        </span>
-                                    </div>
-                                ) : (
-                                    <div className="mapa-resumen">
-                                        <span className="mapa-chip mapa-chip--0">
-                                            <strong>{detalle.resumen.con_respuesta}</strong> con entrega
-                                        </span>
-                                        <span className="mapa-chip mapa-chip--2">
-                                            <strong>{detalle.resumen.pendientes}</strong> pendientes
-                                        </span>
-                                    </div>
-                                )}
+                                    ))}
+                                </div>
 
                                 {Array.isArray(detalle.familias) ? (
                                     detalle.familias.length === 0 ? (
@@ -456,18 +564,9 @@ export default function MapaCalorPage() {
                                                     <tr>
                                                         <th>Vivienda</th>
                                                         <th>Responsable</th>
-                                                        {modo === 'prediccion_agotamiento' ? (
-                                                            <>
-                                                                <th>Última entrega</th>
-                                                                <th>Agotamiento estimado</th>
-                                                                <th>Estado</th>
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <th>Recibió</th>
-                                                                <th>Última entrega</th>
-                                                            </>
-                                                        )}
+                                                        {cfg.columnas.map((col) => (
+                                                            <th key={col.titulo}>{col.titulo}</th>
+                                                        ))}
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -475,25 +574,11 @@ export default function MapaCalorPage() {
                                                         <tr key={f.familia_id ?? i}>
                                                             <td className="td-code">{f.codigo_vivienda ?? '—'}</td>
                                                             <td>{f.responsable ?? `Familia #${f.familia_id}`}</td>
-                                                            {modo === 'prediccion_agotamiento' ? (
-                                                                <>
-                                                                    <td className="td-meta">{formatearFecha(f.ultima_entrega)}</td>
-                                                                    <td className="td-meta">
-                                                                        {formatearFecha(f.fecha_estimada_agotamiento)}
-                                                                        {textoDias(f.dias_restantes)}
-                                                                    </td>
-                                                                    <td>
-                                                                        <span className={`mapa-estado mapa-estado--${f.estado}`}>
-                                                                            {ESTADO_FAMILIA[f.estado] ?? f.estado}
-                                                                        </span>
-                                                                    </td>
-                                                                </>
-                                                            ) : (
-                                                                <>
-                                                                    <td>{f.recibio ? 'Sí' : 'No'}</td>
-                                                                    <td className="td-meta">{formatearFecha(f.ultima_entrega)}</td>
-                                                                </>
-                                                            )}
+                                                            {cfg.columnas.map((col) => (
+                                                                <td key={col.titulo} className={col.meta ? 'td-meta' : undefined}>
+                                                                    {col.celda(f)}
+                                                                </td>
+                                                            ))}
                                                         </tr>
                                                     ))}
                                                 </tbody>

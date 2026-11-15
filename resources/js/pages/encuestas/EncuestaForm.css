@@ -1,26 +1,36 @@
 /**
- * EncuestaForm.css — el formulario vive dentro de FormModal, que ya
- * aporta el panel blanco, el título y el padding; aquí solo se
- * estiliza el contenido del formulario.
+ * EncuestaForm.css — contenido del formulario de nueva encuesta.
+ *
+ * El formulario vive dentro de FormModal, que aporta el panel blanco y el
+ * título pero deja el cuerpo SIN padding (.form-modal-panel__body { padding: 0 }).
+ * Por eso el margen interior lo pone el propio formulario, igual que
+ * FamiliaForm (.familia-form-container): 1.5rem 1.75rem 1.75rem.
+ *
+ * Campos, selector y botones siguen el mismo estilo que FamiliaForm.css para
+ * que todos los modales del sistema se vean iguales.
  */
 
 .encform-form {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 1.25rem;
+    padding: 1.5rem 1.75rem 1.75rem;
     font-family: var(--ff-body, 'DM Sans', system-ui, sans-serif);
 }
 
+/* ── Alerta ─────────────────────────────────────────────────── */
 .encform-alert {
     margin: 0;
-    padding: 0.6rem 0.8rem;
+    padding: 0.875rem 1rem;
     border-radius: 8px;
     font-size: 0.875rem;
+    line-height: 1.5;
     color: var(--c-error, #c0392b);
     background: var(--c-error-bg, #fdf2f2);
     border: 1px solid rgba(192, 57, 43, 0.25);
 }
 
+/* ── Filas y campos ─────────────────────────────────────────── */
 .encform-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -30,88 +40,160 @@
 .encform-field {
     display: flex;
     flex-direction: column;
-    gap: 0.35rem;
+    gap: 0.4rem;
 }
 
 .encform-field label {
     font-size: 0.82rem;
     font-weight: 500;
-    color: var(--c-text-mid, #4a5568);
+    color: var(--c-text-dark, #1a1a2e);
+}
+
+.encform-required {
+    margin-left: 2px;
+    color: var(--c-error, #c0392b);
+}
+
+.encform-optional {
+    margin-left: 4px;
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--c-text-light, #718096);
 }
 
 .encform-field input,
 .encform-field select,
 .encform-field textarea {
+    box-sizing: border-box;
     width: 100%;
-    padding: 0.6rem 0.75rem;
+    padding: 0.72rem 0.875rem;
     font-family: inherit;
     font-size: 0.9rem;
     color: var(--c-text-dark, #1a1a2e);
     background: #ffffff;
     border: 1.5px solid var(--c-border, #e8e3db);
     border-radius: 8px;
+    outline: none;
     transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.encform-field input::placeholder,
+.encform-field textarea::placeholder {
+    color: #b5b0a8;
+}
+
+/* Selector con la misma flecha que los selectores de FamiliaForm */
+.encform-field select {
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 2.5rem;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23718096' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.875rem center;
 }
 
 .encform-field textarea {
     resize: vertical;
+    line-height: 1.5;
 }
 
 .encform-field input:focus,
 .encform-field select:focus,
 .encform-field textarea:focus {
-    outline: none;
     border-color: var(--c-navy-hover, #1e3a56);
-    box-shadow: 0 0 0 3px rgba(30, 58, 86, 0.08);
+    box-shadow: 0 0 0 3px rgba(30, 58, 86, 0.1);
+}
+
+.encform-hint {
+    font-size: 0.77rem;
+    font-style: italic;
+    line-height: 1.45;
+    color: var(--c-text-light, #718096);
 }
 
 .encform-field__error {
-    font-size: 0.78rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.77rem;
     color: var(--c-error, #c0392b);
 }
 
+.encform-field__error::before {
+    content: '⚠ ';
+}
+
+/* ── Botones (mismo estilo que los de FamiliaForm) ──────────── */
 .encform-actions {
     display: flex;
     justify-content: flex-end;
     gap: 0.75rem;
-    margin-top: 0.5rem;
+    padding-top: 0.5rem;
 }
 
 .encform-btn {
-    padding: 0.65rem 1.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
     border: none;
     border-radius: 8px;
     font-family: inherit;
-    font-size: 0.875rem;
+    font-size: 0.9rem;
     font-weight: 500;
     cursor: pointer;
-    transition: background 200ms ease, box-shadow 200ms ease;
+    transition: transform 200ms ease, box-shadow 200ms ease;
 }
 
-.encform-btn--cancel {
-    color: var(--c-text-mid, #4a5568);
-    background: var(--c-offwhite, #f8f6f1);
-    border: 1.5px solid var(--c-border, #e8e3db);
-}
-
-.encform-btn--submit {
-    color: #ffffff;
-    background: var(--c-navy, #0d1f35);
-    box-shadow: 0 1px 3px rgba(13, 31, 53, 0.2);
-}
-
-.encform-btn--submit:hover:not(:disabled) {
-    background: var(--c-navy-hover, #1e3a56);
-    box-shadow: 0 4px 14px rgba(13, 31, 53, 0.25);
+.encform-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
 }
 
 .encform-btn:disabled {
     opacity: 0.65;
     cursor: not-allowed;
+    transform: none;
 }
 
-@media (max-width: 520px) {
+.encform-btn--submit {
+    min-width: 160px;
+    color: var(--c-navy, #0d1f35);
+    background: linear-gradient(135deg, var(--c-gold, #c9a84c) 0%, #e0c06e 100%);
+    box-shadow: 0 4px 14px rgba(201, 168, 76, 0.3);
+}
+
+.encform-btn--submit:hover:not(:disabled) {
+    box-shadow: 0 6px 18px rgba(201, 168, 76, 0.45);
+}
+
+.encform-btn--cancel {
+    color: var(--c-text-mid, #4a5568);
+    background: #ffffff;
+    border: 1.5px solid var(--c-border, #e8e3db);
+}
+
+.encform-btn--cancel:hover:not(:disabled) {
+    color: var(--c-navy, #0d1f35);
+    border-color: var(--c-navy, #0d1f35);
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 640px) {
+    .encform-form {
+        padding: 1rem 1.1rem 1.5rem;
+    }
+
     .encform-row {
         grid-template-columns: 1fr;
+    }
+
+    .encform-actions {
+        flex-direction: column-reverse;
+    }
+
+    .encform-btn {
+        width: 100%;
     }
 }

@@ -13,6 +13,11 @@
  *  · El buscador de familias ignora respuestas atrasadas (evita que un
  *    resultado viejo pise a uno más reciente).
  *
+ * ENCUESTAS DE AGUA Y DEL CENSO (nov-2026): si la encuesta es de agua, el
+ * formulario registra un ESTADO (llega, intermitente, no llega) en lugar de una
+ * cantidad. Si es la de condición de vivienda, no hay nada que registrar (el
+ * mapa sale del censo de familias) y solo se muestra un aviso.
+ *
  * REGISTRO MASIVO (oct-2026, propuesta de la compañera): la pantalla tiene dos
  * modos. "Una familia" es el formulario de siempre; "Varias familias" abre
  * RegistroMasivo, que registra la misma entrega a toda una calle de una sola
@@ -28,10 +33,21 @@ import '../familias/FamiliaList.css';
 import './RegistrarEntregaForm.css';
 
 const TIPO_LABELS = {
-    bombona_gas: 'Bombona de gas',
-    bolsa_clap:  'Bolsa CLAP',
-    otro:        'Otro',
+    bombona_gas:        'Bombona de gas',
+    bolsa_clap:         'Bolsa CLAP',
+    combo_alimenticio:  'Combo alimenticio',
+    agua:               'Servicio de agua',
+    condicion_vivienda: 'Condición de vivienda',
+    otro:               'Otro',
 };
+
+// Estados que se registran en las encuestas de agua (valor del backend → texto)
+const ESTADOS_SERVICIO = [
+    { value: 'llega',        label: 'Llega agua (continuo)' },
+    { value: 'intermitente', label: 'Llega de forma intermitente' },
+    { value: 'no_llega',     label: 'No llega agua' },
+];
+const ESTADO_LABEL = Object.fromEntries(ESTADOS_SERVICIO.map((e) => [e.value, e.label]));
 
 const POR_PAGINA = 20;
 
@@ -64,6 +80,7 @@ export default function RegistrarEntregaForm() {
 
     // ── Datos de la entrega ───────────────────────────────────
     const [cantidad,      setCantidad]      = useState('1');
+    const [estado,        setEstado]        = useState('');
     const [fechaEntrega,  setFechaEntrega]  = useState(hoyLocal);
     const [observaciones, setObservaciones] = useState('');
     const [errors,        setErrors]        = useState({});
@@ -77,6 +94,10 @@ export default function RegistrarEntregaForm() {
     const [modo, setModo] = useState('individual');
 
     const cerrada = encuesta !== null && !encuesta.activa;
+
+    // Agua registra un estado; la de vivienda sale del censo y no registra nada
+    const esEstado = encuesta?.modo === 'estado_agua';
+    const esCenso  = encuesta !== null && encuesta.acepta_respuestas === false;
 
     // Datos de la encuesta
     useEffect(() => {
@@ -158,6 +179,7 @@ export default function RegistrarEntregaForm() {
         setFamiliaSel(null);
         setBusqueda('');
         setCantidad('1');
+        setEstado('');
         setFechaEntrega(hoyLocal());
         setObservaciones('');
         setErrors({});
@@ -170,7 +192,11 @@ export default function RegistrarEntregaForm() {
         if (!familiaSel) {
             nuevos.familia_id = ['Selecciona una familia de la lista.'];
         }
-        if (!Number.isInteger(cant) || cant < 1 || cant > 99) {
+        if (esEstado) {
+            if (!ESTADO_LABEL[estado]) {
+                nuevos.estado = ['Selecciona el estado del servicio.'];
+            }
+        } else if (!Number.isInteger(cant) || cant < 1 || cant > 99) {
             nuevos.cantidad = ['La cantidad debe ser un número entero entre 1 y 99.'];
         }
         if (!fechaEntrega) {
@@ -198,7 +224,7 @@ export default function RegistrarEntregaForm() {
         try {
             await apiClient.post(`/v1/encuestas/${id}/respuestas`, {
                 familia_id:    familiaSel.id,
-                cantidad:      Number(cantidad),
+                ...(esEstado ? { estado } : { cantidad: Number(cantidad) }),
                 fecha_entrega: fechaEntrega,
                 observaciones: observaciones.trim() || null,
             });
@@ -244,7 +270,7 @@ export default function RegistrarEntregaForm() {
                     ← Encuestas
                 </button>
                 <div className="list-topbar__breadcrumb">
-                    <span>SIGET</span><span>›</span><span>Encuestas</span><span>›</span><span>Entregas</span>
+                    <span>SIGET</span><span>›</span><span>Encuestas</span><span>›</span><span>{esEstado ? 'Registros' : 'Entregas'}</span>
                 </div>
             </header>
 
@@ -262,9 +288,11 @@ export default function RegistrarEntregaForm() {
                                 {encuesta.activa ? 'Activa' : 'Cerrada'}
                             </p>
                         )}
-                        {!cargandoResp && (
+                        {!cargandoResp && !esCenso && (
                             <span className="list-heading__count">
-                                {meta.total} {meta.total === 1 ? 'entrega' : 'entregas'}
+                                {meta.total} {esEstado
+                                    ? (meta.total === 1 ? 'registro' : 'registros')
+                                    : (meta.total === 1 ? 'entrega' : 'entregas')}
                             </span>
                         )}
                     </div>
@@ -280,44 +308,57 @@ export default function RegistrarEntregaForm() {
                     </div>
                 )}
 
-                {cerrada && (
+                {cerrada && !esCenso && (
                     <div className="regentrega-aviso" role="status">
                         🔒 Esta encuesta está cerrada: no admite nuevas entregas. Puedes reabrirla
                         desde la lista de encuestas.
                     </div>
                 )}
 
-                <div className="regentrega-modos" role="group" aria-label="Modo de registro">
-                    <button
-                        type="button"
-                        className={`regentrega-modos__btn ${modo === 'individual' ? 'regentrega-modos__btn--activo' : ''}`}
-                        onClick={() => setModo('individual')}
-                        aria-pressed={modo === 'individual'}
-                    >
-                        Una familia
-                    </button>
-                    <button
-                        type="button"
-                        className={`regentrega-modos__btn ${modo === 'masivo' ? 'regentrega-modos__btn--activo' : ''}`}
-                        onClick={() => setModo('masivo')}
-                        aria-pressed={modo === 'masivo'}
-                    >
-                        Varias familias
-                    </button>
-                </div>
+                {esCenso && (
+                    <div className="regentrega-aviso" role="status">
+                        🏠 Esta encuesta no necesita registros: el mapa se calcula con la condición de
+                        vivienda que ya está en el censo de familias. Para cambiarla, edita la familia
+                        en Familias y el mapa se actualiza solo.
+                    </div>
+                )}
 
-                {modo === 'masivo' && (
+                {encuesta && !esCenso && (
+                    <div className="regentrega-modos" role="group" aria-label="Modo de registro">
+                        <button
+                            type="button"
+                            className={`regentrega-modos__btn ${modo === 'individual' ? 'regentrega-modos__btn--activo' : ''}`}
+                            onClick={() => setModo('individual')}
+                            aria-pressed={modo === 'individual'}
+                        >
+                            Una familia
+                        </button>
+                        <button
+                            type="button"
+                            className={`regentrega-modos__btn ${modo === 'masivo' ? 'regentrega-modos__btn--activo' : ''}`}
+                            onClick={() => setModo('masivo')}
+                            aria-pressed={modo === 'masivo'}
+                        >
+                            Varias familias
+                        </button>
+                    </div>
+                )}
+
+                {encuesta && !esCenso && modo === 'masivo' && (
                     <RegistroMasivo
                         encuestaId={id}
                         cerrada={cerrada}
+                        modoEncuesta={encuesta.modo}
                         onSuccess={refrescarHistorial}
                     />
                 )}
 
-                {modo === 'individual' && (
+                {encuesta && !esCenso && modo === 'individual' && (
                     <form onSubmit={handleSubmit} className="regentrega-form" noValidate>
                         <fieldset disabled={cerrada || isSaving} className="regentrega-form__fieldset">
-                            <legend className="regentrega-form__titulo">Registrar nueva entrega</legend>
+                            <legend className="regentrega-form__titulo">
+                                {esEstado ? 'Registrar el estado del agua' : 'Registrar nueva entrega'}
+                            </legend>
 
                             <div className="regentrega-field regentrega-field--buscador">
                                 <label htmlFor="regentrega-busqueda">Familia</label>
@@ -363,21 +404,38 @@ export default function RegistrarEntregaForm() {
                             </div>
 
                             <div className="regentrega-row">
-                                <div className="regentrega-field">
-                                    <label htmlFor="regentrega-cantidad">Cantidad</label>
-                                    <input
-                                        id="regentrega-cantidad"
-                                        type="number"
-                                        min={1}
-                                        max={99}
-                                        value={cantidad}
-                                        onChange={(e) => setCantidad(e.target.value)}
-                                    />
-                                    {errors.cantidad && <span className="regentrega-error">{errors.cantidad[0]}</span>}
-                                </div>
+                                {esEstado ? (
+                                    <div className="regentrega-field">
+                                        <label htmlFor="regentrega-estado">Estado del servicio</label>
+                                        <select
+                                            id="regentrega-estado"
+                                            value={estado}
+                                            onChange={(e) => setEstado(e.target.value)}
+                                        >
+                                            <option value="">Selecciona…</option>
+                                            {ESTADOS_SERVICIO.map((e) => (
+                                                <option key={e.value} value={e.value}>{e.label}</option>
+                                            ))}
+                                        </select>
+                                        {errors.estado && <span className="regentrega-error">{errors.estado[0]}</span>}
+                                    </div>
+                                ) : (
+                                    <div className="regentrega-field">
+                                        <label htmlFor="regentrega-cantidad">Cantidad</label>
+                                        <input
+                                            id="regentrega-cantidad"
+                                            type="number"
+                                            min={1}
+                                            max={99}
+                                            value={cantidad}
+                                            onChange={(e) => setCantidad(e.target.value)}
+                                        />
+                                        {errors.cantidad && <span className="regentrega-error">{errors.cantidad[0]}</span>}
+                                    </div>
+                                )}
 
                                 <div className="regentrega-field">
-                                    <label htmlFor="regentrega-fecha">Fecha de entrega</label>
+                                    <label htmlFor="regentrega-fecha">{esEstado ? 'Fecha del registro' : 'Fecha de entrega'}</label>
                                     <input
                                         id="regentrega-fecha"
                                         type="date"
@@ -404,87 +462,97 @@ export default function RegistrarEntregaForm() {
                             {errors.encuesta && <span className="regentrega-error">{errors.encuesta[0]}</span>}
 
                             <button type="submit" className="list-btn list-btn--primary regentrega-submit">
-                                {isSaving ? 'Guardando…' : 'Registrar entrega'}
+                                {isSaving ? 'Guardando…' : (esEstado ? 'Guardar registro' : 'Registrar entrega')}
                             </button>
                         </fieldset>
                     </form>
                 )}
 
-                <section className="regentrega-historial" aria-label="Entregas registradas">
-                    <h2 className="regentrega-historial__titulo">Entregas registradas</h2>
+                {!esCenso && (
+                    <section className="regentrega-historial" aria-label="Entregas registradas">
+                        <h2 className="regentrega-historial__titulo">
+                            {esEstado ? 'Registros del servicio de agua' : 'Entregas registradas'}
+                        </h2>
 
-                    {cargandoResp ? (
-                        <div className="list-loading">
-                            <div className="list-loading__spinner" />
-                            <p>Cargando entregas…</p>
-                        </div>
-                    ) : respuestas.length === 0 ? (
-                        <div className="list-empty">
-                            <span aria-hidden="true">📦</span>
-                            <p>Todavía no hay entregas registradas para esta encuesta.</p>
-                        </div>
-                    ) : (
-                        <div className="list-table-wrap">
-                            <table className="list-table">
-                                <thead>
-                                    <tr>
-                                        <th>Familia</th>
-                                        <th>Calle</th>
-                                        <th className="td-center">Cantidad</th>
-                                        <th>Fecha</th>
-                                        <th className="th-actions">Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {respuestas.map((r) => (
-                                        <tr key={r.id}>
-                                            <td>{r.familia_nombre ?? `Familia #${r.familia_id}`}</td>
-                                            <td className="td-meta">{r.calle_nombre ?? '—'}</td>
-                                            <td className="td-center">{r.cantidad}</td>
-                                            <td className="td-meta">{formatearFecha(r.fecha_entrega)}</td>
-                                            <td>
-                                                <div className="td-actions">
-                                                    <button
-                                                        type="button"
-                                                        className="action-btn action-btn--delete"
-                                                        onClick={() => setAEliminar(r)}
-                                                        aria-label="Eliminar esta entrega"
-                                                    >
-                                                        🗑
-                                                    </button>
-                                                </div>
-                                            </td>
+                        {cargandoResp ? (
+                            <div className="list-loading">
+                                <div className="list-loading__spinner" />
+                                <p>Cargando entregas…</p>
+                            </div>
+                        ) : respuestas.length === 0 ? (
+                            <div className="list-empty">
+                                <span aria-hidden="true">📦</span>
+                                <p>
+                                    {esEstado
+                                        ? 'Todavía no hay registros para esta encuesta.'
+                                        : 'Todavía no hay entregas registradas para esta encuesta.'}
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="list-table-wrap">
+                                <table className="list-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Familia</th>
+                                            <th>Calle</th>
+                                            <th className="td-center">{esEstado ? 'Estado' : 'Cantidad'}</th>
+                                            <th>Fecha</th>
+                                            <th className="th-actions">Acciones</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
+                                    </thead>
+                                    <tbody>
+                                        {respuestas.map((r) => (
+                                            <tr key={r.id}>
+                                                <td>{r.familia_nombre ?? `Familia #${r.familia_id}`}</td>
+                                                <td className="td-meta">{r.calle_nombre ?? '—'}</td>
+                                                <td className="td-center">
+                                                    {esEstado ? (ESTADO_LABEL[r.estado] ?? r.estado ?? '—') : r.cantidad}
+                                                </td>
+                                                <td className="td-meta">{formatearFecha(r.fecha_entrega)}</td>
+                                                <td>
+                                                    <div className="td-actions">
+                                                        <button
+                                                            type="button"
+                                                            className="action-btn action-btn--delete"
+                                                            onClick={() => setAEliminar(r)}
+                                                            aria-label="Eliminar esta entrega"
+                                                        >
+                                                            🗑
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
 
-                    {!cargandoResp && meta.last_page > 1 && (
-                        <nav className="list-pagination" aria-label="Paginación de entregas">
-                            <button
-                                type="button"
-                                className="page-btn"
-                                disabled={meta.current_page <= 1}
-                                onClick={() => setPagina(meta.current_page - 1)}
-                            >
-                                ← Anterior
-                            </button>
-                            <span className="page-info">
-                                Página {meta.current_page} de {meta.last_page}
-                            </span>
-                            <button
-                                type="button"
-                                className="page-btn"
-                                disabled={meta.current_page >= meta.last_page}
-                                onClick={() => setPagina(meta.current_page + 1)}
-                            >
-                                Siguiente →
-                            </button>
-                        </nav>
-                    )}
-                </section>
+                        {!cargandoResp && meta.last_page > 1 && (
+                            <nav className="list-pagination" aria-label="Paginación de entregas">
+                                <button
+                                    type="button"
+                                    className="page-btn"
+                                    disabled={meta.current_page <= 1}
+                                    onClick={() => setPagina(meta.current_page - 1)}
+                                >
+                                    ← Anterior
+                                </button>
+                                <span className="page-info">
+                                    Página {meta.current_page} de {meta.last_page}
+                                </span>
+                                <button
+                                    type="button"
+                                    className="page-btn"
+                                    disabled={meta.current_page >= meta.last_page}
+                                    onClick={() => setPagina(meta.current_page + 1)}
+                                >
+                                    Siguiente →
+                                </button>
+                            </nav>
+                        )}
+                    </section>
+                )}
             </main>
 
             <ConfirmModal

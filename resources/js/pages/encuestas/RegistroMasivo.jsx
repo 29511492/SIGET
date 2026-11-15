@@ -16,6 +16,9 @@
  *  · Reutiliza el endpoint de detalle del mapa de calor
  *    (GET /v1/mapa-calor/calle/{calle}), que a un admin le devuelve cada
  *    familia con su estado actual (al día, próximo, vencido).
+ *  · Encuestas de agua (modoEncuesta = 'estado_agua', nov-2026): en lugar de la
+ *    cantidad se aplica el mismo ESTADO del servicio (llega, intermitente, no
+ *    llega) a las familias marcadas.
  *  · "Seleccionar solo atrasadas" marca las familias vencidas y próximas a
  *    vencer (solo aparece en encuestas de gas, que son las que predicen).
  */
@@ -37,13 +40,33 @@ const hoyLocal = () => {
 const formatearFecha = (f) => (f ? f.split('-').reverse().join('/') : '—');
 
 const ESTADO_LABEL = {
-    al_dia:    'Al día',
-    proximo:   'Próximo',
-    vencido:   'Vencido',
-    sin_datos: 'Sin datos',
+    al_dia:       'Al día',
+    proximo:      'Próximo',
+    vencido:      'Vencido',
+    sin_datos:    'Sin datos',
+    llega:        'Llega agua',
+    intermitente: 'Intermitente',
+    no_llega:     'No llega',
 };
 
-export default function RegistroMasivo({ encuestaId, cerrada = false, onSuccess }) {
+// Los estados del agua reutilizan los colores de los estados del gas
+const ESTADO_CLASE = {
+    llega:        'al_dia',
+    intermitente: 'proximo',
+    no_llega:     'vencido',
+};
+
+// Estados que se pueden aplicar en las encuestas de agua
+const ESTADOS_SERVICIO = [
+    { value: 'llega',        label: 'Llega agua (continuo)' },
+    { value: 'intermitente', label: 'Llega de forma intermitente' },
+    { value: 'no_llega',     label: 'No llega agua' },
+];
+
+export default function RegistroMasivo({ encuestaId, cerrada = false, modoEncuesta = null, onSuccess }) {
+    const esEstado = modoEncuesta === 'estado_agua';
+    const esGas    = modoEncuesta === 'prediccion_agotamiento';
+
     const [sedes,   setSedes]   = useState([]);
     const [sedeId,  setSedeId]  = useState('');
     const [calles,  setCalles]  = useState([]);
@@ -54,6 +77,7 @@ export default function RegistroMasivo({ encuestaId, cerrada = false, onSuccess 
     const [cargandoFamilias, setCargandoFamilias] = useState(false);
 
     const [cantidad,      setCantidad]      = useState('1');
+    const [estado,        setEstado]        = useState('');
     const [fechaEntrega,  setFechaEntrega]  = useState(hoyLocal);
     const [observaciones, setObservaciones] = useState('');
 
@@ -168,14 +192,18 @@ export default function RegistroMasivo({ encuestaId, cerrada = false, onSuccess 
     const errorForm = useMemo(() => {
         const cant = Number(cantidad);
 
-        if (cantidad === '' || !Number.isInteger(cant) || cant < 1 || cant > 99) {
+        if (esEstado) {
+            if (!ESTADOS_SERVICIO.some((e) => e.value === estado)) {
+                return 'Selecciona el estado del servicio.';
+            }
+        } else if (cantidad === '' || !Number.isInteger(cant) || cant < 1 || cant > 99) {
             return 'La cantidad debe ser un número entero entre 1 y 99.';
         }
         if (!fechaEntrega) return 'Indica la fecha de entrega.';
         if (fechaEntrega > hoyLocal()) return 'La fecha de entrega no puede ser futura.';
 
         return null;
-    }, [cantidad, fechaEntrega]);
+    }, [cantidad, estado, esEstado, fechaEntrega]);
 
     // ── Envío ─────────────────────────────────────────────────
     const registrar = async () => {
@@ -186,7 +214,7 @@ export default function RegistroMasivo({ encuestaId, cerrada = false, onSuccess 
         try {
             const { data } = await apiClient.post(`/v1/encuestas/${encuestaId}/respuestas/masivo`, {
                 familia_ids:   Array.from(seleccionadas),
-                cantidad:      Number(cantidad),
+                ...(esEstado ? { estado } : { cantidad: Number(cantidad) }),
                 fecha_entrega: fechaEntrega,
                 observaciones: observaciones.trim() || null,
             });
@@ -226,9 +254,13 @@ export default function RegistroMasivo({ encuestaId, cerrada = false, onSuccess 
 
     return (
         <div className="regmasivo">
-            <h2 className="regmasivo__titulo">Registrar entrega a varias familias</h2>
+            <h2 className="regmasivo__titulo">
+                {esEstado ? 'Registrar el estado del agua en varias familias' : 'Registrar entrega a varias familias'}
+            </h2>
             <p className="regmasivo__ayuda">
-                Elige la sede y la calle, marca las familias que recibieron y registra la entrega una sola vez.
+                {esEstado
+                    ? 'Elige la sede y la calle, marca las familias y registra el mismo estado del servicio una sola vez.'
+                    : 'Elige la sede y la calle, marca las familias que recibieron y registra la entrega una sola vez.'}
             </p>
 
             {mensaje && <p className="regmasivo__mensaje" role="status">✓ {mensaje}</p>}
@@ -278,7 +310,7 @@ export default function RegistroMasivo({ encuestaId, cerrada = false, onSuccess 
                             Seleccionar todas ({familias.length})
                         </label>
 
-                        {hayEstados && (
+                        {esGas && hayEstados && (
                             <button type="button" className="regmasivo__atajo" onClick={seleccionarAtrasadas}>
                                 Seleccionar solo atrasadas (vencidas y próximas)
                             </button>
@@ -311,7 +343,7 @@ export default function RegistroMasivo({ encuestaId, cerrada = false, onSuccess 
                                         Última: {formatearFecha(f.ultima_entrega)}
                                     </span>
                                     {f.estado ? (
-                                        <span className={`regmasivo__estado regmasivo__estado--${f.estado}`}>
+                                        <span className={`regmasivo__estado regmasivo__estado--${ESTADO_CLASE[f.estado] ?? f.estado}`}>
                                             {ESTADO_LABEL[f.estado] ?? f.estado}
                                         </span>
                                     ) : (
@@ -325,20 +357,32 @@ export default function RegistroMasivo({ encuestaId, cerrada = false, onSuccess 
                     </ul>
 
                     <div className="regmasivo__fila">
-                        <div className="regmasivo__campo">
-                            <label htmlFor="rm-cantidad">Cantidad por familia</label>
-                            <input
-                                id="rm-cantidad"
-                                type="number"
-                                min={1}
-                                max={99}
-                                value={cantidad}
-                                onChange={(e) => setCantidad(e.target.value)}
-                            />
-                        </div>
+                        {esEstado ? (
+                            <div className="regmasivo__campo">
+                                <label htmlFor="rm-estado">Estado del servicio</label>
+                                <select id="rm-estado" value={estado} onChange={(e) => setEstado(e.target.value)}>
+                                    <option value="">Selecciona…</option>
+                                    {ESTADOS_SERVICIO.map((e) => (
+                                        <option key={e.value} value={e.value}>{e.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        ) : (
+                            <div className="regmasivo__campo">
+                                <label htmlFor="rm-cantidad">Cantidad por familia</label>
+                                <input
+                                    id="rm-cantidad"
+                                    type="number"
+                                    min={1}
+                                    max={99}
+                                    value={cantidad}
+                                    onChange={(e) => setCantidad(e.target.value)}
+                                />
+                            </div>
+                        )}
 
                         <div className="regmasivo__campo">
-                            <label htmlFor="rm-fecha">Fecha de entrega</label>
+                            <label htmlFor="rm-fecha">{esEstado ? 'Fecha del registro' : 'Fecha de entrega'}</label>
                             <input
                                 id="rm-fecha"
                                 type="date"
@@ -370,16 +414,20 @@ export default function RegistroMasivo({ encuestaId, cerrada = false, onSuccess 
                         disabled={cantidadSel === 0 || errorForm !== null}
                         onClick={() => setConfirmOpen(true)}
                     >
-                        Registrar entrega a {cantidadSel} {cantidadSel === 1 ? 'familia' : 'familias'}
+                        {esEstado ? 'Registrar estado a' : 'Registrar entrega a'} {cantidadSel} {cantidadSel === 1 ? 'familia' : 'familias'}
                     </button>
                 </>
             )}
 
             <ConfirmModal
                 isOpen={confirmOpen}
-                title="Registrar entrega masiva"
-                message={`¿Registrar la entrega a ${cantidadSel} ${cantidadSel === 1 ? 'familia' : 'familias'}?`}
-                detail={`${cantidad} unidad(es) por familia, con fecha ${formatearFecha(fechaEntrega)}. Las familias que ya tengan una entrega ese día se omiten.`}
+                title={esEstado ? 'Registrar estado masivo' : 'Registrar entrega masiva'}
+                message={esEstado
+                    ? `¿Registrar el estado del agua a ${cantidadSel} ${cantidadSel === 1 ? 'familia' : 'familias'}?`
+                    : `¿Registrar la entrega a ${cantidadSel} ${cantidadSel === 1 ? 'familia' : 'familias'}?`}
+                detail={esEstado
+                    ? `Estado «${ESTADOS_SERVICIO.find((e) => e.value === estado)?.label ?? ''}», con fecha ${formatearFecha(fechaEntrega)}. Las familias que ya tengan un registro ese día se omiten.`
+                    : `${cantidad} unidad(es) por familia, con fecha ${formatearFecha(fechaEntrega)}. Las familias que ya tengan una entrega ese día se omiten.`}
                 confirmLabel="Sí, registrar"
                 variant="warning"
                 onConfirm={registrar}

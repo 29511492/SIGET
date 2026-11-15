@@ -1,5 +1,5 @@
 /**
- * MapaCalorPage.css — controles, tarjetas, leyenda y detalle del mapa de calor.
+ * MapaCalorPage.css — pestañas de encuestas, controles, tarjetas, leyenda y detalle del mapa de calor.
  * El chrome de página y las tablas (.list-*) vienen de
  * ../familias/FamiliaList.css, que el componente importa.
  *
@@ -12,38 +12,66 @@
 .mapa-controles {
     display: flex;
     flex-wrap: wrap;
-    align-items: flex-end;
+    align-items: center;
     gap: 1rem;
     margin-bottom: 1.25rem;
 }
 
-.mapa-controles__campo {
+/* ── Selector de encuestas (una pestaña por mapa) ─────────── */
+.mapa-tabs {
     display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
 }
 
-.mapa-controles__campo label {
-    font-size: 0.78rem;
-    font-weight: 500;
-    color: var(--c-text-mid, #4a5568);
-}
-
-.mapa-select {
-    min-width: 260px;
-    padding: 0.55rem 0.75rem;
+.mapa-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.55rem 0.95rem;
     font-family: var(--ff-body, 'DM Sans', sans-serif);
-    font-size: 0.875rem;
-    color: var(--c-text-dark, #1a1a2e);
+    font-size: 0.85rem;
+    color: var(--c-text-mid, #4a5568);
     background: #ffffff;
     border: 1.5px solid var(--c-border, #e8e3db);
-    border-radius: 8px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
 }
 
-.mapa-select:focus {
-    outline: none;
+.mapa-tab:hover {
     border-color: var(--c-navy-hover, #1e3a56);
-    box-shadow: 0 0 0 3px rgba(30, 58, 86, 0.08);
+}
+
+.mapa-tab:focus-visible {
+    outline: 2px solid var(--c-gold, #c9a84c);
+    outline-offset: 2px;
+}
+
+.mapa-tab--activo {
+    color: #ffffff;
+    background: var(--c-navy, #0d1f35);
+    border-color: var(--c-navy, #0d1f35);
+    box-shadow: 0 4px 14px rgba(13, 31, 53, 0.25);
+}
+
+.mapa-tab--cerrada:not(.mapa-tab--activo) {
+    opacity: 0.6;
+}
+
+.mapa-tab__cerrada {
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    opacity: 0.8;
+}
+
+.mapa-descripcion {
+    margin: 0 0 1rem;
+    font-size: 0.82rem;
+    color: var(--c-text-light, #718096);
 }
 
 .mapa-toggle {
@@ -205,6 +233,7 @@
 
 /* ── Detalle de la calle ──────────────────────────────────── */
 .mapa-detalle {
+    scroll-margin-top: 1rem;
     margin-top: 1rem;
     padding: 1.25rem;
     background: #ffffff;
@@ -279,13 +308,19 @@
 .mapa-estado--vencido   { color: #9a2b2a; background: #fbe4e3; }
 .mapa-estado--sin_datos { color: #4b5563; background: #eef0f3; }
 
-@media (max-width: 640px) {
-    .mapa-select {
-        min-width: 0;
-        width: 100%;
-    }
+/* Agua (mismos colores que al_dia / proximo / vencido) */
+.mapa-estado--llega        { color: #3b5c14; background: #eef6df; }
+.mapa-estado--intermitente { color: #8a5a07; background: #fdf1d6; }
+.mapa-estado--no_llega     { color: #9a2b2a; background: #fbe4e3; }
 
-    .mapa-controles__campo {
-        width: 100%;
+/* Condición de vivienda */
+.mapa-estado--optima  { color: #3b5c14; background: #eef6df; }
+.mapa-estado--regular { color: #8a5a07; background: #fdf1d6; }
+.mapa-estado--critica { color: #9a2b2a; background: #fbe4e3; }
+
+@media (max-width: 640px) {
+    .mapa-tab {
+        padding: 0.5rem 0.8rem;
+        font-size: 0.8rem;
     }
 }

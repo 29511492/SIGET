@@ -26,15 +26,21 @@ import '../familias/FamiliaList.css';
 import './EncuestaList.css';
 
 const TIPO_LABELS = {
-    bombona_gas: 'Bombona de gas',
-    bolsa_clap:  'Bolsa CLAP',
-    otro:        'Otro',
+    bombona_gas:        'Bombona de gas',
+    bolsa_clap:         'Bolsa CLAP',
+    combo_alimenticio:  'Combo alimenticio',
+    agua:               'Servicio de agua',
+    condicion_vivienda: 'Condición de vivienda',
+    otro:               'Otro',
 };
 
 const TIPO_BADGE = {
-    bombona_gas: 'badge--amber',
-    bolsa_clap:  'badge--teal',
-    otro:        'badge--purple',
+    bombona_gas:        'badge--amber',
+    bolsa_clap:         'badge--teal',
+    combo_alimenticio:  'badge--teal',
+    agua:               'badge--blue',
+    condicion_vivienda: 'badge--purple',
+    otro:               'badge--purple',
 };
 
 const POR_PAGINA = 15;
@@ -136,7 +142,7 @@ export default function EncuestaList() {
                     <div>
                         <h1 className="list-heading__title">Encuestas territoriales</h1>
                         <p className="list-heading__subtitle">
-                            Campañas de censo (gas, bolsas CLAP…) que alimentan el mapa de calor.
+                            Campañas de censo (gas, agua, alimentos, vivienda…) que alimentan el mapa de calor.
                         </p>
                         {!isLoading && (
                             <span className="list-heading__count">
@@ -199,7 +205,9 @@ export default function EncuestaList() {
                                         </td>
                                         <td className="td-meta">{formatearFecha(encuesta.fecha_inicio)}</td>
                                         <td className="td-meta">{formatearFecha(encuesta.fecha_cierre)}</td>
-                                        <td className="td-center">{encuesta.total_respuestas ?? 0}</td>
+                                        <td className="td-center">
+                                            {encuesta.acepta_respuestas === false ? '—' : (encuesta.total_respuestas ?? 0)}
+                                        </td>
                                         <td>
                                             <button
                                                 type="button"
@@ -219,12 +227,14 @@ export default function EncuestaList() {
                                                 >
                                                     🗺 Ver mapa
                                                 </Link>
-                                                <Link
-                                                    to={`/encuestas/${encuesta.id}/respuestas`}
-                                                    className="action-btn enc-link"
-                                                >
-                                                    📦 Entregas
-                                                </Link>
+                                                {encuesta.acepta_respuestas !== false && (
+                                                    <Link
+                                                        to={`/encuestas/${encuesta.id}/respuestas`}
+                                                        className="action-btn enc-link"
+                                                    >
+                                                        {encuesta.modo === 'estado_agua' ? '💧 Registros' : '📦 Entregas'}
+                                                    </Link>
+                                                )}
                                                 <button
                                                     type="button"
                                                     className="action-btn action-btn--delete"
