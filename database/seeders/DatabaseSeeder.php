@@ -37,6 +37,9 @@ use Illuminate\Support\Facades\Hash;
  *    beneficios).
  *  - No corre en producción (crea cuentas con contraseña conocida).
  *  - Los seeders de la comuna se llaman al final.
+ *
+ *  CAMBIO (nov-2026): se llama a ComiteSeeder (catálogo de 15 comités
+ *  y unidades comunales, observación #1 del profesor).
  * ═══════════════════════════════════════════════════════════════
  */
 class DatabaseSeeder extends Seeder
@@ -200,6 +203,11 @@ class DatabaseSeeder extends Seeder
                 );
             }
         });
+
+        // ── 8b. Catálogo de comités (nov-2026, observación #1 del profesor) ──
+        // ComiteSeeder es idempotente: solo crea los comités que falten y
+        // respeta el 'Comité de Salud' creado arriba.
+        $this->call(ComiteSeeder::class);
 
         // ── 9. Comuna Ana Karina Rote 2019 ─────────────────────────
         // ComunaSeeder solo se llama si aún no existen las demás sedes,
