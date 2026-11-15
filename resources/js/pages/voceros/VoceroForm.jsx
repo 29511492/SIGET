@@ -5,6 +5,10 @@
  *   apiClient → '../../services/axios'   (2 niveles)
  *   useAuth   → '../../hooks/useAuth'    (2 niveles)
  *   CSS       → './VoceroList.css'       (reutiliza los estilos de lista)
+ *
+ * FIX (nov-2026) — observaciones del profesor al rol admin (#3)
+ * Se quitó el texto de ayuda "Ordenado por apellido. Formato: Apellido,
+ * Nombre — Cédula." que aparecía bajo el campo Habitante.
  */
 
 import { useState, useEffect } from 'react';
@@ -211,7 +215,6 @@ export default function VoceroForm() {
                                 ))}
                             </select>
                             {fieldErr('habitante_id') && <p className="vocero-error">{fieldErr('habitante_id')}</p>}
-                            <p className="vocero-hint">Ordenado por apellido. Formato: Apellido, Nombre — Cédula.</p>
                         </div>
 
                         {/* Unidad comunal */}
