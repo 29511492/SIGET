@@ -50,6 +50,16 @@ import './DashboardPage.css';
  * writeBool ya no considera 'operador'. La vista del rol operador
  * (OperadorDashboard) se retiró del DashboardFactory.
  * ─────────────────────────────────────────────────────────────────
+ * FIX (nov-2026) — observaciones del profesor al rol admin (#6)
+ * ─────────────────────────────────────────────────────────────────
+ * Se quitaron del topbar los dos botones de .topbar-actions:
+ *   - "📊 Exportar Reporte" (Link a /reportes): no funcionaba y estaba
+ *     duplicado con el botón "Exportar Reporte" del hero de
+ *     AdminDashboard.jsx, que abre ExportModal y sí funciona.
+ *   - "+ Registrar Familia": duplicaba la tarjeta "Registrar Familia"
+ *     del grid "¿Qué quieres hacer hoy?".
+ * El topbar queda solo con el menú hamburguesa y el breadcrumb.
+ * ─────────────────────────────────────────────────────────────────
  */
 export default function DashboardPage() {
     const { user, isLoading, logout, canWrite, isAdmin } = useAuth();
@@ -242,19 +252,6 @@ export default function DashboardPage() {
                                 rutaActiva.startsWith(i.href + '/')
                             )?.label ?? 'Dashboard'}
                         </span>
-                    </div>
-
-                    <div className="topbar-actions">
-                        {writeBool && (
-                            <Link to="/familias" className="topbar-btn topbar-btn--primary">
-                                + Registrar Familia
-                            </Link>
-                        )}
-                        {adminBool && (
-                            <Link to="/reportes" className="topbar-btn topbar-btn--secondary">
-                                📊 Exportar Reporte
-                            </Link>
-                        )}
                     </div>
                 </header>
 
