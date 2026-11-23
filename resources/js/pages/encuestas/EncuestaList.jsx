@@ -31,6 +31,7 @@ const TIPO_LABELS = {
     combo_alimenticio:  'Combo alimenticio',
     agua:               'Servicio de agua',
     condicion_vivienda: 'Condición de vivienda',
+    pago_servicio:      'Pagos de servicio',
     otro:               'Otro',
 };
 
@@ -40,6 +41,7 @@ const TIPO_BADGE = {
     combo_alimenticio:  'badge--teal',
     agua:               'badge--blue',
     condicion_vivienda: 'badge--purple',
+    pago_servicio:      'badge--teal',
     otro:               'badge--purple',
 };
 
@@ -196,6 +198,9 @@ export default function EncuestaList() {
                                             <span className="enc-nombre">{encuesta.nombre}</span>
                                             {encuesta.descripcion && (
                                                 <span className="enc-desc">{encuesta.descripcion}</span>
+                                            )}
+                                            {encuesta.cuenta_pago_nombre && (
+                                                <span className="enc-desc">Servicio: {encuesta.cuenta_pago_nombre}</span>
                                             )}
                                         </td>
                                         <td>

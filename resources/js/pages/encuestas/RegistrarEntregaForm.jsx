@@ -317,9 +317,9 @@ export default function RegistrarEntregaForm() {
 
                 {esCenso && (
                     <div className="regentrega-aviso" role="status">
-                        🏠 Esta encuesta no necesita registros: el mapa se calcula con la condición de
-                        vivienda que ya está en el censo de familias. Para cambiarla, edita la familia
-                        en Familias y el mapa se actualiza solo.
+                        {encuesta?.modo === 'pago_servicio'
+                            ? '💳 Esta encuesta no necesita registros: el mapa se calcula con los pagos verificados del servicio dentro del período indicado.'
+                            : '🏠 Esta encuesta no necesita registros: el mapa se calcula con la condición de vivienda que ya está en el censo de familias. Para cambiarla, edita la familia en Familias y el mapa se actualiza solo.'}
                     </div>
                 )}
 
@@ -495,7 +495,7 @@ export default function RegistrarEntregaForm() {
                                         <tr>
                                             <th>Familia</th>
                                             <th>Calle</th>
-                                            <th className="td-center">{esEstado ? 'Estado' : 'Cantidad'}</th>
+                                            <th className={esEstado ? undefined : 'td-center'}>{esEstado ? 'Estado' : 'Cantidad'}</th>
                                             <th>Fecha</th>
                                             <th className="th-actions">Acciones</th>
                                         </tr>
@@ -505,7 +505,7 @@ export default function RegistrarEntregaForm() {
                                             <tr key={r.id}>
                                                 <td>{r.familia_nombre ?? `Familia #${r.familia_id}`}</td>
                                                 <td className="td-meta">{r.calle_nombre ?? '—'}</td>
-                                                <td className="td-center">
+                                                <td className={esEstado ? undefined : 'td-center'}>
                                                     {esEstado ? (ESTADO_LABEL[r.estado] ?? r.estado ?? '—') : r.cantidad}
                                                 </td>
                                                 <td className="td-meta">{formatearFecha(r.fecha_entrega)}</td>

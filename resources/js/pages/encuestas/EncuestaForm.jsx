@@ -14,7 +14,7 @@
  * y muestra los errores 422 del backend campo por campo.
  */
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import apiClient from '../../services/axios';
 import './EncuestaForm.css';
 
@@ -24,6 +24,7 @@ const TIPOS = [
     { value: 'combo_alimenticio',  label: 'Combo alimenticio (mide cobertura)' },
     { value: 'agua',               label: 'Servicio de agua (estado por calle)' },
     { value: 'condicion_vivienda', label: 'Condición de las viviendas (sale del censo)' },
+    { value: 'pago_servicio',      label: 'Pagos de un servicio (quién falta por pagar)' },
     { value: 'otro',               label: 'Otro (mide cobertura)' },
 ];
 
@@ -57,6 +58,11 @@ const INFO_TIPO = {
         ejemplo: 'Condición de las viviendas — 2026',
         fechas:  false,
     },
+    pago_servicio: {
+        ayuda:   'Se calcula sola con los pagos verificados del servicio elegido durante el período indicado: no hay nada que registrar.',
+        ejemplo: 'Cuota de noviembre 2026',
+        fechas:  true,
+    },
     otro: {
         ayuda:   'Mide qué familias ya recibieron o completaron el servicio, calle por calle.',
         ejemplo: 'Censo de servicios — noviembre 2026',
@@ -70,6 +76,7 @@ const FORM_INICIAL = {
     descripcion:  '',
     fecha_inicio: '',
     fecha_cierre: '',
+    cuenta_pago_id: '',
 };
 
 export default function EncuestaForm({ onCancel, onSuccess }) {
@@ -80,6 +87,39 @@ export default function EncuestaForm({ onCancel, onSuccess }) {
 
     const info       = INFO_TIPO[form.tipo] ?? INFO_TIPO.otro;
     const usaFechas  = info.fechas;
+    const esPago     = form.tipo === 'pago_servicio';
+
+    // En las encuestas de pagos el período es obligatorio; en las demás es opcional
+    const marcaPeriodo = esPago
+        ? <span className="encform-required">*</span>
+        : <span className="encform-optional">(opcional)</span>;
+
+    // Cuentas activas, cargadas solo cuando se elige el tipo de pagos
+    const [cuentas, setCuentas] = useState(null);
+
+    useEffect(() => {
+        if (!esPago || cuentas !== null) return undefined;
+
+        let cancelado = false;
+        apiClient.get('/v1/cuentas-pago')
+            .then(({ data }) => {
+                if (cancelado) return;
+                const lista = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
+                setCuentas(lista);
+            })
+            .catch(() => { if (!cancelado) setCuentas([]); });
+
+        return () => { cancelado = true; };
+    }, [esPago, cuentas]);
+
+    // Un servicio puede tener dos cuentas (pago móvil y transferencia): se ofrece una por nombre
+    const servicios = useMemo(() => {
+        const vistos = new Map();
+        (cuentas ?? []).forEach((c) => {
+            if (!vistos.has(c.nombre_servicio)) vistos.set(c.nombre_servicio, c);
+        });
+        return [...vistos.values()];
+    }, [cuentas]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -93,6 +133,11 @@ export default function EncuestaForm({ onCancel, onSuccess }) {
                 siguiente.fecha_cierre = '';
             }
 
+            // El servicio solo aplica a las encuestas de pagos
+            if (name === 'tipo' && value !== 'pago_servicio') {
+                siguiente.cuenta_pago_id = '';
+            }
+
             return siguiente;
         });
 
@@ -100,7 +145,7 @@ export default function EncuestaForm({ onCancel, onSuccess }) {
             setErrors((prev) => ({
                 ...prev,
                 [name]: undefined,
-                ...(name === 'tipo' ? { fecha_inicio: undefined, fecha_cierre: undefined } : {}),
+                ...(name === 'tipo' ? { fecha_inicio: undefined, fecha_cierre: undefined, cuenta_pago_id: undefined } : {}),
             }));
         }
     };
@@ -110,6 +155,15 @@ export default function EncuestaForm({ onCancel, onSuccess }) {
 
         if (!form.nombre.trim()) {
             nuevos.nombre = ['El nombre de la campaña es obligatorio.'];
+        }
+        if (esPago && !form.cuenta_pago_id) {
+            nuevos.cuenta_pago_id = ['Selecciona el servicio cuyos pagos se van a controlar.'];
+        }
+        if (esPago && !form.fecha_inicio) {
+            nuevos.fecha_inicio = ['Indica desde qué fecha se cuentan los pagos.'];
+        }
+        if (esPago && !form.fecha_cierre) {
+            nuevos.fecha_cierre = ['Indica hasta qué fecha se cuentan los pagos.'];
         }
         if (usaFechas && form.fecha_inicio && form.fecha_cierre && form.fecha_cierre < form.fecha_inicio) {
             nuevos.fecha_cierre = ['La fecha de cierre no puede ser anterior a la de inicio.'];
@@ -138,6 +192,7 @@ export default function EncuestaForm({ onCancel, onSuccess }) {
                 descripcion:  form.descripcion.trim() || null,
                 fecha_inicio: usaFechas ? (form.fecha_inicio || null) : null,
                 fecha_cierre: usaFechas ? (form.fecha_cierre || null) : null,
+                ...(esPago ? { cuenta_pago_id: Number(form.cuenta_pago_id) } : {}),
             });
             onSuccess?.(data.data);
         } catch (err) {
@@ -193,6 +248,32 @@ export default function EncuestaForm({ onCancel, onSuccess }) {
                 {errors.nombre && <span className="encform-field__error">{errors.nombre[0]}</span>}
             </div>
 
+            {esPago && (
+                <div className="encform-field">
+                    <label htmlFor="encform-servicio">
+                        Servicio a controlar <span className="encform-required">*</span>
+                    </label>
+                    <select
+                        id="encform-servicio"
+                        name="cuenta_pago_id"
+                        value={form.cuenta_pago_id}
+                        onChange={handleChange}
+                        disabled={cuentas === null}
+                    >
+                        <option value="">{cuentas === null ? 'Cargando servicios…' : 'Selecciona un servicio…'}</option>
+                        {servicios.map((c) => (
+                            <option key={c.id} value={c.id}>{c.nombre_servicio}</option>
+                        ))}
+                    </select>
+                    <span className="encform-hint">
+                        {cuentas !== null && servicios.length === 0
+                            ? 'No hay cuentas de pago activas. Crea una primero en Cuentas de Pago.'
+                            : 'Se cuentan los pagos de todas las cuentas de este servicio (pago móvil y transferencia).'}
+                    </span>
+                    {errors.cuenta_pago_id && <span className="encform-field__error">{errors.cuenta_pago_id[0]}</span>}
+                </div>
+            )}
+
             <div className="encform-field">
                 <label htmlFor="encform-descripcion">
                     Descripción <span className="encform-optional">(opcional)</span>
@@ -212,7 +293,7 @@ export default function EncuestaForm({ onCancel, onSuccess }) {
                 <div className="encform-row">
                     <div className="encform-field">
                         <label htmlFor="encform-inicio">
-                            Fecha de inicio <span className="encform-optional">(opcional)</span>
+                            Fecha de inicio {marcaPeriodo}
                         </label>
                         <input
                             id="encform-inicio"
@@ -226,7 +307,7 @@ export default function EncuestaForm({ onCancel, onSuccess }) {
 
                     <div className="encform-field">
                         <label htmlFor="encform-cierre">
-                            Fecha de cierre <span className="encform-optional">(opcional)</span>
+                            Fecha de cierre {marcaPeriodo}
                         </label>
                         <input
                             id="encform-cierre"

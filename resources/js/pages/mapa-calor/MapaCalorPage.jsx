@@ -71,6 +71,9 @@ const ESTADO_FAMILIA = {
     optima:       'Óptima',
     regular:      'Regular',
     critica:      'Crítica',
+    pagado:       'Pagado',
+    en_revision:  'En revisión',
+    sin_pago:     'Sin pago',
 };
 
 function BadgeEstado({ valor }) {
@@ -88,6 +91,7 @@ const ICONO_TIPO = {
     combo_alimenticio:  '🛒',
     agua:               '💧',
     condicion_vivienda: '🏠',
+    pago_servicio:      '💳',
     otro:               '📋',
 };
 
@@ -184,6 +188,25 @@ const MODOS = {
             { titulo: 'Condición', celda: (f) => <BadgeEstado valor={f.condicion} /> },
         ],
     },
+
+    pago_servicio: {
+        etiquetas: {
+            0:         'Todas las familias al día',
+            1:         'Con familias sin pagar',
+            2:         'Mayoría sin pagar',
+            sin_datos: 'Sin familias',
+        },
+        textoCalle: (c) => `${c.conteo?.sin_pago ?? 0} sin pagar · ${c.conteo?.en_revision ?? 0} en revisión`,
+        chips: (r) => [
+            { clave: 0, valor: r.pagado,      texto: 'pagaron' },
+            { clave: 1, valor: r.en_revision, texto: 'en revisión' },
+            { clave: 2, valor: r.sin_pago,    texto: 'sin pagar' },
+        ],
+        columnas: [
+            { titulo: 'Estado del pago', celda: (f) => <BadgeEstado valor={f.estado} /> },
+            { titulo: 'Último pago', meta: true, celda: (f) => formatearFecha(f.ultimo_pago) },
+        ],
+    },
 };
 
 export default function MapaCalorPage() {
@@ -198,6 +221,7 @@ export default function MapaCalorPage() {
     const [calles,    setCalles]    = useState([]);
     const [sedes,     setSedes]     = useState([]);
     const [modo,      setModo]      = useState(null);
+    const [pagosSinFamilia, setPagosSinFamilia] = useState(null);
     const [vista,     setVista]     = useState('mapa'); // 'mapa' | 'tarjetas'
     const [isLoading, setIsLoading] = useState(false);
     const [error,     setError]     = useState(null);
@@ -256,6 +280,7 @@ export default function MapaCalorPage() {
                 setCalles(data.data);
                 setSedes(data.sedes ?? []);
                 setModo(data.modo);
+                setPagosSinFamilia(data.pagos_sin_familia ?? null);
             })
             .catch((err) => {
                 if (cancelado) return;
@@ -378,6 +403,13 @@ export default function MapaCalorPage() {
                     </div>
                 )}
 
+                {encuestaActual?.modo === 'pago_servicio' && (
+                    <p className="mapa-descripcion">
+                        Servicio: <strong>{encuestaActual.cuenta_pago_nombre ?? '—'}</strong> · Período: del{' '}
+                        {formatearFecha(encuestaActual.fecha_inicio)} al {formatearFecha(encuestaActual.fecha_cierre)}
+                    </p>
+                )}
+
                 {encuestaActual?.descripcion && (
                     <p className="mapa-descripcion">{encuestaActual.descripcion}</p>
                 )}
@@ -460,6 +492,14 @@ export default function MapaCalorPage() {
                             </span>
                         ))}
                     </div>
+                )}
+
+                {/* ── Aviso de pagos sin familia (solo administrador) ── */}
+                {!isLoading && modo === 'pago_servicio' && pagosSinFamilia > 0 && (
+                    <p className="mapa-nota" role="status">
+                        ⚠ {plural(pagosSinFamilia, 'pago del período no se pudo', 'pagos del período no se pudieron')}{' '}
+                        asignar a una familia (el usuario que pagó no está vinculado a un habitante) y no se cuentan en el mapa.
+                    </p>
                 )}
 
                 {/* ── Vista de mapa ─────────────────────────── */}
