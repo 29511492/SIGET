@@ -61,6 +61,12 @@ class CuentaPago extends Model
         return $this->hasMany(PagoQr::class, 'cuenta_pago_id');
     }
 
+    /** Encuestas de tipo pago_servicio que controlan el servicio de esta cuenta. */
+    public function encuestas(): HasMany
+    {
+        return $this->hasMany(Encuesta::class, 'cuenta_pago_id');
+    }
+
     // ── Scopes ────────────────────────────────────────────────
     public function scopeActivas(Builder $query): Builder
     {

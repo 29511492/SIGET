@@ -32,6 +32,7 @@ use Illuminate\Validation\Rule;
  *  - bombona_gas         → predicción de agotamiento (EstimadorConsumoService)
  *  - agua                → estado del servicio (último estado registrado por familia)
  *  - condicion_vivienda  → condición de vivienda tomada del censo (sin respuestas)
+ *  - pago_servicio       → pagos de un servicio en un período (sin respuestas)
  *  - otros               → cobertura simple (familias con entrega / total)
  *
  *  Sin caché: el mapa refleja siempre el estado real. Los cálculos
@@ -77,6 +78,11 @@ class MapaCalorController extends Controller
             'message' => 'Mapa de calor generado correctamente.',
             'data'    => $data,
             'sedes'   => $this->sedesInvolucradas($calles->pluck('sede_id')->unique()->all()),
+            // Pagos del período que no se pudieron asignar a una familia (solo
+            // administrador: para el vocero sería una cifra global de todas las sedes)
+            'pagos_sin_familia' => ($encuesta->modo() === Encuesta::MODO_PAGO && $request->user()->esAdmin())
+                ? $this->estimador->pagosPorFamiliaDelPeriodo($encuesta)['sin_asignar']
+                : null,
             'modo'    => $encuesta->modo(),
         ]);
     }
@@ -112,6 +118,7 @@ class MapaCalorController extends Controller
             Encuesta::MODO_AGOTAMIENTO => $this->detalleAgotamiento($encuesta, $familias, $ids, $esAdmin),
             Encuesta::MODO_ESTADO      => $this->detalleEstado($encuesta, $familias, $ids, $esAdmin),
             Encuesta::MODO_VIVIENDA    => $this->detalleVivienda($familias, $esAdmin),
+            Encuesta::MODO_PAGO        => $this->detallePago($encuesta, $familias, $esAdmin),
             default                    => $this->detalleCobertura($encuesta, $familias, $ids, $esAdmin),
         };
 
@@ -144,6 +151,7 @@ class MapaCalorController extends Controller
             Encuesta::MODO_AGOTAMIENTO => $this->estimador->resumenPorCalles($calleIds, $encuesta->tipo),
             Encuesta::MODO_ESTADO      => $this->estimador->resumenEstadoPorCalles($calleIds, $encuesta->id),
             Encuesta::MODO_VIVIENDA    => $this->estimador->resumenViviendaPorCalles($calleIds),
+            Encuesta::MODO_PAGO        => $this->estimador->resumenPagoPorCalles($calleIds, $encuesta),
             default                    => $this->estimador->resumenCoberturaPorCalles($calleIds, $encuesta->id),
         };
     }
@@ -239,6 +247,30 @@ class MapaCalorController extends Controller
                 'responsable'     => $f->nombre_responsable,
                 'codigo_vivienda' => $f->codigo_vivienda,
                 'condicion'       => $f->condicion_vivienda,
+            ])->values()
+            : null;
+
+        return [$resumen, $detalle];
+    }
+
+    /** @return array{0:array<string,int>,1:Collection|null} */
+    private function detallePago(Encuesta $encuesta, Collection $familias, bool $esAdmin): array
+    {
+        $porFamilia = $this->estimador->pagosPorFamiliaDelPeriodo($encuesta)['porFamilia'];
+        $resumen    = ['pagado' => 0, 'en_revision' => 0, 'sin_pago' => 0];
+
+        foreach ($familias as $familia) {
+            $estado = $porFamilia->get((int) $familia->id)['estado'] ?? 'sin_pago';
+            $resumen[$estado]++;
+        }
+
+        $detalle = $esAdmin
+            ? $familias->map(fn (Familia $f) => [
+                'familia_id'      => $f->id,
+                'responsable'     => $f->nombre_responsable,
+                'codigo_vivienda' => $f->codigo_vivienda,
+                'estado'          => $porFamilia->get((int) $f->id)['estado'] ?? 'sin_pago',
+                'ultimo_pago'     => $porFamilia->get((int) $f->id)['fecha'] ?? null,
             ])->values()
             : null;
 

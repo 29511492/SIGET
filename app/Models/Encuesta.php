@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -37,12 +38,15 @@ class Encuesta extends Model
      *  - agua               → estado del servicio por familia (llega, intermitente, no llega)
      *  - condicion_vivienda → se calcula del censo (familias.condicion_vivienda);
      *                         no admite respuestas propias
+     *  - pago_servicio      → se calcula con los pagos verificados de un servicio
+     *                         (cuenta_pago_id) dentro del período de la encuesta
      */
     public const TIPO_GAS       = 'bombona_gas';
     public const TIPO_CLAP      = 'bolsa_clap';
     public const TIPO_COMBO     = 'combo_alimenticio';
     public const TIPO_AGUA      = 'agua';
     public const TIPO_VIVIENDA  = 'condicion_vivienda';
+    public const TIPO_PAGO      = 'pago_servicio';
     public const TIPO_OTRO      = 'otro';
     public const TIPOS          = [
         self::TIPO_GAS,
@@ -50,6 +54,7 @@ class Encuesta extends Model
         self::TIPO_COMBO,
         self::TIPO_AGUA,
         self::TIPO_VIVIENDA,
+        self::TIPO_PAGO,
         self::TIPO_OTRO,
     ];
 
@@ -61,6 +66,7 @@ class Encuesta extends Model
     public const MODO_COBERTURA   = 'cobertura';
     public const MODO_ESTADO      = 'estado_agua';
     public const MODO_VIVIENDA    = 'condicion_vivienda';
+    public const MODO_PAGO        = 'pago_servicio';
 
     protected $table = 'encuestas';
 
@@ -70,6 +76,7 @@ class Encuesta extends Model
         'descripcion',
         'fecha_inicio',
         'fecha_cierre',
+        'cuenta_pago_id',
         'activa',
     ];
 
@@ -77,6 +84,7 @@ class Encuesta extends Model
         'fecha_inicio' => 'date',
         'fecha_cierre' => 'date',
         'activa'       => 'boolean',
+        'cuenta_pago_id' => 'integer',
     ];
 
     // ── Relaciones ────────────────────────────────────────────────
@@ -84,6 +92,12 @@ class Encuesta extends Model
     public function respuestas(): HasMany
     {
         return $this->hasMany(EncuestaRespuesta::class);
+    }
+
+    /** Cuenta que define el servicio controlado (solo tipo pago_servicio). */
+    public function cuentaPago(): BelongsTo
+    {
+        return $this->belongsTo(CuentaPago::class, 'cuenta_pago_id')->withTrashed();
     }
 
     // ── Scopes ────────────────────────────────────────────────────
@@ -117,10 +131,16 @@ class Encuesta extends Model
         return $this->tipo === self::TIPO_VIVIENDA;
     }
 
-    /** Las encuestas del censo no admiten registrar entregas ni estados. */
+    /** Encuesta cuyo mapa sale de los pagos del servicio, sin respuestas propias. */
+    public function esDePago(): bool
+    {
+        return $this->tipo === self::TIPO_PAGO;
+    }
+
+    /** Las encuestas que se calculan solas (censo y pagos) no admiten registros. */
     public function aceptaRespuestas(): bool
     {
-        return ! $this->esDelCenso();
+        return ! $this->esDelCenso() && ! $this->esDePago();
     }
 
     /** Modo de cálculo del mapa de calor para esta encuesta. */
@@ -130,6 +150,7 @@ class Encuesta extends Model
             self::TIPO_GAS      => self::MODO_AGOTAMIENTO,
             self::TIPO_AGUA     => self::MODO_ESTADO,
             self::TIPO_VIVIENDA => self::MODO_VIVIENDA,
+            self::TIPO_PAGO     => self::MODO_PAGO,
             default             => self::MODO_COBERTURA,
         };
     }

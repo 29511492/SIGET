@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\CuentaPago;
 use App\Models\Encuesta;
 use App\Models\EncuestaRespuesta;
 use App\Models\Familia;
+use App\Models\PagoQr;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -37,7 +39,8 @@ use Illuminate\Support\Facades\DB;
  *  servicio de agua (último estado registrado de cada familia) y la CONDICIÓN
  *  DE VIVIENDA tomada del censo. Todos devuelven el mismo riesgo
  *  (0 = bien, 1 = atención, 2 = crítico, null = sin datos) para que el mapa
- *  los pinte igual.
+ *  los pinte igual. También resume los PAGOS de un servicio en un período
+ *  (pagado, en revisión o sin pago), calculados con los pagos ya registrados.
  * ═══════════════════════════════════════════════════════════════
  */
 class EstimadorConsumoService
@@ -54,6 +57,9 @@ class EstimadorConsumoService
     public const UMBRAL_VIVIENDA_REGULARES = 0.50;
 
     private const SEGUNDOS_POR_DIA = 86400;
+
+    /** Pagos del período ya calculados, por id de encuesta (una carga por petición). */
+    private array $pagosPeriodo = [];
 
     // ─────────────────────────────────────────────────────────────
     //  Familias — predicción de agotamiento
@@ -340,6 +346,160 @@ class EstimadorConsumoService
             $conteo['critica'] > 0
                 || ($conteo['regular'] / $total) >= self::UMBRAL_VIVIENDA_REGULARES => 1,
             default => 0,
+        };
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  Familias — pagos de un servicio en un período
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Estado de pago de cada familia para una encuesta de tipo pago_servicio.
+     *
+     * Se cuentan los pagos de TODAS las cuentas con el mismo nombre de servicio
+     * que la cuenta elegida (pago móvil y transferencia suman juntos) cuya fecha
+     * de pago cae dentro del período de la encuesta:
+     *  - pagado      → tiene un pago verificado
+     *  - en_revision → no tiene verificado pero sí uno pendiente
+     *  - sin_pago    → no tiene pagos, o solo rechazados
+     *
+     * La familia de un pago sale de pagos_qr.familia_id (flujo del administrador);
+     * si no existe, de la familia del habitante vinculado al usuario (Portal
+     * Ciudadano). Los pagos cuya familia no se puede resolver se cuentan en
+     * `sin_asignar` y no entran en ninguna calle. Como máximo tres consultas, y
+     * el resultado se conserva durante la petición.
+     *
+     * @return array{configurada:bool,porFamilia:Collection,sin_asignar:int}
+     *         porFamilia: familia_id => ['estado' => string, 'fecha' => 'Y-m-d'|null]
+     */
+    public function pagosPorFamiliaDelPeriodo(Encuesta $encuesta): array
+    {
+        if (isset($this->pagosPeriodo[$encuesta->id])) {
+            return $this->pagosPeriodo[$encuesta->id];
+        }
+
+        $cuenta = $encuesta->cuenta_pago_id
+            ? CuentaPago::withTrashed()->find($encuesta->cuenta_pago_id)
+            : null;
+
+        // Encuesta sin servicio o sin período: no hay nada que medir
+        if (! $cuenta || ! $encuesta->fecha_inicio || ! $encuesta->fecha_cierre) {
+            return $this->pagosPeriodo[$encuesta->id] = [
+                'configurada' => false,
+                'porFamilia'  => collect(),
+                'sin_asignar' => 0,
+            ];
+        }
+
+        $cuentaIds = CuentaPago::withTrashed()
+            ->where('nombre_servicio', $cuenta->nombre_servicio)
+            ->pluck('id')
+            ->all();
+
+        $pagos = PagoQr::query()
+            ->whereIn('cuenta_pago_id', $cuentaIds)
+            ->whereBetween('fecha_pago', [
+                $encuesta->fecha_inicio->copy()->startOfDay(),
+                $encuesta->fecha_cierre->copy()->endOfDay(),
+            ])
+            ->get(['id', 'familia_id', 'user_id', 'estado', 'fecha_pago']);
+
+        // Familia de los pagos del Portal Ciudadano: usuario → habitante → familia
+        $userIds = $pagos->whereNull('familia_id')->pluck('user_id')->filter()->unique()->values()->all();
+
+        $familiaPorUsuario = $userIds === []
+            ? collect()
+            : DB::table('users')
+                ->join('habitantes', 'habitantes.id', '=', 'users.habitante_id')
+                ->whereIn('users.id', $userIds)
+                ->whereNotNull('habitantes.familia_id')
+                ->pluck('habitantes.familia_id', 'users.id');
+
+        $conFamilia = $pagos->map(function (PagoQr $pago) use ($familiaPorUsuario) {
+            $pago->setAttribute(
+                'familia_resuelta',
+                $pago->familia_id ?? ($pago->user_id ? $familiaPorUsuario->get($pago->user_id) : null)
+            );
+
+            return $pago;
+        });
+
+        $porFamilia = $conFamilia
+            ->whereNotNull('familia_resuelta')
+            ->groupBy('familia_resuelta')
+            ->map(function (Collection $delaFamilia) {
+                $verificado = $delaFamilia->where('estado', 'verificado')->sortByDesc('fecha_pago')->first();
+                if ($verificado) {
+                    return ['estado' => 'pagado', 'fecha' => $verificado->fecha_pago?->toDateString()];
+                }
+
+                $pendiente = $delaFamilia->where('estado', 'pendiente')->sortByDesc('fecha_pago')->first();
+                if ($pendiente) {
+                    return ['estado' => 'en_revision', 'fecha' => $pendiente->fecha_pago?->toDateString()];
+                }
+
+                return ['estado' => 'sin_pago', 'fecha' => null];
+            });
+
+        return $this->pagosPeriodo[$encuesta->id] = [
+            'configurada' => true,
+            'porFamilia'  => $porFamilia,
+            'sin_asignar' => $conFamilia->whereNull('familia_resuelta')->count(),
+        ];
+    }
+
+    /**
+     * Pagos del servicio por calle (encuestas de tipo pago_servicio).
+     *
+     * @param  array<int,int>  $calleIds
+     * @return array<int,array{total_familias:int,conteo:array<string,int>,riesgo:int|null}>
+     */
+    public function resumenPagoPorCalles(array $calleIds, Encuesta $encuesta): array
+    {
+        $familiasPorCalle = $this->familiasAgrupadasPorCalle($calleIds);
+        $datos            = $this->pagosPorFamiliaDelPeriodo($encuesta);
+
+        $resultado = [];
+
+        foreach ($calleIds as $calleId) {
+            $ids    = $familiasPorCalle->get($calleId) ?? collect();
+            $conteo = ['pagado' => 0, 'en_revision' => 0, 'sin_pago' => 0];
+
+            foreach ($ids as $familiaId) {
+                $estado = $datos['porFamilia']->get($familiaId)['estado'] ?? 'sin_pago';
+                $conteo[$estado]++;
+            }
+
+            $resultado[$calleId] = [
+                'total_familias' => $ids->count(),
+                'conteo'         => $conteo,
+                'riesgo'         => $datos['configurada'] ? $this->riesgoPago($conteo, $ids->count()) : null,
+            ];
+        }
+
+        return $resultado;
+    }
+
+    /**
+     * Riesgo agregado de una calle para los pagos de un servicio. Una familia con
+     * un pago en revisión no cuenta como pendiente:
+     *  null = calle sin familias
+     *  0 = todas pagaron o están en revisión
+     *  1 = sin pago en menos de la mitad de las familias
+     *  2 = sin pago en la mitad o más
+     *
+     * @param  array<string,int>  $conteo
+     */
+    private function riesgoPago(array $conteo, int $total): ?int
+    {
+        if ($total === 0) {
+            return null;
+        }
+
+        return match (true) {
+            $conteo['sin_pago'] === 0                  => 0,
+            ($conteo['sin_pago'] / $total) < 0.5       => 1,
+            default                                    => 2,
         };
     }
 

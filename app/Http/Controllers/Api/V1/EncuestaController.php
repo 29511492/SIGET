@@ -30,6 +30,7 @@ class EncuestaController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = Encuesta::query()
+            ->with('cuentaPago')
             ->when($request->filled('tipo'), fn ($q) => $q->deTipo((string) $request->input('tipo')))
             ->when($request->boolean('solo_activas'), fn ($q) => $q->activas());
 
@@ -58,7 +59,7 @@ class EncuestaController extends Controller
     {
         // refresh(): 'activa' toma su default (true) de la BD; sin recargar
         // el modelo, la respuesta devolvería activa = null.
-        $encuesta = Encuesta::create($request->validated())->refresh();
+        $encuesta = Encuesta::create($request->validated())->refresh()->load('cuentaPago');
 
         return response()->json([
             'message' => 'Encuesta creada correctamente.',
@@ -68,7 +69,7 @@ class EncuestaController extends Controller
 
     public function show(Encuesta $encuesta): JsonResponse
     {
-        $encuesta->loadCount('respuestas');
+        $encuesta->loadCount('respuestas')->load('cuentaPago');
 
         return response()->json([
             'message' => 'Encuesta obtenida correctamente.',
@@ -79,7 +80,7 @@ class EncuestaController extends Controller
     public function update(UpdateEncuestaRequest $request, Encuesta $encuesta): JsonResponse
     {
         $encuesta->update($request->validated());
-        $encuesta->loadCount('respuestas');
+        $encuesta->loadCount('respuestas')->load('cuentaPago');
 
         return response()->json([
             'message' => 'Encuesta actualizada correctamente.',

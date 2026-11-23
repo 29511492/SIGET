@@ -81,7 +81,7 @@ class StoreEncuestaRespuestaMasivaRequest extends FormRequest
             if ($encuesta instanceof Encuesta && ! $encuesta->aceptaRespuestas()) {
                 $validator->errors()->add(
                     'encuesta',
-                    'Esta encuesta se calcula con el censo de viviendas y no admite registros.'
+                    'Esta encuesta se calcula automáticamente (censo o pagos) y no admite registros.'
                 );
                 return;
             }
