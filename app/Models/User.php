@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\HasApiTokens;
 
 /**
@@ -90,14 +91,16 @@ class User extends Authenticatable
         ]);
     }
 
-    // Genera y guarda un OTP de 6 dígitos con expiración de 15 minutos.
-    // Retorna el código en texto plano para enviarlo por correo.
+    // Genera un OTP de 6 dígitos con expiración de 15 minutos.
+    // ERR-04 (nov-2026): en la base de datos se guarda CON HASH (bcrypt),
+    // nunca en texto plano. Retorna el código en texto plano solo para
+    // enviarlo por correo; después de este método no se puede recuperar.
     public function generarOtp(): string
     {
-        $codigo = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $codigo = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
         $this->update([
-            'otp_code'       => $codigo,
+            'otp_code'       => Hash::make($codigo),
             'otp_expires_at' => now()->addMinutes(15),
         ]);
 
@@ -105,11 +108,20 @@ class User extends Authenticatable
     }
 
     // Verifica si el OTP proporcionado es válido y no ha expirado.
+    // Compara contra el hash guardado. Si quedara un valor que no es un
+    // hash (código viejo en texto plano), se rechaza sin lanzar error.
     public function otpEsValido(string $codigo): bool
     {
-        return $this->otp_code === $codigo
-            && $this->otp_expires_at !== null
-            && now()->lessThanOrEqualTo($this->otp_expires_at);
+        if ($this->otp_code === null || $this->otp_expires_at === null) {
+            return false;
+        }
+
+        if (now()->greaterThan($this->otp_expires_at)) {
+            return false;
+        }
+
+        return Hash::isHashed($this->otp_code)
+            && Hash::check($codigo, $this->otp_code);
     }
 
     // Limpia el OTP después de usarlo exitosamente.

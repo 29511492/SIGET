@@ -52,7 +52,9 @@ return new class extends Migration
             $table->timestamp('locked_at')->nullable();
 
             // ── OTP para recuperación y desbloqueo ────────────
-            $table->string('otp_code', 6)->nullable();
+            // (nov-2026, ERR-04) El OTP se guarda con hash bcrypt (60
+            // caracteres), por eso la columna ya no es de 6: string(255).
+            $table->string('otp_code')->nullable();
             $table->timestamp('otp_expires_at')->nullable();
 
             // ENUM estricto: evita valores arbitrarios como 'superAdmin'

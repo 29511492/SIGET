@@ -20,6 +20,14 @@
  *  el return explícito en el bloque de AuthenticationException
  *  para cortar el flujo y evitar que el handler por defecto siga
  *  ejecutándose y busque la ruta 'login'.
+ *
+ *  CORRECCIÓN (nov-2026): el return del handler no alcanzaba cuando la
+ *  petición pedía otro formato (p. ej. Accept: application/pdf en las
+ *  descargas de PDF con responseType 'blob'). El middleware Authenticate
+ *  calcula el destino del redirect ANTES de lanzar la excepción, así que
+ *  el handler nunca llegaba a ejecutarse y salía el 500 «Route [login] not
+ *  defined». Ahora redirectGuestsTo() devuelve null para /api/*: no hay
+ *  redirect y el handler responde 401 JSON siempre.
  * ═══════════════════════════════════════════════════════════════
  */
 
@@ -60,6 +68,16 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->appendToGroup('api', [
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
         ]);
+
+        /**
+         * Invitados en rutas /api/*: sin redirect (null). Evita el 500
+         * «Route [login] not defined» cuando la petición no declara
+         * Accept: application/json (descargas de PDF, por ejemplo) y deja
+         * que el handler de AuthenticationException responda 401 JSON.
+         */
+        $middleware->redirectGuestsTo(
+            fn (Request $request) => $request->is('api/*') ? null : route('login')
+        );
 
     })
 
