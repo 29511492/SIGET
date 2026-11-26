@@ -71,6 +71,13 @@ export default function FamiliaList() {
     const [habitantesCache,  setHabitantesCache]  = useState({});
     const [loadingExpandId,  setLoadingExpandId]  = useState(null);
 
+    // ── Constancia de residencia (CP-05 / CP-06, CU-003) ─────────────
+    // emitiendoId: id del habitante cuyo PDF se está generando.
+    // constanciaError: { familiaId, mensaje } — se muestra dentro de la
+    // fila desplegada de esa familia.
+    const [emitiendoId,     setEmitiendoId]     = useState(null);
+    const [constanciaError, setConstanciaError] = useState(null);
+
     const showActionsCol = canWrite || isAdmin;
     const totalCols = 6 + (showActionsCol ? 1 : 0); // toggle + 5 columnas + acciones
 
@@ -103,6 +110,7 @@ export default function FamiliaList() {
 
     // ── Menú plegable de habitantes ─────────────────────────────────
     const toggleExpand = async (familia) => {
+        setConstanciaError(null);
         if (expandedId === familia.id) {
             setExpandedId(null);
             return;
@@ -119,6 +127,49 @@ export default function FamiliaList() {
             setHabitantesCache(prev => ({ ...prev, [familia.id]: [] }));
         } finally {
             setLoadingExpandId(null);
+        }
+    };
+
+    // ── Constancia de residencia de un habitante ────────────────────
+    // Con responseType 'blob', el cuerpo de un error 422 también llega
+    // como Blob: hay que leerlo como texto para mostrar el mensaje real.
+    const leerMensajeError = async (err) => {
+        const porDefecto = 'No se pudo emitir la constancia de residencia. Intenta nuevamente.';
+        const data = err.response?.data;
+        try {
+            if (data instanceof Blob) {
+                const json = JSON.parse(await data.text());
+                return json.message ?? porDefecto;
+            }
+            return data?.message ?? porDefecto;
+        } catch {
+            return porDefecto;
+        }
+    };
+
+    const emitirConstancia = async (habitante, familiaId) => {
+        setEmitiendoId(habitante.id);
+        setConstanciaError(null);
+        try {
+            const res = await apiClient.get(`/v1/reportes/constancia-residencia/${habitante.id}`, {
+                responseType: 'blob',
+                headers: { Accept: 'application/pdf' },
+            });
+
+            const url = window.URL.createObjectURL(
+                new Blob([res.data], { type: 'application/pdf' })
+            );
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `constancia_residencia_${habitante.cedula ?? habitante.id}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            setConstanciaError({ familiaId, mensaje: await leerMensajeError(err) });
+        } finally {
+            setEmitiendoId(null);
         }
     };
 
@@ -371,6 +422,18 @@ export default function FamiliaList() {
                                                 <tr className="tr-expanded" key={`${familia.id}-habitantes`}>
                                                     <td colSpan={totalCols}>
                                                         <div className="habitantes-expand">
+                                                            {constanciaError?.familiaId === familia.id && (
+                                                                <div className="list-alert list-alert--error" role="alert">
+                                                                    <span>⚠</span> {constanciaError.mensaje}
+                                                                    <button
+                                                                        type="button"
+                                                                        className="list-alert__retry"
+                                                                        onClick={() => setConstanciaError(null)}
+                                                                    >
+                                                                        Cerrar
+                                                                    </button>
+                                                                </div>
+                                                            )}
                                                             {loadingExpandId === familia.id ? (
                                                                 <div className="habitantes-expand__loading">
                                                                     <span className="list-loading__spinner list-loading__spinner--sm" />
@@ -401,6 +464,14 @@ export default function FamiliaList() {
                                                                                 {h.es_discapacitado && (
                                                                                     <span className="badge badge--purple">♿ Discapacidad</span>
                                                                                 )}
+                                                                                <button
+                                                                                    type="button"
+                                                                                    className="constancia-btn"
+                                                                                    onClick={() => emitirConstancia(h, familia.id)}
+                                                                                    disabled={emitiendoId === h.id}
+                                                                                >
+                                                                                    {emitiendoId === h.id ? '⏳ Generando…' : '📄 Emitir constancia de residencia'}
+                                                                                </button>
                                                                             </span>
                                                                         </li>
                                                                     ))}

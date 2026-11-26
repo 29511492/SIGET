@@ -297,6 +297,9 @@
             content: counter(pages);
         }
     </style>
+
+    {{-- Estilos adicionales de cada vista hija (opcional) --}}
+    @yield('estilos')
 </head>
 
 <body>

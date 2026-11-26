@@ -268,6 +268,19 @@
 .action-btn--save:hover   { filter: brightness(1.1); }
 .action-btn--cancel       { color: var(--c-text-light); }
 
+/* ── Botón «Emitir constancia de residencia» (nov-2026, CP-05) ──
+   Vive dentro de cada habitante de la fila desplegada. */
+.constancia-btn {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    padding: 0.3rem 0.7rem; border-radius: 6px;
+    font-size: 0.78rem; font-weight: 500; cursor: pointer;
+    background: var(--c-white); color: var(--c-text-dark);
+    border: 1px solid var(--c-border);
+    transition: background var(--transition), border-color var(--transition), transform var(--transition);
+}
+.constancia-btn:hover:not(:disabled) { background: #fdf8e8; border-color: var(--c-gold); transform: translateY(-1px); }
+.constancia-btn:disabled { opacity: 0.6; cursor: wait; }
+
 /* ── Inputs de edición inline: eliminados (sept-2026) ──────────
    La edición ahora es siempre vía modal (FamiliaForm), que incluye
    la gestión completa de habitantes. Ya no hay fila editable. */

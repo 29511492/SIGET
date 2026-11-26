@@ -1,5 +1,107 @@
 @extends('pdf.pdf_master')
 
+{{-- ── Estilos propios de la constancia (nov-2026) ───────────────────────
+     Una sola hoja carta con márgenes. Solo afecta a esta vista: la plantilla
+     maestra y los demás PDF (estadísticas, comunicados) no cambian. --}}
+@section('estilos')
+    <style>
+        @page {
+            margin: 1.2cm 2cm 2cm 2cm !important;
+        }
+
+        body {
+            line-height: 1.35;
+        }
+
+        .membrete {
+            padding-bottom: 8px;
+            margin-bottom: 8px;
+        }
+
+        .membrete-banda {
+            padding: 6px 16px;
+            margin-bottom: 5px;
+        }
+
+        .membrete-datos {
+            padding: 2px 16px 0 16px;
+        }
+
+        .doc-titulo {
+            margin: 6px 0 2px 0;
+            padding: 5px 0;
+            font-size: 12.5pt;
+        }
+
+        .seccion {
+            margin: 6px 0;
+        }
+
+        .seccion-titulo {
+            margin-bottom: 4px;
+        }
+
+        .tabla-datos {
+            margin: 4px 0;
+        }
+
+        .tabla-datos td {
+            padding: 2px 10px;
+            font-size: 9pt;
+        }
+
+        .linea-gris {
+            margin: 4px 0;
+        }
+
+        .linea-dorada {
+            margin: 6px 0;
+        }
+
+        .cuerpo-texto {
+            font-size: 9.5pt;
+            line-height: 1.45;
+            margin: 6px 0;
+        }
+
+        .cuerpo-texto p {
+            margin-bottom: 6px;
+        }
+
+        .nota-validez {
+            margin-top: 8px;
+            padding: 5px 12px;
+            font-size: 8pt;
+        }
+
+        .firma-bloque {
+            margin-top: 14px;
+            page-break-inside: avoid;
+        }
+
+        .firma-sello {
+            width: 58px;
+            height: 58px;
+            margin-top: 2px;
+        }
+
+        /* Pie dentro del margen inferior; una sola hoja no necesita "Página x de y" */
+        .pie-pagina {
+            bottom: -1.4cm;
+            height: 28px;
+            padding: 0 16px;
+        }
+
+        .pie-izq {
+            width: 100%;
+        }
+
+        .pie-der {
+            display: none;
+        }
+    </style>
+@endsection
+
 @section('contenido')
     {{-- ── Datos del solicitante ─────────────────────────────────────────── --}}
     <div class="seccion">
